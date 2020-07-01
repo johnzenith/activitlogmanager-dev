@@ -2,7 +2,7 @@
 // Silence is golden
 
 
-$strs = ['zenith', 'john', 'jeff', '_', '*'];
+$strs = ['run', 'zenith', 'john', 'jeff', '_', '*'];
 function strEndsWith( $str, $pattern )
 {
     if ( is_array( $pattern ) )
