@@ -145,22 +145,24 @@ abstract class PluginFactory
      * 
      * @since 1.0.0
      * 
-     * @param array|object $data   Specifies the array or object to retrieve the value from
+     * @param array|object $data    Specifies the array or object to retrieve the value from
      * 
-     * @param string       $param  Specifies the array or object key (index) to use to 
-     *                             retrieve the value
+     * @param string       $param   Specifies the array or object key (index) to use to 
+     *                              retrieve the value
      * 
-     * @return null|mixed          Returns the found array or object value. Otherwise null;
+     * @param mixed        $default Specifies the default value to return if key is not found
+     * 
+     * @return null|mixed           Returns the found array or object value. Otherwise null;
      */
-    public function getVar( $data, $key )
+    public function getVar( $data, $key, $default = null )
     {
         if ( empty( $data ) || empty( $key ) )
             return null;
 
         if ( is_array( $data ) ) {
-            $value = isset( $data[ $key ] ) ? $data[ $key ] : null;
+            $value = isset( $data[ $key ] ) ? $data[ $key ] : $default;
         } else {
-            $value = isset( $data->$key ) ? $data->$key : null;
+            $value = isset( $data->$key ) ? $data->$key : $default;
         }
 
         return $value;

@@ -1064,7 +1064,7 @@ trait UserEvents
                     'user_state' => 'logged_in',
 
                     'message'  => [
-                        '_main' => 'Cancelled the change of ---User email--- update request',
+                        '_main' => 'Cancelled the request to change the ---User email---',
 
                         '_space_start'             => '',
                         'user_email_requested'     => ['user_email', 'requested'],
@@ -1404,25 +1404,11 @@ trait UserEvents
     }
 
     /**
-     * Create list of user meta fields to ignore
-     * 
-     * @since 1.0.0
+     * Get the ignorable user meta fields
+     * @return array
      */
-    public function __ignorableUserMetaFields( $ignore, $meta_id, $meta_key )
+    public function getIgnorableUserMetaFields()
     {
-        /**
-         * Bail the user metadata field if we are currently aggregating user metadata
-         */
-        if ( $this->getConstant('ALM_IS_USER_PROFILE_METADATA_AGGREGATION') ) 
-            return true;
-
-        /**
-         * We have to make sure already aggregated user metadata are not fired individually
-         */
-        $user_custom_fields = $this->getCustomizedUserCustomFields();
-        if ( $this->isLogAggregatable() && isset( $user_custom_fields[ $meta_key ] ) ) 
-            return true;
-
         $list = [
             /**
              * The user session tokens (session_tokens) meta field is used for login operations.
@@ -1454,7 +1440,45 @@ trait UserEvents
             $list[] = '_new_email';
         }
 
-        return in_array( $meta_key, $list, true );
+        return $list;
+    }
+
+    /**
+     * Create list of user meta fields to ignore
+     * 
+     * @since 1.0.0
+     */
+    public function __ignorableUserMetaFields( $ignore, $meta_id, $meta_key )
+    {
+        /**
+         * Bail the user metadata field if we are currently aggregating user metadata
+         */
+        if ( $this->getConstant('ALM_IS_USER_PROFILE_METADATA_AGGREGATION') ) 
+            return true;
+
+        /**
+         * We have to make sure already aggregated user metadata are not fired individually
+         */
+        $user_custom_fields = $this->getCustomizedUserCustomFields();
+        if ( $this->isLogAggregatable() && isset( $user_custom_fields[ $meta_key ] ) ) 
+            return true;
+
+        $ignorable_user_meta_fields = $this->getIgnorableUserMetaFields();
+
+        return $this->canIgnoreUserMetaStrictly( $meta_key );
+    }
+
+    /**
+     * Ignore user meta fields strictly. Will prevent any user meta event from 
+     * performing any operation, including profile update aggregation.
+     * 
+     * @since 1.0.0
+     * 
+     * @return bool
+     */
+    public function canIgnoreUserMetaStrictly( $meta_key )
+    {
+        return in_array( $meta_key, $this->getIgnorableUserMetaFields(), true );
     }
 
     /**
@@ -2074,7 +2098,7 @@ trait UserEvents
                 $new_field_label = ( 'create' == $update_type ) ? 
                     $field_label 
                     : 
-                    ( $field_has_confirmation ? 'New ' : 'Current ' ) . $field_label;
+                    ( $field_has_confirmation ? 'Current ' : 'New ' ) . $field_label;
 
                 $updated_str .= ucfirst( $new_field_label ) . ': ' . $_new_val;
 
@@ -2122,9 +2146,11 @@ trait UserEvents
         if ( 'user_email' == $user_field )
         {
             $current_user_email   = $this->getVar( $old_user_data, $user_field );
-            $requested_user_email = get_user_meta( $new_user_data->ID, '_new_email', true );
-
-            $is_confirmation_required = ( 0 === strcasecmp( $requested_user_email, $current_user_email ) );
+            $requested_user_email = $this->getVar(
+                get_user_meta( $new_user_data->ID, '_new_email', true ), 'newemail', ''
+            );
+            
+            $is_confirmation_required = ( 0 !== strcasecmp( $requested_user_email, $current_user_email ) );
         }
 
         /**

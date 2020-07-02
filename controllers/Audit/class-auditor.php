@@ -268,10 +268,12 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
      */
     protected function _getActiveEventData( $name, $arg = '' )
     {
-        if ( ! isset( $this->active_event[ $name ] ) )
+        $use_active_event_alt = isset( $this->active_event_alt[ $name ] );
+        if ( ! isset( $this->active_event[ $name ] ) && ! $use_active_event_alt )
             return '';
         
-        $data = $this->active_event[ $name ];
+        $data = $use_active_event_alt ? 
+            $this->active_event_alt[ $name ] : $this->active_event[ $name ];
 
         if ( !empty( $arg ) && is_scalar( $arg ) ) {
             return ( isset( $data[ $arg ] ) ) ? $data[ $arg ] : '';

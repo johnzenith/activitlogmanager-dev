@@ -36,6 +36,9 @@ trait UserEvents
     */
     public function added_user_meta_event( $meta_id, $object_id, $meta_key, $meta_value )
     {
+        if ( $this->canIgnoreUserMetaStrictly( $meta_key ) ) 
+            return;
+
         $can_ignore_user_event = apply_filters(
             'alm/event/user/custom_field/ignore',
             false, $meta_id, $meta_key
@@ -64,6 +67,9 @@ trait UserEvents
     */
     public function update_user_meta_event( $meta_id, $object_id, $meta_key, $meta_value )
     {
+        if ( $this->canIgnoreUserMetaStrictly( $meta_key ) ) 
+            return;
+
         $can_ignore_user_event = apply_filters(
             'alm/event/user/custom_field/ignore',
             false, $meta_id, $meta_key
@@ -90,6 +96,9 @@ trait UserEvents
     */
     public function updated_user_meta_event( $meta_id, $object_id, $meta_key, $meta_value )
     {
+        if ( $this->canIgnoreUserMetaStrictly( $meta_key ) ) 
+            return;
+
         $can_ignore_user_event = apply_filters(
             'alm/event/user/custom_field/ignore',
             false, $meta_id, $meta_key
@@ -121,6 +130,9 @@ trait UserEvents
         // Set the deleted meta value
         $this->metadata_value_deleted = get_user_meta( $object_id, $meta_key, true );
 
+        if ( $this->canIgnoreUserMetaStrictly( $meta_key ) ) 
+            return;
+
         $can_ignore_user_event = apply_filters(
             'alm/event/user/custom_field/ignore',
             false, $meta_ids, $meta_key
@@ -150,7 +162,20 @@ trait UserEvents
          * This is used by handle custom events like monitoring when the 
          * change of user email request has been cancelled
          */
-        $this->setConstant('ALM_USER_META_DELETED', $meta_key);
+        $this->setConstant( 'ALM_USER_META_DELETED', $meta_key );
+
+        /**
+         * Handles the user email update request cancellation which is determine by 
+         * deleting the '_new_email' user meta field and the user is not updating 
+         * their profile
+         */
+        if ( '_new_email' == $meta_key ) {
+            $this->alm_profile_update_cancelled_user_email_event( $object_id, $meta_key );
+            return;
+        }
+
+        if ( $this->canIgnoreUserMetaStrictly( $meta_key ) ) 
+            return;
 
         $can_ignore_user_event = apply_filters(
             'alm/event/user/custom_field/ignore',
@@ -168,17 +193,6 @@ trait UserEvents
             'new'      => $this->metadata_value_deleted,
             'previous' => '',
         ]);
-
-        /**
-         * Handles the user email update request cancellation which is determine by 
-         * deleting the '_new_email' user meta field and the user is not updating 
-         * their profile
-         */
-        if ( '_new_email' == $meta_key )
-        {
-            $this->alm_profile_update_cancelled_user_email_event( $object_id, $meta_key );
-            return;
-        }
 
         if ( $can_ignore_user_event ) 
             return;
@@ -417,8 +431,8 @@ trait UserEvents
         $object_id     = $user_id;
         $new_user_data = get_userdata( $user_id );
 
-        var_dump( $old_user_data, $new_user_data );
-        wp_die();
+        // var_dump( $old_user_data, $new_user_data );
+        // wp_die();
 
         /**
          * Trigger the callback alias for the profile update event
@@ -438,28 +452,34 @@ trait UserEvents
             if ( isset( $new_user_data->$user_table_field ) 
             && isset( $old_user_data->$user_table_field ) )
             {
-                if ( $new_user_data->$user_table_field != $old_user_data->$user_table_field )
+                /**
+                 * A confirmation by email/sms maybe requested for:
+                 *  [user_email], [user_login]
+                 * 
+                 * So we have to setup a pre-update request handler for monitoring the 
+                 * changes in those user fields which requires confirmation.
+                 * 
+                 * Important:
+                 * The only exception here is that, if a user is editing another user,
+                 * the changes are committed without confirmation, so we have to 
+                 * check for that too.
+                 */
+                if ( $this->userProfileFieldUpdateRequiresConfirmation( $user_table_field, $new_user_data, $old_user_data ) )
                 {
-                    /**
-                     * A confirmation by email/sms maybe requested for:
-                     *  [user_email], [user_login]
-                     * 
-                     * So we have to setup a pre-update request handler for monitoring the 
-                     * changes in those user fields which requires confirmation.
-                     * 
-                     * Important:
-                     * The only exception here is that, if a user is editing another user,
-                     * the changes are committed without confirmation, so we have to 
-                     * check for that too.
-                     */
-                    if ( $this->userProfileFieldUpdateRequiresConfirmation( $user_table_field, $new_user_data, $old_user_data ) )
-                    {
-                        $user_profile_update_hook_alias = "alm_profile_update_pre_{$user_table_field}_event";
-                    }
-                    else {
-                        $user_profile_update_hook_alias = "alm_profile_update_{$user_table_field}_event";
-                    }
+                    $user_profile_update_hook_alias = "alm_profile_update_pre_{$user_table_field}_event";
+                }
+                elseif ( $new_user_data->$user_table_field != $old_user_data->$user_table_field )
+                {
+                    $user_profile_update_hook_alias = "alm_profile_update_{$user_table_field}_event";
+                }
+                else {
+                    // Reset the variable to avoid repetitive callback execution
+                    $user_profile_update_hook_alias = '';
+                }
 
+                if ( ! empty( $user_profile_update_hook_alias ) 
+                && method_exists( $this, $user_profile_update_hook_alias ) )
+                {
                     \call_user_func_array(
                         [ $this, $user_profile_update_hook_alias   ],
                         [ $user_id, $new_user_data, $old_user_data ]
@@ -548,26 +568,36 @@ trait UserEvents
     public function alm_profile_update_pre_user_email_event( $object_id, $new_user_data, $old_user_data )
     {
         $user_email_current   = $old_user_data->user_email;
-        $user_email_requested = get_user_meta( $object_id, '_new_email', true );
+        $user_email_requested = $this->getVar( get_user_meta( $object_id, '_new_email', true ), 'newemail' );
 
         /**
          * Append the current user custom field data if user profile data 
          * aggregation is active
+         * 
+         * For now, we will disable profile update aggregation on this event because 
+         * its update context is entirely different
          */
-        $this->appendUpdatedUserProfileData( 'user_email', [
-            'current'   => $user_email_current,
-            'requested' => $user_email_requested,
-        ]);
+        $allow_profile_update_aggregation = false;
+        if ( $allow_profile_update_aggregation )
+        {
+            $this->appendUpdatedUserProfileData( 'user_email', [
+                'current'   => $user_email_current,
+                'requested' => $user_email_requested,
+            ]);
+            
+            // Trying to modify the user email should be a critical event
+            $this->active_event_alt['severity'] = 'critical';
 
-        if ( $this->isUserProfileDataAggregationActive() ) 
-            return;
+            if ( $this->isUserProfileDataAggregationActive() ) 
+                return;
+        }
 
         $this->setupUserEventArgs( compact( 'object_id', 'user_email_current', 'user_email_requested' ) );
         $this->LogActiveEvent( 'user', __METHOD__ );
     }
 
     /**
-     * User email update handler
+     * User email update confirmed handler
      * 
      * @see UserEvents::profile_update_event()
      */
@@ -577,7 +607,9 @@ trait UserEvents
         $user_email_previous = $old_user_data->user_email;
 
         if ( 0 === strcasecmp( $user_email_new, $user_email_previous ) ) 
-            $user_email_new = get_user_meta( $object_id, '_new_email', true );
+            $user_email_new = $this->getVar(
+                get_user_meta( $object_id, '_new_email', true ), 'newemail', ''
+            );
 
         /**
          * Append the current user custom field data if user profile data 
@@ -587,6 +619,9 @@ trait UserEvents
             'new'      => $user_email_new,
             'previous' => $user_email_previous,
         ]);
+
+        // Modifying the user email should be a critical event
+        $this->active_event_alt['severity'] = 'critical';
 
         if ( $this->isUserProfileDataAggregationActive() ) 
             return;
@@ -615,19 +650,26 @@ trait UserEvents
         $user_data            = $this->User->getUserData( $object_id );
 
         $user_email_current   = $user_data->user_email;
-        $user_email_requested = $this->metadata_value_deleted;
+        $user_email_requested = $this->getVar( $this->metadata_value_deleted, 'newemail', '' );
 
         /**
          * Append the current user custom field data if user profile data 
          * aggregation is active
+         * 
+         * For now, we will disable profile update aggregation on this event because 
+         * its update context is entirely different
          */
-        $this->appendUpdatedUserProfileData( 'user_email', [
-            'current'   => $user_email_current,
-            'requested' => $user_email_requested,
-        ]);
+        $allow_profile_update_aggregation = false;
+        if ( $allow_profile_update_aggregation )
+        {
+            $this->appendUpdatedUserProfileData( 'user_email', [
+                'current'   => $user_email_current,
+                'requested' => $user_email_requested,
+            ]);
 
-        if ( $this->isUserProfileDataAggregationActive() ) 
-            return;
+            if ( $this->isUserProfileDataAggregationActive() ) 
+                return;
+        }
 
         $this->setupUserEventArgs( compact( 'object_id', 'user_email_current', 'user_email_requested' ) );
         $this->LogActiveEvent( 'user', __METHOD__ );

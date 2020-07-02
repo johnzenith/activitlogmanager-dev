@@ -93,6 +93,13 @@ trait EventList
     protected $active_event = [];
 
     /**
+     * Specifies list of data to override in the active event
+     * @var array
+     * @since 1.0.0
+     */
+    protected $active_event_alt = [];
+
+    /**
      * Specifies the active event ID
      * @var int
      * @since 1.0.0
@@ -961,6 +968,21 @@ trait EventList
     protected function explainEventMsg( $msg = '' )
     {
         return $this->canExplainEventMsg() ? $msg : '';
+    }
+
+    /**
+     * Setup the active event data override
+     * 
+     * @since 1.0.0
+     * 
+     * @param string $field  Specifies the active event field to override
+     * 
+     * @param mixed  $value  Specifies the value to replace the specified 
+     *                       active event field value with
+     */
+    protected function overrideActiveEventData( $field, $value )
+    {
+        $this->active_event_alt[ $field ] = $value;
     }
 
     /**
