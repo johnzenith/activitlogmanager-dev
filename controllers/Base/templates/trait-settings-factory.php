@@ -1029,6 +1029,8 @@ trait SettingsFactory
     /**
      * Get notification states
      * 
+     * @since 1.0.0
+     * 
      * @param  string $event_id   Specifies the event ID
      * @param  string $event_name Specifies the event name (event action/filter hook)
      * @param  array  $event      Specifies the event arguments list
@@ -1055,5 +1057,22 @@ trait SettingsFactory
             $notification_state['email'] = 0;
 
         return $notification_state;
+    }
+
+    /**
+     * Get the event log increment limit.
+     * This is default to -7 (last 7 days).
+     * 
+     * @since 1.0.0
+     * 
+     * @param bool $day_label Specifies whether to add the 'day' string to 
+     *                        the limit
+     * 
+     * @return int|string
+     */
+    public function getEventLogIncrementLimit( $day_label = true )
+    {
+        $limit = (int) $this->getSetting('event_log_increment_limit');
+        return $day_label ? "$limit day" : $limit;
     }
 }

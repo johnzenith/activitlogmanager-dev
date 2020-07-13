@@ -45,13 +45,14 @@ trait UserEvents
     protected function getUserTableFields()
     {
         return [
-            'user_url'       => 'User url',
-            'user_pass'      => 'User Password',
-            'user_email'     => 'User email',
-            'user_login'     => 'User login',
-            'user_status'    => 'User status',
-            'display_name'   => 'User display name',
-            'user_nicename'  => 'User nicename',
+            'user_url'        => 'User URL',
+            'user_pass'       => 'Password',
+            'user_email'      => 'Email',
+            'user_login'      => 'Login Name',
+            'user_status'     => 'User Status',
+            'display_name'    => 'Display Name',
+            'user_nicename'   => 'Nice Name',
+            'user_registered' => 'Registration Date',
         ];
     }
 
@@ -93,10 +94,14 @@ trait UserEvents
         add_filter('alm/event/msg/field/info', [ $this, 'customizeUserEventMsgFieldInfo' ], 10, 4);
         add_filter('alm/event/message/db',     [ $this, 'customizeUserEventMsgArgs'      ], 10, 3);
 
-        add_filter( 'wp_pre_insert_user_data', [ $this, 'setupUserProfileAggregationFlag' ], 10, 3 );
-        add_filter( 'insert_user_meta',        [ $this, 'setupUserProfileMetadataAggregationFlag' ], 10, 3 );
+        add_filter('wp_pre_insert_user_data', [ $this, 'setupUserProfileAggregationFlag' ], 10, 3);
+        add_filter('insert_user_meta',        [ $this, 'setupUserProfileMetadataAggregationFlag' ], 10, 3);
 
         add_filter('alm/event/user/custom_field/ignore', [ $this, '__ignorableUserMetaFields' ], 10, 3);
+        
+        // Password reset event setup
+        add_action('retrieve_password',     [ $this, 'setupUserPasswordResetFlag'    ], 10);
+        add_action('retrieve_password_key', [ $this, 'setupUserPasswordResetKeyFlag' ], 10, 2);
     }
 
     /**
@@ -140,6 +145,13 @@ trait UserEvents
          * Setup necessary user event arguments
          */
         extract( $user_args );
+
+        // Use the $_current_user_id variable if set
+        if ( isset( $__current_user_id ) && $_current_user_id > 0 ) {
+            $current_user_id = $_current_user_id;
+        } else {
+            $current_user_id = $this->User->getCurrentUserId();
+        }
 
         /**
          * We need to be sure that the current logged in user is same with current user, 
@@ -186,8 +198,8 @@ trait UserEvents
             $user_role = $this->User->getUserRoles( $object_id );
         }
 
-        if ( $this->User->current_user_ID > 0 ) {
-            $is_user_owner_of_account = $this->User->current_user_ID == $object_id;
+        if ( $current_user_id > 0 ) {
+            $is_user_owner_of_account = $current_user_id == $object_id;
         } else {
             $is_user_owner_of_account = 0;
         }
@@ -223,7 +235,41 @@ trait UserEvents
             $existing_args['meta_value_previous'] = $this->metadata_value_previous;
         }
 
-        $this->customize_event_msg_args['user'] = array_merge( $user_args, $existing_args );
+        $user_msg_args = array_merge( $user_args, $existing_args );
+
+        /**
+         * On multisite, setup the blog id, blog name and blog url if not available
+         */
+        if ( $this->is_multisite )
+        {
+            if ( ! isset( $user_msg_args['blog_id'] ) ) {
+                $user_msg_args['blog_id'] = get_current_blog_id();
+            }
+
+            $blog_id = $user_msg_args['blog_id'];
+
+            if ( ! isset( $user_msg_args['blog_name'] ) ) {
+                $user_msg_args['blog_name'] = $this->sanitizeOption( get_blog_option( $blog_id, 'name', '' ) );
+            }
+            
+            if ( ! isset( $user_msg_args['blog_url'] ) ) {
+                $user_msg_args['blog_url'] = $this->sanitizeOption( get_blog_option( $blog_id, 'url', '' ) );
+            }
+
+            if ( ! isset( $user_msg_args['primary_blog'] ) ) {
+                $user_msg_args['primary_blog'] = $this->sanitizeOption( get_user_meta( $object_id, 'primary_blog', true ) );
+            }
+
+            if ( ! isset( $user_msg_args['source_domain'] ) ) {
+                $user_msg_args['source_domain'] = $this->sanitizeOption( get_user_meta( $object_id, 'source_domain', true ) );
+            }
+
+            if ( ! isset( $user_msg_args['primary_blog_name'] ) ) {
+                $user_msg_args['primary_blog_name'] = $this->sanitizeOption( get_blog_option( $user_msg_args['primary_blog'], 'name', '' ) );
+            }
+        }
+
+        $this->customize_event_msg_args['user'] = $user_msg_args;
     }
 
     /**
@@ -365,6 +411,31 @@ trait UserEvents
         $this->setConstant('ALM_IS_USER_PROFILE_METADATA_AGGREGATION', true);
 
         return $meta;
+    }
+
+    /**
+     * Setup the user password reset flag
+     * 
+     * @since 1.0.0
+     * 
+     * @see get_password_reset_key()
+     */
+    public function setupUserPasswordResetFlag( $user_login )
+    {
+        $this->setConstant( 'ALM_USER_PASSWORD_RESET_STARTED', true );
+    }
+    
+    /**
+     * Setup the user password reset key flag for retrieving the 
+     * password reset key
+     * 
+     * @since 1.0.0
+     * 
+     * @see get_password_reset_key()
+     */
+    public function setupUserPasswordResetKeyFlag( $user_login, $key )
+    {
+        $this->setConstant( 'ALM_USER_PASSWORD_RESET_KEY', $key );
     }
 
     /**
@@ -581,7 +652,7 @@ trait UserEvents
                     'title'    => 'User profile modification triggered',
                     'action'   => 'delete',
                     'event_id' => 5009, // Specific meta fields (keys) can override this
-                    'disable'  => true,
+                    'disable'  => false,
                     'severity' => 'notice',
 
                     'message'  => [
@@ -686,15 +757,17 @@ trait UserEvents
                 ],
 
                 /**
-                 * Errors returned while trying to create or update a user
+                 * Errors returned while trying to update a user
                  * 
                  * @since 1.0.0
                  */
                 'user_profile_update_errors' => [
-                    'title'    => 'User profile update error',
-                    'action'   => 'update',
-                    'event_id' => 5026,
-                    'severity' => 'notice',
+                    'title'           => 'User profile update error',
+                    'action'          => 'update',
+                    'event_id'        => 5026,
+                    'severity'        => 'notice',
+                    'error_flag'      => true,
+                    'event_successor' => ['user', 'profile_update'],
 
                     'user_state' => 'logged_in',
 
@@ -725,19 +798,23 @@ trait UserEvents
                 ],
 
                 /**
-                 * This is an alias of the WordPress 'user_profile_update_errors' action hook
-                 * It is triggered when fully confirmed that the user profile errors is not for 
-                 * Updating the new, but creating a new user request
+                 * This is an alias of the WordPress 'user_profile_update_errors' 
+                 * action hook.
+                 * 
+                 * It is triggered when it has been confirmed that the user profile 
+                 * errors is not for updating the new, but creating a new user request
                  * 
                  * @since 1.0.0
                  */
                 'alm_user_profile_update_errors' => [
-                    'title'    => 'New user creation error',
-                    'action'   => 'create',
-                    'event_id' => 5027,
-                    'severity' => 'notice',
+                    'title'           => 'New user creation error',
+                    'action'          => 'user_creation',
+                    'event_id'        => 5027,
+                    'severity'        => 'notice',
+                    'error_flag'      => true,
+                    'event_successor' => ['user', 'edit_user_created_user'],
 
-                    'user_state' => 'logged_in',
+                    'logged_in_user_caps' => [ 'edit_users' ],
 
                     'message'  => [
                         '_main' => 'Tried to create a new user but it was unsuccessful due to errors that occurred while processing the request.',
@@ -760,14 +837,14 @@ trait UserEvents
                  */
                 'edit_user_created_user' => [
                     'title'    => 'Created a new user',
-                    'action'   => 'created',
+                    'action'   => 'user_created',
                     'event_id' => 5028,
                     'severity' => 'critical',
 
                     'screen'     => [ 'admin', 'network', ],
                     'user_state' => 'logged_in',
 
-                    'user_caps__in' => [ 'edit_users' ],
+                    'logged_in_user_caps' => [ 'edit_users' ],
 
                     'message'  => [
                         '_main' => 'Created a new a user.',
@@ -803,7 +880,7 @@ trait UserEvents
                 // 'user_register' => [
                 'register_new_user' => [
                     'title'    => 'New user registration',
-                    'action'   => 'created',
+                    'action'   => 'user_registered',
                     'event_id' => 5029,
                     'severity' => 'notice',
 
@@ -838,7 +915,7 @@ trait UserEvents
                  */
                 'register_post' => [
                     'title'    => 'New user registration error',
-                    'action'   => 'create',
+                    'action'   => 'user_registration',
                     'event_id' => 5030,
                     'severity' => 'notice',
 
@@ -981,7 +1058,7 @@ trait UserEvents
                  * @since 1.0.0
                  */
                 'alm_profile_update_pre_user_email' => [
-                    'title'    => 'User email update requested',
+                    'title'    => 'User email address update requested',
                     'action'   => 'modify',
                     'event_id' => 5034,
                     'severity' => 'critical',
@@ -989,7 +1066,7 @@ trait UserEvents
                     'user_state' => 'logged_in',
 
                     'message'  => [
-                        '_main' => 'User requested a change of ---Email--- but yet to be confirmed',
+                        '_main' => 'User requested a change of ---Email address---',
 
                         '_space_start'             => '',
                         'user_email_requested'     => ['user_email', 'requested'],
@@ -1026,7 +1103,7 @@ trait UserEvents
                     'user_state' => 'logged_in',
 
                     'message'  => [
-                        '_main' => 'Changed the ---User email---',
+                        '_main' => 'Changed the ---User email address---',
 
                         '_space_start'             => '',
                         'user_email_previous'      => ['user_email', 'previous'],
@@ -1056,7 +1133,7 @@ trait UserEvents
                  * @since 1.0.0
                  */
                 'alm_profile_update_cancelled_user_email' => [
-                    'title'    => 'User email update request cancelled',
+                    'title'    => 'User email address update request cancelled',
                     'action'   => 'cancelled',
                     'event_id' => 5036,
                     'severity' => 'notice',
@@ -1064,7 +1141,7 @@ trait UserEvents
                     'user_state' => 'logged_in',
 
                     'message'  => [
-                        '_main' => 'Cancelled the request to change the ---User email---',
+                        '_main' => 'Cancelled the request to change the ---User email address---',
 
                         '_space_start'             => '',
                         'user_email_requested'     => ['user_email', 'requested'],
@@ -1125,6 +1202,653 @@ trait UserEvents
                     ],
                 ],
 
+                /**
+                 * Profile update alias for user_url
+                 * 
+                 * @since 1.0.0
+                 */
+                'alm_profile_update_user_url' => [
+                    'title'    => 'User url updated',
+                    'action'   => 'modified',
+                    'event_id' => 5038,
+                    'severity' => 'notice',
+
+                    'user_state' => 'logged_in',
+
+                    'message'  => [
+                        '_main' => 'Changed the ---User url---',
+
+                        '_space_start'             => '',
+                        'user_url_previous'        => ['user_url', 'previous'],
+                        'user_url_new'             => ['user_url', 'new'],
+                        '_space_end'               => '',
+
+                        'user_id'                  => ['object_id'],
+                        'user_login'               => ['user_login'],
+                        'display_name'             => ['display_name'],
+                        'roles'                    => ['roles'],
+                        'first_name'               => ['first_name'],
+                        'last_name'                => ['last_name'],
+                        'user_email'               => ['user_email'],
+                        'log_counter'              => $this->getLogCounterInfo(),
+                        'profile_url'              => ['profile_url'],
+                    ],
+
+                    'event_handler' => [
+                        'hook'     => 'callback',
+                        'num_args' => 3,
+                    ],
+                ],
+
+                /**
+                 * Profile update alias for user_status
+                 * 
+                 * @since 1.0.0
+                 */
+                'alm_profile_update_user_status' => [
+                    'title'    => 'User status updated',
+                    'action'   => 'modified',
+                    'event_id' => 5039,
+                    'severity' => 'notice',
+
+                    'user_state' => 'logged_in',
+
+                    'message'  => [
+                        '_main' => 'Changed the ---User status---',
+
+                        '_space_start'             => '',
+                        'user_status_previous'     => ['user_status', 'previous'],
+                        'user_status_new'          => ['user_status', 'new'],
+                        '_space_end'               => '',
+
+                        'user_id'                  => ['object_id'],
+                        'user_login'               => ['user_login'],
+                        'display_name'             => ['display_name'],
+                        'roles'                    => ['roles'],
+                        'first_name'               => ['first_name'],
+                        'last_name'                => ['last_name'],
+                        'user_email'               => ['user_email'],
+                        'log_counter'              => $this->getLogCounterInfo(),
+                        'profile_url'              => ['profile_url'],
+                    ],
+
+                    'event_handler' => [
+                        'hook'     => 'callback',
+                        'num_args' => 3,
+                    ],
+                ],
+
+                /**
+                 * Profile update alias for user_pass (user password)
+                 * 
+                 * @since 1.0.0
+                 */
+                'alm_profile_update_user_pass' => [
+                    'title'    => 'User password updated',
+                    'action'   => 'modified',
+                    'event_id' => 5040,
+                    'severity' => 'critical',
+
+                    'logged_in_user_caps' => [ 'edit_users' ],
+
+                    'message'  => [
+                        '_main' => 'Changed the ---User password---',
+
+                        'user_id'                  => ['object_id'],
+                        'user_login'               => ['user_login'],
+                        'display_name'             => ['display_name'],
+                        'roles'                    => ['roles'],
+                        'first_name'               => ['first_name'],
+                        'last_name'                => ['last_name'],
+                        'user_email'               => ['user_email'],
+                        'log_counter'              => $this->getLogCounterInfo(),
+                        'profile_url'              => ['profile_url'],
+                    ],
+
+                    'event_handler' => [
+                        'hook'     => 'callback',
+                        'num_args' => 3,
+                    ],
+                ],
+
+                /**
+                 * User password reset.
+                 * 
+                 * Fires before errors are returned from a password reset request.
+                 * 
+                 * @since 1.0.0
+                 * 
+                 * @see retrieve_password()
+                 */
+                'lostpassword_post' => [
+                    'title'           => 'User password reset request failed',
+                    'action'          => 'password_reset_failed',
+                    'event_id'        => 5041,
+                    'severity'        => 'critical',
+                    'error_flag'      => true,
+                    'event_successor' => ['user', 'alm_retrieve_password_successfully'],
+
+                    'message'  => [
+                        '_main' => 'Tried to initiate the request for resetting the user password but failed.',
+
+                        '_space_start'             => '',
+                        '_error_msg'               => '',
+                        '_space_end'               => '',
+
+                        'user_id'                  => ['object_id'],
+                        'user_login'               => ['user_login'],
+                        'display_name'             => ['display_name'],
+                        'roles'                    => ['roles'],
+                        'first_name'               => ['first_name'],
+                        'last_name'                => ['last_name'],
+                        'user_email'               => ['user_email'],
+                        'log_counter'              => $this->getLogCounterInfo(),
+                        'profile_url'              => ['profile_url'],
+                    ],
+
+                    'event_handler' => [
+                        'hook'     => 'action',
+                        'num_args' => 2,
+                    ],
+                ],
+
+                /**
+                 * User password reset.
+                 * 
+                 * Filters whether to allow a password to be reset.
+                 * 
+                 * Used to check whether password reset is allowed on the user or not
+                 * 
+                 * @since 1.0.0
+                 * 
+                 * @see get_password_reset_key()
+                 * @see retrieve_password action hook
+                 * @see allow_password_reset filter hook
+                 */
+                'allow_password_reset' => [
+                    'title'           => 'User password reset not allowed',
+                    'action'          => 'password_reset_failed',
+                    'event_id'        => 5042,
+                    'severity'        => 'critical',
+                    'error_flag'      => true,
+                    'event_successor' => ['user', 'alm_retrieve_password_successfully'],
+
+                    'message'  => [
+                        '_main' => 'Tried to initiate the request for resetting the user password but failed because password reset is disabled on the user account',
+
+                        'user_id'                  => ['object_id'],
+                        'user_login'               => ['user_login'],
+                        'display_name'             => ['display_name'],
+                        'roles'                    => ['roles'],
+                        'first_name'               => ['first_name'],
+                        'last_name'                => ['last_name'],
+                        'user_email'               => ['user_email'],
+                        'log_counter'              => $this->getLogCounterInfo(),
+                        'profile_url'              => ['profile_url'],
+                    ],
+
+                    'event_handler' => [
+                        'hook'     => 'filter',
+                        'num_args' => 2,
+                    ],
+                ],
+
+                /**
+                 * User password reset.
+                 * 
+                 * Fires when a password reset key is generated and saved successfully.
+                 * 
+                 * @since 1.0.0
+                 * 
+                 * @see get_password_reset_key()
+                 * @see retrieve_password action hook
+                 * @see retrieve_password_key action hook
+                 * @see profile_update action hook
+                 * 
+                 * Used to check whether password reset request was successful and 
+                 * confirmation has been sent.
+                 * 
+                 * #Event Process
+                 * 
+                 * 1. Listen for password reset key {@see retrieve_password} action
+                 * 2. Setup the password reset constant flag
+                 * 3. Listen for the profile update {@see profile_update} action
+                 * 4. Check if the user_activation_key was updated successfully.
+                 * 5. Trigger the {@see alm_retrieve_password_successfully} event.
+                 */
+                'alm_retrieve_password_successfully' => [
+                    'title'    => 'User password reset request initiated',
+                    'action'   => 'password_reset_initiated',
+                    'event_id' => 5043,
+                    'severity' => 'critical',
+
+                    'message'  => [
+                        '_main' => 'User initiated a ---Password reset--- request successfully',
+
+                        '_space_start'             => '',
+
+                        // Holds the user_activation_key
+                        'password_reset_key'       => ['password_reset_key'],
+                        'password_expiration_time' => ['password_expiration_time'],
+                        'password_reset_url'       => ['password_reset_url'],
+
+                        '_space_end'               => '',
+
+                        'user_id'                  => ['object_id'],
+                        'user_login'               => ['user_login'],
+                        'display_name'             => ['display_name'],
+                        'roles'                    => ['roles'],
+                        'first_name'               => ['first_name'],
+                        'last_name'                => ['last_name'],
+                        'user_email'               => ['user_email'],
+                        'log_counter'              => $this->getLogCounterInfo(),
+                        'profile_url'              => ['profile_url'],
+                    ],
+
+                    'event_handler' => [
+                        'hook'     => 'callback',
+                        'num_args' => 1,
+                    ],
+                ],
+
+                /**
+                 * Fires when the password reset key was retrieved successfully 
+                 * but the user_activation_key column in the user table could not 
+                 * be updated
+                 * 
+                 * @see alm_retrieve_password_successfully
+                 */
+                'alm_retrieve_password_unsuccessful' => [
+                    'title'           => 'User password reset request unsuccessful',
+                    'action'          => 'password_reset_failed',
+                    'event_id'        => 5044,
+                    'severity'        => 'critical',
+                    'error_flag'      => true,
+                    'event_successor' => ['user', 'alm_retrieve_password_successfully'],
+
+                    'message'  => [
+                        '_main' => 'User initiated a ---Password reset--- request which could not be completed because the system was unable to save the generated password reset key.',
+
+                        '_space_start'                 => '',
+
+                        // Holds the user_activation_key
+                        'generated_password_reset_key' => ['password_reset_key'],
+                        'password_reset_url'           => ['password_reset_url'],
+
+                        '_space_end'                   => '',
+
+                        'user_id'                      => ['object_id'],
+                        'user_login'                   => ['user_login'],
+                        'display_name'                 => ['display_name'],
+                        'roles'                        => ['roles'],
+                        'first_name'                   => ['first_name'],
+                        'last_name'                    => ['last_name'],
+                        'user_email'                   => ['user_email'],
+                        'log_counter'                  => $this->getLogCounterInfo(),
+                        'profile_url'                  => ['profile_url'],
+                    ],
+
+                    'event_handler' => [
+                        'hook'     => 'callback',
+                        'num_args' => 1,
+                    ],
+                ],
+
+                /**
+                 * Fires after the user's password is reset.
+                 * 
+                 * @since 1.0.0
+                 * 
+                 * @see reset_password()
+                 */
+                'after_password_reset' => [
+                    'title'    => 'User password reset successfully',
+                    'action'   => 'password_reset',
+                    'event_id' => 5045,
+                    'severity' => 'critical',
+
+                    
+                    'message'  => [
+                        '_main' => '---User password--- has been reset successfully.',
+                        
+                        '_space_start'             => '',
+                        'password_reset_url'       => ['password_reset_url'],
+                        '_space_end'               => '',
+
+                        'user_id'                  => ['object_id'],
+                        'user_login'               => ['user_login'],
+                        'display_name'             => ['display_name'],
+                        'roles'                    => ['roles'],
+                        'first_name'               => ['first_name'],
+                        'last_name'                => ['last_name'],
+                        'user_email'               => ['user_email'],
+                        'profile_url'              => ['profile_url'],
+                    ],
+
+                    'event_handler' => [
+                        'hook'     => 'action',
+                        'num_args' => 2,
+                    ],
+                ],
+
+                /**
+                 * Fires after a user login has failed.
+                 * 
+                 * @since 1.0.0
+                 * 
+                 * @see wp_authenticate()
+                 */
+                'wp_login_failed' => [
+                    'title'           => 'User login failed',
+                    'action'          => 'login_failed',
+                    'event_id'        => 5046,
+                    'severity'        => 'critical',
+                    'error_flag'      => true,
+                    'event_successor' => [ 'user', 'wp_login'],
+
+                    'message'  => [
+                        '_main'                    => 'User login failed.',
+
+                        '_space_start'             => '',
+                        'failed_attempts'          => ['failed_attempts'],
+                        'login_url'                => ['login_url'],
+                        '_error_msg'               => '',
+                        '_space_end'               => '',
+
+                        'user_id'                  => ['object_id'],
+                        'user_login'               => ['user_login'],
+                        'display_name'             => ['display_name'],
+                        'roles'                    => ['roles'],
+                        'first_name'               => ['first_name'],
+                        'last_name'                => ['last_name'],
+                        'user_email'               => ['user_email'],
+                        'profile_url'              => ['profile_url'],
+                    ],
+
+                    'event_handler' => [
+                        'hook'     => 'action',
+                        'num_args' => 2,
+                    ],
+                ],
+
+                /**
+                 * Fires after a user has logged-in.
+                 * 
+                 * @since 1.0.0
+                 * 
+                 * @see wp_authenticate()
+                 */
+                'wp_login' => [
+                    'title'    => 'User logged in',
+                    'action'   => 'logged_in',
+                    'event_id' => 5047,
+                    'severity' => 'notice',
+
+                    'message'  => [
+                        '_main'                    => 'User logged in successfully.',
+
+                        '_space_start'             => '',
+                        'login_url'                => ['login_url'],
+                        '_space_end'               => '',
+
+                        'user_id'                  => ['object_id'],
+                        'user_login'               => ['user_login'],
+                        'display_name'             => ['display_name'],
+                        'roles'                    => ['roles'],
+                        'first_name'               => ['first_name'],
+                        'last_name'                => ['last_name'],
+                        'user_email'               => ['user_email'],
+                        'profile_url'              => ['profile_url'],
+                    ],
+
+                    'event_handler' => [
+                        'hook'     => 'action',
+                        'num_args' => 2,
+                    ],
+                ],
+
+                /**
+                 * Fires after a user has logged-out
+                 * 
+                 * @since 1.0.0
+                 * 
+                 * @see wp_authenticate()
+                 */
+                'wp_logout' => [
+                    'title'    => 'User logged out',
+                    'action'   => 'logged_out',
+                    'event_id' => 5048,
+                    'severity' => 'notice',
+
+                    'message'  => [
+                        '_main'                    => 'User logged out successfully.',
+
+                        'user_id'                  => ['object_id'],
+                        'user_login'               => ['user_login'],
+                        'display_name'             => ['display_name'],
+                        'roles'                    => ['roles'],
+                        'first_name'               => ['first_name'],
+                        'last_name'                => ['last_name'],
+                        'user_email'               => ['user_email'],
+                        'profile_url'              => ['profile_url'],
+                    ]
+                ],
+
+                /**
+                 * Multisite Only
+                 * 
+                 * Fires after the user is marked as a SPAM user
+                 * 
+                 * @since 1.0.0
+                 * 
+                 * @see wp_insert_user()
+                 */
+                'make_spam_user' => [
+                    'title'      => 'User marked as Spam',
+                    'action'     => 'modified',
+                    'event_id'   => 5049,
+                    'severity'   => 'critical',
+
+                    'screen'     => [ 'multisite' ],
+                    'user_state' => 'logged_in',
+
+                    'message'  => [
+                        '_main'                    => 'User is marked as Spam.',
+
+                        'user_id'                  => ['object_id'],
+                        'user_login'               => ['user_login'],
+                        'display_name'             => ['display_name'],
+                        'roles'                    => ['roles'],
+                        'first_name'               => ['first_name'],
+                        'last_name'                => ['last_name'],
+                        'user_email'               => ['user_email'],
+                        'profile_url'              => ['profile_url'],
+                        'user_primary_blog'        => ['primary_blog'],
+                        'primary_blog_name'        => ['primary_blog_name'],
+                        'source_domain'            => ['source_domain'],
+                    ]
+                ],
+
+                /**
+                 * Multisite Only
+                 * 
+                 * Fires after the user is marked as a HAM user
+                 * 
+                 * @since 1.0.0
+                 * 
+                 * @see wp_insert_user()
+                 */
+                'make_ham_user' => [
+                    'title'      => 'User marked as Ham',
+                    'action'     => 'modified',
+                    'event_id'   => 5050,
+                    'severity'   => 'critical',
+
+                    'screen'     => [ 'multisite' ],
+                    'user_state' => 'logged_in',
+
+                    'message'  => [
+                        '_main'                    => 'User is marked as Ham.',
+
+                        'user_id'                  => ['object_id'],
+                        'user_login'               => ['user_login'],
+                        'display_name'             => ['display_name'],
+                        'roles'                    => ['roles'],
+                        'first_name'               => ['first_name'],
+                        'last_name'                => ['last_name'],
+                        'user_email'               => ['user_email'],
+                        'profile_url'              => ['profile_url'],
+                        'user_primary_blog'        => ['primary_blog'],
+                        'primary_blog_name'        => ['primary_blog_name'],
+                        'source_domain'            => ['source_domain'],
+                    ]
+                ],
+
+                /**
+                 * Multisite Only
+                 * 
+                 * Filters whether a user should be added to a site.
+                 * 
+                 * @since 1.0.0
+                 * 
+                 * @see add_user_to_blog()
+                 */
+                'can_add_user_to_blog' => [
+                    'title'           => 'User cannot be added to site',
+                    'action'          => 'add',
+                    'event_id'        => 5051,
+                    'severity'        => 'critical',
+                    'screen'          => [ 'multisite' ],
+                    'user_state'      => 'logged_in',
+                    'error_flag'      => true,
+                    'event_successor' => ['user', 'add_user_to_blog'],
+
+                    'message'  => [
+                        '_main'                    => 'Tried to add a user to a site but the operation was unsuccessful.',
+
+                        '_space_start'             => '',
+                        'failed_attempts'          => ['failed_attempts'],
+                        'blog_id'                  => ['blog_id'],
+                        'blog_name'                => ['blog_name'],
+                        'blog_url'                 => ['blog_url'],
+                        'role_given'               => ['role_given'],
+                        '_error_msg'               => '',
+                        '_space_end'               => '',
+
+                        'user_id'                  => ['object_id'],
+                        'user_login'               => ['user_login'],
+                        'display_name'             => ['display_name'],
+                        'roles'                    => ['roles'],
+                        'first_name'               => ['first_name'],
+                        'last_name'                => ['last_name'],
+                        'user_email'               => ['user_email'],
+                        'profile_url'              => ['profile_url'],
+                        'user_primary_blog'        => ['primary_blog'],
+                        'primary_blog_name'        => ['primary_blog_name'],
+                        'source_domain'            => ['source_domain'],
+                    ],
+
+                    'event_handler' => [
+                        'hook'     => 'filter',
+                        'num_args' => 4,
+                    ],
+                ],
+
+                /**
+                 * Multisite Only
+                 * 
+                 * Fires immediately after a user is added to a site.
+                 * 
+                 * @since 1.0.0
+                 * 
+                 * @see add_user_to_blog()
+                 */
+                'add_user_to_blog' => [
+                    'title'           => 'User added to a site',
+                    'action'          => 'Added',
+                    'event_id'        => 5051,
+                    'severity'        => 'critical',
+                    'screen'          => ['multisite'],
+                    'user_state'      => 'logged_in',
+
+                    'message'  => [
+                        '_main'                    => 'Added a user to a site',
+
+                        '_space_start'             => '',
+                        'blog_id'                  => ['blog_id'],
+                        'blog_name'                => ['blog_name'],
+                        'blog_url'                 => ['blog_url'],
+                        'role_given'               => ['role_given'],
+                        'user_primary_blog'        => ['primary_blog'],
+                        'primary_blog_name'        => ['primary_blog_name'],
+                        'source_domain'            => ['source_domain'],
+                        '_space_end'               => '',
+
+                        'user_id'                  => ['object_id'],
+                        'user_login'               => ['user_login'],
+                        'display_name'             => ['display_name'],
+                        'first_name'               => ['first_name'],
+                        'last_name'                => ['last_name'],
+                        'user_email'               => ['user_email'],
+                        'profile_url'              => ['profile_url'],
+                    ],
+
+                    'event_handler' => [
+                        'num_args' => 3,
+                    ],
+                ],
+
+                /**
+                 * Multisite Only
+                 * 
+                 * Fires before a user is removed from a site.
+                 * 
+                 * @since 1.0.0
+                 * 
+                 * @see remove_user_from_blog()
+                 */
+                'remove_user_from_blog' => [
+                    'title'           => 'User removed from a site',
+                    'action'          => 'Removed',
+                    'event_id'        => 5054,
+                    'severity'        => 'critical',
+                    'screen'          => [ 'multisite' ],
+                    'user_state'      => 'logged_in',
+
+                    'message'  => [
+                        '_main'                    => 'Removed a user from a site',
+
+                        '_space_start'             => '',
+                        'blog_id'                  => ['blog_id'],
+                        'blog_name'                => ['blog_name'],
+                        'blog_url'                 => ['blog_url'],
+                        'role_given'               => ['role_given'],
+                        'reassign_user_post_to'    => ['reassign_post'],
+                        '_space_end'               => '',
+
+                        'user_id'                  => ['object_id'],
+                        'user_login'               => ['user_login'],
+                        'display_name'             => ['display_name'],
+                        'first_name'               => ['first_name'],
+                        'last_name'                => ['last_name'],
+                        'user_email'               => ['user_email'],
+                        'profile_url'              => ['profile_url'],
+                        'user_primary_blog'        => ['primary_blog'],
+                        'primary_blog_name'        => ['primary_blog_name'],
+                        'source_domain'            => ['source_domain'],
+                    ],
+
+                    'event_handler' => [
+                        'num_args' => 3,
+                    ],
+                ],
+                
+
+
+
+
+
+
 
 
 
@@ -1159,18 +1883,6 @@ trait UserEvents
                 ],
 
 
-
-
-
-                'user_login' => [
-
-                ],
-
-                'user_logout',
-                'user_registration',
-                'user_failed_login',
-                'user_profile_viewed',
-                'user_forgot_password',
                 'user_sessions_management',
 
                 /**
@@ -1258,7 +1970,15 @@ trait UserEvents
             ],
             'show_admin_bar_front' => [
                 '_event_id'   => 5024,
-                'description' => alm__('Specifies Whether to show the admin bar on the front end for the user.'),
+                'description' => alm__('Specifies whether to show the admin bar on the front end for the user.'),
+            ],
+            'primary_blog' => [
+                '_event_id'   => 5052,
+                'description' => alm__('Specifies the user primary blog on a multisite installation'),
+            ],
+            'source_domain' => [
+                '_event_id'   => 5053,
+                'description' => alm__('Specifies the user primary blog domain on a multisite installation'),
             ],
         ];
     }
@@ -1306,7 +2026,7 @@ trait UserEvents
         }
 
         $user_table_fields = $this->getUserTableFields();
-        if ( in_array( $field, $user_table_fields, true ) )
+        if ( isset( $user_table_fields[ $field ] ) )
         {
             $field_title = $user_table_fields[ $field ];
             $field_name  = rtrim( "{$field}_" . $context, '_' );
@@ -1375,7 +2095,7 @@ trait UserEvents
                         $user_roles : (array) $this->getEventMsgArg( $event, $field );
 
                     if ( empty( $roles ) ) {
-                        $info = sprintf( "$info: %s", 'Null' );
+                        $info = sprintf( "$info: %s", 'No role' );
                     }
                     else {
                         $user_roles_label = count( $roles ) > 1 ? $info . 's' : $info;
@@ -1426,6 +2146,21 @@ trait UserEvents
              * event always shows the time the settings was updated.
              */
             $this->getBlogPrefix() . 'user-settings-time',
+
+            /**
+             * Default password nag
+             * 
+             * Used for changing the user's password.
+             * 
+             * For example: when a new user is registered, the 'default_password_nag' 
+             * is used to determine whether or not the new user needs to update the 
+             * default password.
+             * 
+             * So since we're monitoring new user registration and password reset,
+             * there's no need to keep log whenever the 'default_password_nag' user meta 
+             * field gets updated.
+             */
+            'default_password_nag',
         ];
         
         /**
@@ -1454,6 +2189,12 @@ trait UserEvents
          * Bail the user metadata field if we are currently aggregating user metadata
          */
         if ( $this->getConstant('ALM_IS_USER_PROFILE_METADATA_AGGREGATION') ) 
+            return true;
+
+        /**
+         * Bail if the global log aggregation constant is set
+         */
+        if ( ! empty( $this->getConstant('ALM_ALLOW_LOG_AGGREGATION') ) ) 
             return true;
 
         /**
@@ -1504,21 +2245,21 @@ trait UserEvents
 
         $_user_target = ( 1 == $this->getEventMsgArg( $event, 'is_user_owner_of_account', 0 ) ) ? 
             'user' : '';
-
-        $user_settings_key      = $this->getBlogPrefix() . 'user-settings';
-        $user_capabilities      = $this->getBlogPrefix() . 'capabilities';
+            
+        $blog_prefix            = $this->getBlogPrefix();
+        $user_settings_key      = $blog_prefix . 'user-settings';
+        $user_capabilities      = $blog_prefix . 'capabilities';
         $custom_field_list      = $this->getCustomizedUserCustomFields();
 
         $field_title            = $field;
         $is_cap_field           = false;
         $is_user_settings_field = false;
 
-        if ( array_key_exists( $field, $custom_field_list ) )
+        if ( isset( $custom_field_list[ $field ] ) )
         { 
             // Skip the first name or last name event message fields when they are active
-            if ( in_array( $field, ['first_name', 'last_name'], true ) ) {
+            if ( in_array( $field, ['first_name', 'last_name'], true ) ) 
                 unset( $msg_args[ $field ] );
-            }
 
             $field_title = isset( $custom_field_list['_title'] ) ? 
                 $custom_field_list['_title'] : $this->makeFieldReadable( $field );
@@ -1592,7 +2333,16 @@ trait UserEvents
             }
         }
         else {
-            $field_target = '---'.  $field_title .'---';
+            switch ( $field )
+            {
+                case $blog_prefix . 'user_level':
+                    $field_target = '---User level---';
+                break;
+
+                default:
+                    $field_target = '---'.  $field_title .'---';
+                break;
+            }
         }
 
         if ( 'create' == $action )
@@ -1739,7 +2489,7 @@ trait UserEvents
                 $meta_value_key = "meta_value_{$c}";
 
                 if ( isset( $msg_args[ $meta_value_key ] ) ) {
-                    $msg_args[ $meta_value_key ] = $this->formatMsgField( $event, $field, $c );;
+                    $msg_args[ $meta_value_key ] = $this->formatMsgField( $event, $field, $c );
                 }
             }
         }
@@ -2042,6 +2792,8 @@ trait UserEvents
 
             foreach ( $this->user_data_aggregation as $field => $value )
             {
+                $use_field_title = $this->getVar( $value, 'title' );
+
                 /**
                  * If the requested field value is set, then it means this is 
                  * a pre-update request that requires confirmation before the 
@@ -2082,6 +2834,10 @@ trait UserEvents
                     [ ' ', '' ],
                     $field
                 );
+
+                if ( ! empty( $use_field_title ) ) {
+                    $field_label = $use_field_title;
+                }
 
                 if ( 'update' == $update_type )
                 {
@@ -2178,5 +2934,18 @@ trait UserEvents
         );
 
         return $is_confirmation_required;
+    }
+
+    /**
+     * Activate the user active event log aggregation
+     * 
+     * @since 1.0.0
+     * 
+     * @param mixed $flag_value Specifies the value to use to setup the aggregation flag.
+     *                          Default: true
+     */
+    public function setupUserLogAggregationFlag( $flag_value = true )
+    {
+        $this->setConstant( 'ALM_ALLOW_LOG_AGGREGATION', $flag_value );
     }
 }

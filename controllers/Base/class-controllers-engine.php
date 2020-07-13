@@ -305,6 +305,11 @@ class ControllersEngine
     private function registerFreePackageControllers()
     {
         return [
+            'DB' => [
+                'class'      => '\ALM\Models\DB_Factory',
+                'dependency' => [],
+            ],
+
             'User' => [
                 'class'      => '\ALM\Controllers\User\UserManager',
                 'dependency' => [],
@@ -324,7 +329,7 @@ class ControllersEngine
 
             'Auditor' => [ 
                 'class'      => '\ALM\Controllers\Audit\Auditor',
-                'dependency' => [ 'User', 'Admin', 'AuditObserver' ],
+                'dependency' => [ 'DB', 'User', 'Admin', 'AuditObserver' ],
             ],
 
         ];

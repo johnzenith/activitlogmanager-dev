@@ -431,8 +431,7 @@ trait UserEvents
         $object_id     = $user_id;
         $new_user_data = get_userdata( $user_id );
 
-        // var_dump( $old_user_data, $new_user_data );
-        // wp_die();
+        $callback_args = [ $user_id, $new_user_data, $old_user_data ];
 
         /**
          * Trigger the callback alias for the profile update event
@@ -444,6 +443,7 @@ trait UserEvents
          * > user_status
          * > display_name
          * > user_nicename
+         * > user_activation_key
          */
         $user_table_fields = $this->getUserTableFields();
 
@@ -452,37 +452,85 @@ trait UserEvents
             if ( isset( $new_user_data->$user_table_field ) 
             && isset( $old_user_data->$user_table_field ) )
             {
+                $was_user_field_updated = ( $new_user_data->$user_table_field != $old_user_data->$user_table_field );
+
+                // User password field
+                if ( 'user_pass' == $user_table_field )
+                {
+                    if ( ! hash_equals( $old_user_data->user_pass, $new_user_data->user_pass ) )
+                    {
+                        $user_profile_update_hook_alias = "alm_profile_update_{$user_table_field}_event";
+                    }
+                }
+                // For password reset, user registration email confirmation
+                elseif( 'user_activation_key' == $user_table_field )
+                {
+                    if ( ! empty( $new_user_data->$user_table_field ) )
+                    {
+                        if ( $was_user_field_updated )
+                        {
+                            /**
+                             * List all events connected to the user_activation_key field 
+                             * after successful update
+                             */
+                            $user_profile_update_hook_alias = [ 'alm_retrieve_password_successfully' ];
+                        }
+                        else {
+                            /**
+                             * List all events connected to the user_activation_key field 
+                             * after unsuccessful update
+                             */
+                            $user_profile_update_hook_alias = [ 'alm_retrieve_password_unsuccessful' ];
+                        }
+                    }
+                }
+                elseif ( $was_user_field_updated )
+                {
+                    $user_profile_update_hook_alias = "alm_profile_update_{$user_table_field}_event";
+                }
                 /**
                  * A confirmation by email/sms maybe requested for:
                  *  [user_email], [user_login]
                  * 
                  * So we have to setup a pre-update request handler for monitoring the 
-                 * changes in those user fields which requires confirmation.
+                 * changes in those user fields that requires confirmation.
                  * 
                  * Important:
                  * The only exception here is that, if a user is editing another user,
                  * the changes are committed without confirmation, so we have to 
                  * check for that too.
                  */
-                if ( $this->userProfileFieldUpdateRequiresConfirmation( $user_table_field, $new_user_data, $old_user_data ) )
+                elseif ( $this->userProfileFieldUpdateRequiresConfirmation( $user_table_field, $new_user_data, $old_user_data ) )
                 {
                     $user_profile_update_hook_alias = "alm_profile_update_pre_{$user_table_field}_event";
-                }
-                elseif ( $new_user_data->$user_table_field != $old_user_data->$user_table_field )
-                {
-                    $user_profile_update_hook_alias = "alm_profile_update_{$user_table_field}_event";
                 }
                 else {
                     // Reset the variable to avoid repetitive callback execution
                     $user_profile_update_hook_alias = '';
                 }
 
-                if ( ! empty( $user_profile_update_hook_alias ) 
+                if ( is_array( $user_profile_update_hook_alias ) )
+                {
+                    foreach ( $user_profile_update_hook_alias as $profile_hook_alias )
+                    {
+                        if ( is_string( $profile_hook_alias ) 
+                        && ! empty( $profile_hook_alias ) 
+                        && method_exists( $this, $profile_hook_alias ) ) 
+                        {
+                            \call_user_func_array(
+                                [ $this, $profile_hook_alias ],
+                                $callback_args
+                            );
+                        }
+                    }
+                }
+                elseif ( is_string( $user_profile_update_hook_alias )  
+                && ! empty( $user_profile_update_hook_alias ) 
                 && method_exists( $this, $user_profile_update_hook_alias ) )
                 {
                     \call_user_func_array(
-                        [ $this, $user_profile_update_hook_alias   ],
-                        [ $user_id, $new_user_data, $old_user_data ]
+                        [ $this, $user_profile_update_hook_alias ],
+                        $callback_args
                     );
                 }
             }
@@ -571,6 +619,21 @@ trait UserEvents
         $user_email_requested = $this->getVar( get_user_meta( $object_id, '_new_email', true ), 'newemail' );
 
         /**
+         * Bail out if the current user email is the same with the requested one,
+         * or if email confirmation var ($_GET['newuseremail']) is set
+         */
+        if ( empty( $user_email_requested ) ) 
+            return;
+
+        if ( 0 === strcasecmp( $user_email_requested, $user_email_current ) )
+            return;
+
+        if ( $this->getConstant('IS_PROFILE_PAGE') 
+        && isset( $_GET['newuseremail'] ) 
+        && $this->User->current_user_ID )
+            return;
+
+        /**
          * Append the current user custom field data if user profile data 
          * aggregation is active
          * 
@@ -578,7 +641,7 @@ trait UserEvents
          * its update context is entirely different
          */
         $allow_profile_update_aggregation = false;
-        if ( $allow_profile_update_aggregation )
+        if ( $allow_profile_update_aggregation ) 
         {
             $this->appendUpdatedUserProfileData( 'user_email', [
                 'current'   => $user_email_current,
@@ -606,10 +669,12 @@ trait UserEvents
         $user_email_new      = $new_user_data->user_email;
         $user_email_previous = $old_user_data->user_email;
 
-        if ( 0 === strcasecmp( $user_email_new, $user_email_previous ) ) 
+        if ( 0 === strcasecmp( $user_email_new, $user_email_previous ) )
+        {
             $user_email_new = $this->getVar(
                 get_user_meta( $object_id, '_new_email', true ), 'newemail', ''
             );
+        }
 
         /**
          * Append the current user custom field data if user profile data 
@@ -672,6 +737,295 @@ trait UserEvents
         }
 
         $this->setupUserEventArgs( compact( 'object_id', 'user_email_current', 'user_email_requested' ) );
+        $this->LogActiveEvent( 'user', __METHOD__ );
+    }
+
+    /**
+     * User url update handler
+     * 
+     * @see UserEvents::profile_update_event()
+     */
+    public function alm_profile_update_user_url_event( $object_id, $new_user_data, $old_user_data )
+    {
+        $user_url_new      = $new_user_data->user_url;
+        $user_url_previous = $old_user_data->user_url;
+
+        /**
+         * Append the current user custom field data if user profile data 
+         * aggregation is active
+         */
+        $this->appendUpdatedUserProfileData('user_url', [
+            'new'      => $user_url_new,
+            'previous' => $user_url_previous,
+        ]);
+
+        if ( $this->isUserProfileDataAggregationActive() ) 
+            return;
+
+        $this->setupUserEventArgs( compact( 'object_id', 'user_url_new', 'user_url_previous' ) );
+        $this->LogActiveEvent( 'user', __METHOD__ );
+    }
+
+    /**
+     * User nicename update handler
+     * 
+     * @see UserEvents::profile_update_event()
+     */
+    public function alm_profile_update_user_nicename_event( $object_id, $new_user_data, $old_user_data )
+    {
+        $user_nicename_new      = $new_user_data->user_nicename;
+        $user_nicename_previous = $old_user_data->user_nicename;
+
+        /**
+         * Append the current user custom field data if user profile data 
+         * aggregation is active
+         */
+        $this->appendUpdatedUserProfileData('user_nicename', [
+            'new'      => $user_nicename_new,
+            'previous' => $user_nicename_previous,
+        ]);
+
+        if ( $this->isUserProfileDataAggregationActive() ) 
+            return;
+
+        $this->setupUserEventArgs( compact( 'object_id', 'user_nicename_new', 'user_nicename_previous' ) );
+        $this->LogActiveEvent( 'user', __METHOD__ );
+    }
+
+    /**
+     * User status update handler
+     * 
+     * @see UserEvents::profile_update_event()
+     */
+    public function alm_profile_update_user_status_event( $object_id, $new_user_data, $old_user_data )
+    {
+        $user_status_new      = $new_user_data->user_status;
+        $user_status_previous = $old_user_data->user_status;
+
+        /**
+         * Append the current user custom field data if user profile data 
+         * aggregation is active
+         */
+        $this->appendUpdatedUserProfileData('user_status', [
+            'new'      => $user_status_new,
+            'previous' => $user_status_previous,
+        ]);
+
+        if ( $this->isUserProfileDataAggregationActive() ) 
+            return;
+
+        $this->setupUserEventArgs( compact( 'object_id', 'user_status_new', 'user_status_previous' ) );
+        $this->LogActiveEvent( 'user', __METHOD__ );
+    }
+
+    /**
+     * User password update handler
+     * 
+     * @see UserEvents::profile_update_event()
+     */
+    public function alm_profile_update_user_pass_event( $object_id, $new_user_data, $old_user_data )
+    {
+        /**
+         * Append the current user custom field data if user profile data 
+         * aggregation is active
+         * 
+         * For now, the user password event aggregation is disabled because the 
+         * event is too sensitive and should be standing alone.
+         */
+        $allow_profile_update_aggregation = false;
+        if ( $allow_profile_update_aggregation )
+        {
+            $this->appendUpdatedUserProfileData('user_password', [
+                'new'      => '',
+                'previous' => '',
+            ]);
+
+            if ( $this->isUserProfileDataAggregationActive() ) 
+                return;
+        }
+
+        $this->setupUserEventArgs( compact( 'object_id' ) );
+        $this->LogActiveEvent( 'user', __METHOD__ );
+    }
+
+    /**
+     * Fires before errors are returned from a password reset request.
+     * 
+     * @since 1.0.0
+     */
+    public function lostpassword_post_event( $errors, $_user_data )
+    {
+        /**
+         * Don't do anything if error is not available
+         */
+        if ( ! is_wp_error( $errors ) ) 
+            return;
+
+        $error_list = $errors->get_error_messages();
+
+        if ( empty( $error_list ) ) 
+            return;
+        
+        $user_data  = new \stdClass;
+        $error_msg  = implode( $this->getEventMsgErrorChar(), $error_list );
+        
+        $_error_msg = wp_strip_all_tags( $error_msg );
+
+        $object_id             = (int) $this->getVar( $_user_data, 'ID', 0 );
+        $user_data->user_login = $this->getVar( $_user_data, 'user_login', '' );
+        $user_data->user_email = $this->sanitizeOption( $this->getVar( $_user_data, 'user_email', '' ) );
+
+        $user_obj = $user_data;
+        
+        $this->setupUserEventArgs( compact( 'object_id', '_error_msg', 'user_obj' ) );
+        $this->LogActiveEvent( 'user', __METHOD__ );
+    }
+
+    /**
+     * Check whether user password reset is allowed or not
+     */
+    public function allow_password_reset_event( $allow, $object_id )
+    {
+        /**
+         * Don't listen for this event if the password reset flag is not set
+         */
+        if ( empty( $this->getConstant('ALM_USER_PASSWORD_RESET_STARTED') ) ) 
+            return $allow;
+
+        /**
+         *  Run if password reset is not allowed on the user account
+         */
+        if ( ! $allow || empty( $allow ) )
+        {
+            $this->setupUserEventArgs( compact( 'object_id' ) );
+            $this->LogActiveEvent( 'user', __METHOD__ );
+        }
+    }
+
+    /**
+     * Monitor whether the password reset request was successful
+     * 
+     * @since 1.0.0
+     * 
+     * @see UserEvents::profile_update_event()
+     */
+    public function alm_retrieve_password_successfully( $object_id )
+    {
+        /**
+         * Don't listen for this event if the password reset flag is not set
+         */
+        if ( empty( $this->getConstant('ALM_USER_PASSWORD_RESET_STARTED') ) 
+        || empty( $this->getConstant('ALM_USER_PASSWORD_RESET_KEY') ) ) 
+            return;
+
+        // A simple hack to retrieve the password reset expiration time
+        $expiration_time          = '@' . apply_filters( 'password_reset_expiration', DAY_IN_SECONDS );
+
+        $password_reset_key       = $this->getConstant( 'ALM_USER_PASSWORD_RESET_KEY' );
+        $password_reset_url       = $this->sanitizeOption( wp_lostpassword_url(), 'url' );
+        $password_expiration_time = $this->getDataInPluginFormat( $expiration_time );
+
+        $this->setupUserEventArgs( compact(
+            'object_id', 'password_reset_key', 'password_reset_url', 'password_expiration_time'
+        ) );
+
+        $this->LogActiveEvent( 'user', __METHOD__ );
+    }
+
+    /**
+     * Monitor whether the password reset request was unsuccessful
+     * 
+     * @since 1.0.0
+     * 
+     * @see UserEvents::profile_update_event()
+     */
+    public function alm_retrieve_password_unsuccessful( $object_id )
+    {
+        /**
+         * Don't listen for this event if the password reset flag is not set
+         */
+        if ( empty( $this->getConstant('ALM_USER_PASSWORD_RESET_STARTED') ) 
+        || empty( $this->getConstant('ALM_USER_PASSWORD_RESET_KEY') ) ) 
+            return;
+
+        $password_reset_url           = $this->sanitizeOption( wp_lostpassword_url(), 'url' );
+        $generated_password_reset_key = $this->getConstant( 'ALM_USER_PASSWORD_RESET_KEY' );
+
+        $this->setupUserEventArgs( compact(
+            'object_id', 'generated_password_reset_key', 'password_reset_url'
+        ) );
+
+        $this->LogActiveEvent( 'user', __METHOD__ );
+    }
+
+    /**
+     * Monitors user's password reset
+     * 
+     * @since 1.0.0
+     * 
+     * @see UserEvents::profile_update_event()
+     */
+    public function after_password_reset_event( $user, $new_pass )
+    {
+        $object_id          = $user->ID;
+        $password_reset_url = $this->sanitizeOption( wp_lostpassword_url(), 'url' );
+
+        $this->setupUserEventArgs( compact( 'object_id', 'password_reset_url' ) );
+        $this->LogActiveEvent( 'user', __METHOD__ );
+    }
+
+    /**
+     * Failed login attempts
+     * 
+     * @since 1.0.0
+     */
+    public function wp_login_failed_event( $username, $errors )
+    {
+        $user            = get_user_by( 'slug', $username );
+        $object_id       = $this->getVar( $user, 'ID' );
+        $login_url       = $this->sanitizeOption( wp_login_url(), 'url' );
+        $_error_msg      = '';
+        $failed_attempts = 1;
+
+        if ( is_wp_error( $errors ) )
+        {
+            $error_list = $errors->get_error_messages();
+
+            if ( ! empty( $error_list ) ) {
+                $error_msg  = implode( $this->getEventMsgErrorChar(), $error_list );
+                $_error_msg = wp_strip_all_tags( $error_msg );
+            }
+        }
+
+        $this->setupUserEventArgs( compact( 'object_id', 'failed_attempts', 'login_url', '_error_msg' ) );
+        $this->LogActiveEvent( 'user', __METHOD__ );
+    }
+
+    /**
+     * User logged in successfully
+     * 
+     * @since 1.0.0
+     */
+    public function wp_login_event( $username, $user )
+    {
+        $object_id        = $user->ID;
+        $login_url        = $this->sanitizeOption( wp_login_url(), 'url' );
+        $_current_user_id = $object_id;
+
+        $this->setupUserEventArgs( compact( 'object_id', 'login_url', '_current_user_id' ) );
+        $this->LogActiveEvent( 'user', __METHOD__ );
+    }
+
+    /**
+     * User logged out successfully
+     * 
+     * @since 1.0.0
+     */
+    public function wp_logout_event()
+    {
+        $object_id = $this->User->getCurrentUserId();
+
+        $this->setupUserEventArgs( compact( 'object_id' ) );
         $this->LogActiveEvent( 'user', __METHOD__ );
     }
 }

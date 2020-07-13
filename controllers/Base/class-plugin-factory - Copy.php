@@ -190,8 +190,7 @@ abstract class PluginFactory
      */
     public function __isset( $name )
     {
-        if ( isset( $this->controllers->$name ) // Bail controllers
-        || property_exists( $this, $name ) )
+        if ( property_exists( $this, $name ) )
         {
             return true;
         }

@@ -119,7 +119,6 @@ trait EventList
      * @since 1.0.0
      */
     protected $is_active_event_loggable = false;
-    
 
     /**
      * Setup the Event List
@@ -127,12 +126,46 @@ trait EventList
     protected function __setupEventList()
     {   
         $this->initEventConditionalArgs();
-        $this->registerEventGroups();
+        $this->registerAllEventGroups();
+
+        /**
+         * A simple hack to retrieve the Auditor controller by using the filter hook.
+         * This should only be used in context where the Auditor object is unaccessible.
+         */
+        add_filter( 'alm/controller/get/auditor', [ $this, 'retrieveAuditorObj' ]);
+
+        /**
+         * Fires before the event group is normalize
+         * 
+         * @since 1.0.0
+         * 
+         * Both parameters are passed by reference
+         * 
+         * @param array   $event_groups  Specifies the event groups list with existing events
+         * @param Auditor $auditor       The Auditor object
+         */
+        do_action_ref_array( 'alm/event/group/register', [ &$this->event_list, &$this ]);
+
         $this->normalizeEventGroupList();
     }
 
     /**
+     * Retrieve the Auditor object
+     * 
+     * @since 1.0.0
+     * 
+     * @see apply_filters_ref_array()
+     */
+    public function retrieveAuditorObj( $auditor = '' )
+    {
+        return $this;
+    }
+
+    /**
      * Get the event list
+     * 
+     * @since 1.0.0
+     * 
      * @return array
      */
     public function getEventsList()
@@ -150,7 +183,10 @@ trait EventList
     /**
      * Initialize the event groups
      * 
+     * @since 1.0.0
+     * 
      * @see \ALM\Controllers\Audit\event-groups\trait-*-events.php
+     * @see EventList::getDefaultEventArgs()
      * 
      * This will auto get all trait files in the /controllers/audit/event-groups/ directory,
      * With the pattern: trait-*-events.php
@@ -162,11 +198,11 @@ trait EventList
      * For example: the 'event-group-name' is transformed to => initEventGroupName()
      * The 'init' prefix before the event group name is part of the method name.
      */
-    protected function registerEventGroups()
+    protected function registerAllEventGroups()
     {
         /**
          * This is just a simple hack to get all available event groups.
-         * The files have been loaded already, we ar not loading it here.
+         * The files have been loaded already, we are not loading it here.
          */
         $files = glob( ALM_CONTROLLERS_DIR . 'Audit/event-groups/trait-*-events.php' );
 
@@ -188,26 +224,66 @@ trait EventList
          * This filter allows you to register a new event group.
          * It is expected to return an array containing events to watch for in the group.
          * 
+         * @since 1.0.0
+         * 
          * @see \ALM\Controllers\Audit\event-groups\trait-*-events.php for valid arguments 
          * 
-         * @param  array $events  Specifies the new events group
+         * @param array $event_groups Specifies the event groups list with existing events
          * 
          * Example:
-         * ['group_slug'] = [
-         *      'title'       => 'New Group Title',
-         *      'object'      => 'post', // group object type: post, comment, user, etc.
-         *      'description' => 'Group description. What type of activities is being logged.',
          * 
-         *      'events' => [
+         * add_filter( 'alm/event/groups', 'add_new_event_group );
+         * 
+         * function add_new_event_group( $event_list )
+         * {
+         *      $event_list['group_slug'] = [
+         *          'title'       => 'New Group Title',
+         *          'object'      => 'post', // group object type: post, comment, user, etc.
+         *          'description' => 'Group description. What type of activities is being logged.',
+         * 
+         *          'events' => [
          *           
-         *          // action or filter hook name, a normal php callback function
-         *          'event_hook_name' => [
-         *              ...
+         *              // action hook name, filter hook name, or a php callback function
+         *              'event_hook_name' => [
+         *                  'title'         => '',
+         *                  'action'        => '',
+         *                  'event_id'      => 0, // required,
+         *                  'severity'      => '',
+         *                  'description'   => '',
+         * 
+         *                  'message'       => [
+         *                      '_main' => '', // required
+         *                  ],
+         * 
+         *                  'event_handler' => [
+         *                      'hook'     => 'action', // 'action' | 'filter' | 'callback'
+         *                      'num_args' => 2,
+         *                      'priority' => 10,
+         *                      'callback' => 'callback_function',
+         *                  ]
+         *              ]
          *          ]
-         *      ]
-         * ];
+         *      ];
+         * 
+         *      return $event_list;
+         * }
          */
         $this->event_list = apply_filters( 'alm/event/groups', $this->event_list );
+    }
+
+    /**
+     * Add a new event group or add a new event to an exiting event group.
+     * 
+     * This is used outside the Auditor controller class to allow registration 
+     * of new event groups.
+     * 
+     * @since 1.0.0
+     * 
+     * @see EventList::registerAllEventGroups()
+     */
+    public function addEventGroups( array $args = [] )
+    {
+        $this->event_list = array_merge_recursive( $this->event_list, $args );
     }
 
     /**
@@ -223,7 +299,7 @@ trait EventList
             'object'   => '', // post, comment, user, term, etc.
             'message'  => [],
             'event_id' => 0,
-            'severity' => '',
+            'severity' => 'notice',
             
             // Set to true to completely disable the event
             'disable' => false,
@@ -241,11 +317,13 @@ trait EventList
             ],
 
             /**
-             * @todo
-             * 
              * Specifies whether the event can be aggregated
              * 
-             * Aggregate all events that having the aggregate flag turned on
+             * Aggregate all events that having the aggregate flag turned on.
+             * 
+             * The {@see 'error_flag'} is used to specify event that needs to be 
+             * incremented such as failed login attempts, invalid password reset 
+             * request, etc.
              * 
              * Note: Post, Page, etc. cannot be aggregated because of data type length,
              * an overflow error can be raised.
@@ -253,9 +331,12 @@ trait EventList
              * ------------------------------------------------------------------------
              *                      Aggregation Algorithm
              * ------------------------------------------------------------------------
-             * #1. Verify the user id, object id, event id, if they are the same
-             * #2. Map the timestamp of the event to all text data
+             * #1. Verify the user id, object id, event id, and IP address if they 
+             *     are the same 
+             * #2. Map the event timestamp to all text data:
+             *     ( user_data, object_data, metadata )
              */
+            'error_flag'      => false,
             'is_aggregatable' => false,
 
             'event_handler' => [
@@ -342,6 +423,15 @@ trait EventList
     public function getEventMsgLineBreak()
     {
         return '___break___';
+    }
+
+    /**
+     * Get the event log data update identifier
+     */
+    public function getEventLogUpdateIdentifier()
+    {
+        $updated_at = $this->getDate();
+        return "----------[{$updated_at}]----------";
     }
 
     /**
@@ -919,6 +1009,8 @@ trait EventList
     /**
      * Get the event slug (hook name) by specifying either the 'event ID'
      * 
+     * @since 1.0.0
+     * 
      * @param int $event_id        Specifies the event ID to retrieve corresponding slug for.
      * 
      * @param string $default_slug Specifies the default slug to used if the specified ID is not 
@@ -942,7 +1034,10 @@ trait EventList
     }
 
     /**
-     * Get the event hook name or ID by specifying either the 'event ID' or 'event hook name (slug)'
+     * Get the event hook name or ID by specifying either the 'event ID' 
+     * or 'event hook name (slug)'
+     * 
+     * @since 1.0.0
      * 
      * @param string $event_hook  Specifies the event hook to retrieve corresponding ID for.
      * 
@@ -964,6 +1059,8 @@ trait EventList
 
     /**
      * Explain the event message if allowed
+     * 
+     * @since 1.0.0
      */
     protected function explainEventMsg( $msg = '' )
     {
@@ -986,12 +1083,180 @@ trait EventList
     }
 
     /**
+     * Determine whether the active event has an error flag.
+     * The error flag is used to check if we can increment the log counter 
+     * based on the event context.
+     * 
+     * This also requires the {@see event_successor} argument to be setup.
+     * The event successor argument is used to detect the event that should 
+     * fire if the error has not occurred.
+     * It could be the event ID or an array containing the event group 
+     * and slug for the error flag
+     * 
+     * This is useful for things like failed login attempts, generated 404 error 
+     * page request, too many password reset requests, etc.
+     * 
+     * @since 1.0.0
+     * 
+     * @return bool True if the active event has error flag. Otherwise false.
+     */
+    public function activeEventHasErrorFlag()
+    {
+        return (
+            (bool) $this->getVar( $this->active_event, 'error_flag' ) 
+            && 
+            ( 
+                (int) $this->getVar( $this->active_event, 'event_successor' ) > 0 
+                || 
+                ( 
+                    is_array( $this->getVar( $this->active_event, 'event_successor' ) ) 
+                    && count( $this->getVar($this->active_event, 'event_successor') ) > 1 
+                )
+            ) 
+        );
+    }
+
+    /**
+     * Determine whether we need to update the active event log counter rather 
+     * than creating a new log.
+     * 
+     * This is used in conjunction with {@see EventList::activeEventHasErrorFlag()}
+     * 
+     * @since 1.0.0
+     * 
+     * @param int $user_id    Specifies the user ID that triggers the event
+     * 
+     * @param int $object_id  Specifies the event target ID. 
+     *                        This can be a user ID, post ID, term ID, etc.
+     * 
+     * @return bool True if we should increment the log counter for the active event.
+     *              Otherwise false.
+     */
+    protected function isActiveEventLogIncrementValid( $user_id = 0, $object_id = 0 )
+    {
+        if ( ! $this->activeEventHasErrorFlag() ) 
+            return false;
+
+        $event_successor = $this->getVar( $this->active_event, 'event_successor' );
+        if ( is_array( $event_successor ) ) {
+            $event_successor_slug  = $event_successor[1];
+            $event_successor_group = $event_successor[0];
+
+            // Lookup the event successor ID
+            $event_ID = $this->getEventIdBySlug( $event_successor_slug, $event_successor_group );
+        }
+        else {
+            $event_ID = (int) $this->getVar( $this->active_event, 'event_successor' );
+        }
+
+        if ( $event_ID < 1 )
+            return false;
+
+        if ( $event_ID == $this->active_event_ID )
+            return false;
+
+        /**
+         * Get the most recent (last inserted) error log data for the 
+         * event successor
+         */
+
+        /**
+         * Filters the active event error log data fields to return from the query.
+         * 
+         * The filtered fields list is expected to contain the 'event_id' and 
+         * 'log_counter' fields
+         * 
+         * @since 1.0.0
+         * 
+         * @param array  $selected_fields Specifies list of fields to return in the query
+         * @param int    $active_event_id Specifies the active event ID
+         * @param int    $user_id         Specifies the user ID
+         * @param string $object_id       Specifies the event object ID
+         */
+        $selected_active_event_error_fields = apply_filters(
+            'alm/event/log/update/selected_fields',
+            [ 
+                'log_id', 'event_id', 'log_status', 'log_counter', 'event_action_trigger', 'user_data', 'object_data', 'metadata', 'message',
+            ],
+            $this->active_event_ID,
+            $user_id,
+            $object_id
+        );
+
+        $this->active_event_error_log_data = $this->DB
+            ->reset()
+            ->select( $selected_active_event_error_fields )
+            ->from( $this->tables->activity_logs )
+            ->where()
+            ->isBlog( $this->current_blog_ID                )
+            // ->and( 'user_id', $user_id,               '='   )
+            ->and( 'event_id',  $this->active_event_ID, '=' )
+            ->and( 'object_id', $object_id,             '=' )
+            ->and( 'source_ip', $this->getTopLevelIp(), '=' )
+            ->and()
+            ->dateRange( 'created_at', $this->getEventLogIncrementLimit(), 'now' )
+            ->orderBy( 'log_id' )
+            ->isDesc()
+            ->limit(1)
+            ->isResultArray()
+            ->getRow();
+
+        if ( empty( $this->active_event_error_log_data ) )
+            return false;
+
+        // Get the event ID for the most recent event successor
+        // error log counter
+        $max_error_log_counter_event_id = (int) $this->getVar(
+            $this->active_event_error_log_data, 'log_id'
+        );
+
+        if ( $max_error_log_counter_event_id < 1 ) 
+            return false;
+
+        // Get the most recent event successor ID
+        $event_successor_id = (int) $this->DB
+            ->reset()
+            ->select( 'log_id' )
+            ->from( $this->tables->activity_logs )
+            ->where()
+            ->isBlog( $this->current_blog_ID                )
+            // ->and( 'user_id', $user_id,                 '=' )
+            ->and( 'event_id',  $event_ID,              '=' )
+            ->and( 'object_id', $object_id,             '=' )
+            ->and( 'source_ip', $this->getTopLevelIp(), '=' )
+            ->orderBy( 'log_id' )
+            ->isDesc()
+            ->limit(1)
+            ->getVar();
+
+        // If the event successor ID is greater than the error log counter,
+        // then the error log counter should be created
+        return ( $max_error_log_counter_event_id > $event_successor_id );
+    }
+
+    /**
+     * Get the active event log counter increment
+     * 
+     * @since 1.0.0
+     * 
+     * @return int
+     */
+    public function getActiveEventLogCounterIncrement()
+    {
+        return 1 + (int) $this->getVar( $this->active_event_error_log_data, 'log_counter', 0 );
+    }
+
+    /**
      * Setup and log the active triggered event data
+     * 
+     * @since 1.0.0
      * 
      * @param string $event_group Specifies which group the even belongs to.
      * 
-     * @param string $method_name Specifies the event handler method that triggered that method.
+     * @param string $method_name Specifies the class handler method that triggered the event.
      *                            In a class, this is equivalent, to the __METHOD__ constant.
+     *                            Note: For correct functionality, this should be specified 
+     *                            in the class where it is being called.
      */
     protected function LogActiveEvent( $event_group, $method_name = __METHOD__ )
     {
@@ -1052,6 +1317,8 @@ trait EventList
 
         /**
          * Filters the active event data loggable state
+         * 
+         * @since 1.0.0
          * 
          * @param bool $is_loggable     Specifies whether the active event data can be logged 
          *                              automatically. Default to true.

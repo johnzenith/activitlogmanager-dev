@@ -236,6 +236,11 @@ function alm_get_default_settings()
 		null
 	);
 
+	// Specifies the number of days to update the error log counter 
+	// for a given event before creating a new one
+	// Default: -7 (Last 7 days)
+	$settings['event_log_increment_limit'] = alm_set_running_modes( [], -7 );
+
 	// Specifies the maximum logs to keep
 	$log_max = 10000;
 	$settings['log_max'] = alm_set_running_modes(

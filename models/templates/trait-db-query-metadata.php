@@ -9,12 +9,16 @@ defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your ow
  * @subpackage  Database Query Data
  * @since       1.0.0
  * 
- * This template requires the \ALM\Models\Template\DatabaseMetaData template as well
+ * This template requires the {@see \ALM\Models\Template\DatabaseMetaData} 
+ * template as well
  */
 trait DatabaseQueryMetaData
 {
     /**
      * Check whether or not the last executed query is okay.
+     * 
+     * @since 1.0.0
+     * 
      * @return bool True if last query was executed without any error. Otherwise false.
      */
     protected function isLastQueryOK()
@@ -23,7 +27,24 @@ trait DatabaseQueryMetaData
     }
 
     /**
+     * Get the last insert ID
+     * 
+     * @since 1.0.0
+     * 
+     * @return int
+     */
+    public function getLastInsertId()
+    {
+        if ( ! empty( $this->wpdb->insert_id ) ) 
+            return (int) $this->wpdb->insert_id;
+
+        return 0;
+    }
+
+    /**
      * Check whether or not the last executed query result is empty.
+     * 
+     * @since 1.0.0
      * 
      * @param  string  $query_type  Specifies the query type to perform the check for:
      *                              |SELECT|INSERT|UPDATE|DELETE|UPDATE|ALTER|CREATE|DROP|

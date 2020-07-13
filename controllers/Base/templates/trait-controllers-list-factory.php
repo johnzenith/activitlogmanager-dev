@@ -17,6 +17,8 @@ trait ControllersList
     protected $Settings;
     protected $FileManager;
 
+    protected $DB;
+
     protected $User;
     protected $Admin;
     protected $Metrics;

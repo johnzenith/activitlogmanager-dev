@@ -20,10 +20,10 @@ define( 'ALM_DEFAULT_RUNNING_MODE',       'normal' );
 define( 'ALM_DEFAULT_RUNNING_MODE_STATE', 'flexible' );
 
 define( 'ALM_OPTION_NAME',          'alm_options' );
-define('ALM_GLOBAL_OPTION_NAME',    'alm_global_options' );
+define( 'ALM_GLOBAL_OPTION_NAME',   'alm_global_options' );
 define( 'ALM_UPDATE_SETTINGS_SLUG', 'alm-update-settings' );
 
-define( 'ALM_CUSTOM_MODE_LIMIT',    3 );
+define( 'ALM_CUSTOM_MODE_LIMIT', 3 );
 
 $plugin_file = wp_normalize_path( ALM_PLUGIN_FILE );
 define( 'ALM_PLUGIN_DIR', 		plugin_dir_path( $plugin_file ) );
@@ -46,5 +46,9 @@ define( 'ALM_CONTROLLERS_DIR', ALM_PLUGIN_DIR . 'controllers/' );
 
 define( 'ALM_ASSETS_DIR',      ALM_PLUGIN_DIR . 'assets/' );
 define( 'ALM_ASSETS_URL',      ALM_PLUGIN_URL . 'assets/' );
+
+// Time constants
+define( 'ALM_MONTH_IN_SECONDS', WEEK_IN_SECONDS * 4.345 );
+define( 'ALM_YEAR_IN_SECONDS',  WEEK_IN_SECONDS * 52.143 );
 
 unset( $plugin_file );

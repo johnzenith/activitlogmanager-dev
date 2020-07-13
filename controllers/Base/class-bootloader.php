@@ -362,15 +362,18 @@ class BootLoader
             else {
                 $this->halt_loader = true;
 
-                if ( ! defined( 'ALM_HALT_BOOTLOADER' ) ) define( 'ALM_HALT_BOOTLOADER', true );
+                if ( ! defined( 'ALM_HALT_BOOTLOADER' ) )
+                    define( 'ALM_HALT_BOOTLOADER', true );
 
                 if ( WP_DEBUG ) {
                     throw new \Exception( sprintf(
                         '%s does not exists.', esc_html( $this->prepareFileName( $file_args ) )
                     ) );
-                } else {
-                    // Inform the administrator about the error
+                }
+                else {
                     /**
+                     * Inform the administrator about the error
+                     * 
                      * @todo
                      * Maybe send email to admin
                      */
@@ -394,7 +397,7 @@ class BootLoader
      * 
      * @param  array          $file_args Specify the file arguments to used in creating the file
      * 
-     * @return (bool|string)  Returns true if the file path is generated successfully and does exists.
+     * @return bool|string    Returns true if the file path is generated successfully and does exists.
      *                        Returns 'ignore' when the file exists but requires multisite.
      *                        Otherwise false.
      */
@@ -405,6 +408,9 @@ class BootLoader
         $dir       = $file_args['dir'];
         $file      = $file_args['file'];
         $multisite = $file_args['multisite'];
+
+        // Bail out if the ignore {__ignore__} flag has been used on the filename
+        if ( '__ignore__' === $file ) return 'ignore';
 
         if ( empty( $file ) 
         || empty( $dir ) 
@@ -419,7 +425,7 @@ class BootLoader
         // All dir should contain the WordPress ABSPATH
         if ( false === strpos( $dir, $abspath ) ) return false;
 
-        // Check whether to only load the file in multisite
+        // Check whether to only load the file on multisite
         if ( (bool) $multisite && ! is_multisite() ) return 'ignore';
 
         return true;
@@ -441,6 +447,19 @@ class BootLoader
      */
     protected function appendFileArgs( $dir, $file, $multisite = false )
     {
+        /**
+         * Automatically ignore files based on file name pattern
+         * '-ss-': for non-multisite installation
+         * '-ms-': for multisite installation
+         */
+        if ( is_string( $file ) )
+        {
+            $pattern = is_multisite() ? '-ss-' : '-ms-';
+
+            if ( false !== strpos( $file, $pattern ) )
+                $file = '__ignore__';
+        }
+
         return [
             'dir'       => $dir,
             'file'      => $file,
@@ -569,7 +588,15 @@ class BootLoader
                     'class-plugin-factory.php',
                     'class-controllers-engine.php',
                 ]
-            )
+            ),
+
+            /**
+             * Database Factory
+             */
+            $this->appendFileArgs(
+                ALM_MODELS_DIR,
+                [ 'class-db-factory.php' ]
+            ),
         ];
     }
 

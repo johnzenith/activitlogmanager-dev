@@ -76,6 +76,14 @@ class UserManager extends \ALM\Controllers\Base\PluginFactory
 
 		$this->current_user_email = isset( $this->current_user_data->user_email ) ? 
 			$this->sanitizeOption( $this->current_user_data->user_login, 'email' ) : '';
+
+		/**
+		 * Setup the current user ID flag.
+		 * 
+		 * Used for retrieving the user ID in context where the current user ID is 
+		 * unreachable
+		 */
+		$this->setConstant( 'ALM_CURRENT_USER_ID', $this->current_user_ID );
 	}
 	
 	/**
@@ -86,6 +94,19 @@ class UserManager extends \ALM\Controllers\Base\PluginFactory
 	{
 		if ( ! $this->is_multisite ) return false;
 		return function_exists( 'is_super_admin' ) && is_super_admin();
+	}
+
+	/**
+	 * Get the current user ID
+	 * @return int
+	 */
+	public function getCurrentUserId()
+	{
+		$user_id = $this->current_user_ID;
+		if ( $user_id > 0 ) 
+			return $user_id;
+
+		return (int) $this->getConstant( 'ALM_CURRENT_USER_ID' );
 	}
 
 	/**
@@ -202,9 +223,17 @@ class UserManager extends \ALM\Controllers\Base\PluginFactory
 		&& ! is_null( $this->current_user_data ) 
 		&& ! $refresh )
 		{
-			return $this->current_user_data;
+			$user_data = $this->current_user_data;
 		}
-		return get_userdata( $user_id );
+		else {
+			$user_data = get_userdata( $user_id );
+		}
+
+		if ( $user_data instanceof \WP_User ) 
+			return $user_data;
+
+		// We have to manually setup the user data
+		return wp_set_current_user( $user_id );
 	}
 
 	/**

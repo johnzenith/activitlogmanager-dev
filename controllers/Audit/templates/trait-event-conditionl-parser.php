@@ -39,6 +39,8 @@ trait EventConditionalParser
              *
              * An empty array will load it on all screen,
              * but the event will still be where event it is applicable.
+             * 
+             * @since 1.0.0
              */
             'screen' => [],
 
@@ -46,263 +48,380 @@ trait EventConditionalParser
              * Controls whether to watch only logged in users, visitors or both.
              * 
              * Accepted arguments: 'logged_in' | 'visitor' | 'both'
+             * 
+             * @since 1.0.0
              */
             'user_state' => 'both',
 
             /**
+             * Specifies list of capabilities to check for on the logged in user 
+             * before loading the event.
+             * 
+             * The event will not be loaded (watched) if the current user does not 
+             * have any of the specified capability
+             * 
+             * @since 1.0.0
+             */
+            'logged_in_user_caps' => [],
+
+            /**
              * Specifies event IDs to watch
+             * 
+             * @since 1.0.0
              */
             'event_id__in' => [],
 
             /**
              * Specifies event IDs not to watch
+             * 
+             * @since 1.0.0
              */
             'event_id__not_in' => [],
 
             /**
              * Specifies event slugs to watch
+             * 
+             * @since 1.0.0
              */
             'event_slug__in' => [],
 
             /**
              * Specifies event slugs not to watch
+             * 
+             * @since 1.0.0
              */
             'event_slug__not_in' => [],
             
             /**
              * Specifies client IP addresses to watch
+             * 
+             * @since 1.0.0
              */
             'client_ip__in' => [],
             
             /**
              * Specifies client IP addresses not to watch
+             * 
+             * @since 1.0.0
              */
             'client_ip__not_in' => [],
             
             /**
              * Specifies page error codes (404, 403, etc.) to watch
+             * 
+             * @since 1.0.0
              */
             'page_error_code__in' => [],
             
             /**
              * Specifies page error codes not to watch
+             * 
+             * @since 1.0.0
              */
             'page_error_code__not_in' => [],
             
             /**
              * Specifies event severities to watch
+             * 
+             * @since 1.0.0
              */
             'event_severity__in' => [],
 
             /**
              * Specifies event severities not to watch
+             * 
+             * @since 1.0.0
              */
             'event_severity__not_in' => [],
 
             /**
              * Specifies weekdays to watch
+             * 
+             * @since 1.0.0
              */
             'weekdays__in' => [],
 
             /**
              * Specifies weekdays not to watch
+             * 
+             * @since 1.0.0
              */
             'weekdays__not_in' => [],
 
             /**
              * Controls users that should be monitored by the event watcher.
-             * Specifies one or more capabilities to check for on user before loading the event.
+             * 
+             * Specifies one or more capabilities to check for on user before 
+             * loading the event.
+             * 
+             * @since 1.0.0
              */
             'user_caps__in' => [],
 
             /**
              * Does the opposite of 'caps__in' parameter.
              * Specifies user with capabilities not to watch.
+             * 
+             * @since 1.0.0
              */
             'user_caps__not_in' => [],
 
             /**
              * Specifies user roles to watch.
+             * 
+             * @since 1.0.0
              */
             'roles__in' => [],
 
             /**
              * Specifies user roles not to watch.
+             * 
+             * @since 1.0.0
              */
             'roles__not_in' => [],
 
             /**
              * Specifies term IDs to watch
+             * 
+             * @since 1.0.0
              */
             'term_id__in' => [],
 
             /**
              * Specifies term IDs not to watch.
+             * 
+             * @since 1.0.0
              */
             'term_id__not_in' => [],
 
             /**
              * Specifies term slugs to watch.
+             * 
+             * @since 1.0.0
              */
             'term_slug__in' => [],
 
             /**
              * Specifies term slugs not to watch.
+             * 
+             * @since 1.0.0
              */
             'term_slug__not_in' => [],
 
             /**
              * Specifies term names to watch.
+             * 
+             * @since 1.0.0
              */
             'term_name__in' => [],
 
             /**
              * Specifies term names not to watch.
+             * 
+             * @since 1.0.0
              */
             'term_name__not_in' => [],
 
             /**
              * Specifies taxonomies to watch.
+             * 
+             * @since 1.0.0
              */
             'taxonomy__in' => [],
 
             /**
              * Specifies taxonomies not to watch.
+             * 
+             * @since 1.0.0
              */
             'taxonomy__not_in' => [],
 
             /**
              * Specifies taxonomy IDs to watch.
+             * 
+             * @since 1.0.0
              */
             'taxonomy_id__in' => [],
 
             /**
              * Specifies taxonomy IDs not to watch.
+             * 
+             * @since 1.0.0
              */
             'taxonomy_id__not_in' => [],
 
             /**
              * Specifies post IDs to watch.
+             * 
+             * @since 1.0.0
              */
             'post_id__in' => [],
 
             /**
              * Specifies post IDs not to watch.
+             * 
+             * @since 1.0.0
              */
             'post_id__not_in' => [],
 
             /**
              * Specifies post IDs not to watch.
+             * 
+             * @since 1.0.0
              */
             'post_id__not_in' => [],
 
             /**
              * Specifies post names not to watch.
+             * 
+             * @since 1.0.0
              */
             'post_name__in' => [],
 
             /**
              * Specifies post names not to watch.
+             * 
+             * @since 1.0.0
              */
             'post_name__not_in' => [],
 
             /**
              * Specifies tag IDs to watch
+             * 
+             * @since 1.0.0
              */
             'tag_id__in' => [],
 
             /**
              * Specifies tag IDs not to watch
+             * 
+             * @since 1.0.0
              */
             'tag_id__not_in' => [],
             
             /**
              * Specifies tag slugs to watch
+             * 
+             * @since 1.0.0
              */
             'tag_slug__in' => [],
             
             /**
              * Specifies tag slugs not to watch
+             * 
+             * @since 1.0.0
              */
             'tag_slug__not_in' => [],
             
             /**
              * Specifies post parent to watch
+             * 
+             * @since 1.0.0
              */
             'post_parent__in' => [],
             
             /**
              * Specifies parent not to watch
+             * 
+             * @since 1.0.0
              */
             'post_parent__not_in' => [],
 
             /**
              * Specifies post statuses to watch
+             * 
+             * @since 1.0.0
              */
             'post_status__in' => [],
 
             /**
              * Specifies post statuses not to watch
+             * 
+             * @since 1.0.0
              */
             'post_status__not_in' => [],
 
             /**
              * Specifies post types to watch
+             * 
+             * @since 1.0.0
              */
             'post_type__in' => [],
 
             /**
              * Specifies post types to watch
+             * 
+             * @since 1.0.0
              */
             'post_type__not_in' => [],
             
             /**
              * Specifies attachment IDs to watch
+             * 
+             * @since 1.0.0
              */
             'attachment_id__in' => [],
 
             /**
              * Specifies attachment IDs not to watch
+             * 
+             * @since 1.0.0
              */
             'attachment_id__not_in' => [],
 
             /**
              * Specifies post attachment mime types to watch
+             * 
+             * @since 1.0.0
              */
             'post_mime_type__in' => [],
 
             /**
              * Specifies post attachment mime types not to watch
+             * 
+             * @since 1.0.0
              */
             'post_mime_type__not_in' => [],
 
             /**
              * Specifies comment IDs to watch
+             * 
+             * @since 1.0.0
              */
             'comment_id__in' => [],
 
             /**
              * Specifies comment IDs not to watch
+             * 
+             * @since 1.0.0
              */
             'comment_id__not_in' => [],
 
             /**
              * Specifies comment status to watch
+             * 
+             * @since 1.0.0
              */
             'comment_status__in' => [],
 
             /**
              * Specifies comment status not to watch
+             * 
+             * @since 1.0.0
              */
             'comment_status__not_in' => [],
             
             /**
              * Specifies author IDs to watch
+             * 
+             * @since 1.0.0
              */
             'author_id__in' => [],
             
             /**
              * Specifies author IDs not to watch
+             * 
+             * @since 1.0.0
              */
 			'author_id__not_in' => [],
         ];
@@ -373,6 +492,7 @@ trait EventConditionalParser
             'weekdays__not_in',
             'event_severity__in',
             'event_severity__not_in',
+            'logged_in_user_caps',
         ];
 
         $helper = [];
@@ -592,7 +712,10 @@ trait EventConditionalParser
 
     /**
      * Check whether the event can be loaded on the current screen
+     * 
      * @see EventConditionalParser::preValidateEvent()
+     * 
+     * @since 1.0.0
      */
     protected function is_event_screen_valid( $event_id, $event_name, $event )
     {
@@ -645,15 +768,47 @@ trait EventConditionalParser
     }
 
     /**
+     * Check whether the logged in user has any of the specified capability 
+     * before loading the event
+     * 
+     * @see EventConditionalParser::preValidateEvent()
+     * 
+     * @since 1.0.0
+     */
+    protected function is_event_logged_in_user_caps_valid( $event_id, $event_name, $event, $log_data )
+    {
+        $caps = (array) $this->getEventConditionalData( __METHOD__, $event );
+        if ( empty( $caps ) ) 
+            return true;
+
+        $user_id = $this->User->current_user_ID;
+        
+        // User is not logged in
+        if ( 0 >= $user_id ) 
+            return false;
+        
+        foreach ( $caps as $cap )
+        {
+            if ( is_string( $cap ) 
+            && $this->User->canPerformAction( $cap, $user_id ) ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Check whether the current user has a certain capability before loading 
      * or watching the event
      * 
      * @see EventConditionalParser::preValidateEvent()
      * @see EventConditionalParser::isEventIgnorable()
      * 
-     * Note: We deliberately refuse to bail out super admins on multisite 
+     * Note: We are deliberately refusing to bail out super admins on multisite 
      * administrator on single site. Reason is because we want to allow dynamic 
-     * control over internal behavior.
+     * control over internal behavior such as creating custom capability using 
+     * {@see map_meta_cap}
      */
     protected function is_event_user_caps__in_valid( $event_id, $event_name, $event, $log_data )
     {
@@ -691,7 +846,7 @@ trait EventConditionalParser
         
         // Ignore check if user is not logged in or event object (user) is not present
         if ( 0 >= $user_id ) 
-            return true; 
+            return true;
 
         foreach ( $caps as $cap )
         {
