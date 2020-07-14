@@ -80,11 +80,11 @@ trait TableSchema
         $site_indexes = '';
 
         if ( $this->is_multisite ) {
-            $site_columns = 'blog_id bigint(20) UNSIGNED NOT NULL DEFAULT 0,';
-            $blog_column  = "site_name varchar(100) NOT NULL DEFAULT '',";
+            $site_columns = "site_name varchar(100) NOT NULL DEFAULT '',";
+            $blog_column  = 'blog_id bigint(20) UNSIGNED NOT NULL DEFAULT 0,';
 
-            $site_indexes = 'KEY blog_id ( blog_id ),';
-            $blog_index   = 'KEY site_name ( site_name ),';
+            $site_indexes = 'KEY site_name ( site_name ),';
+            $blog_index   = 'KEY blog_id ( blog_id ),';
 
             $site_columns .= $blog_column;
             $site_indexes .= $blog_index;
