@@ -1812,7 +1812,7 @@ trait UserEvents
                     'action'          => 'Removed',
                     'event_id'        => 5054,
                     'severity'        => 'critical',
-                    'screen'          => [ 'multisite' ],
+                    'screen'          => ['multisite'],
                     'user_state'      => 'logged_in',
 
                     'message'  => [
