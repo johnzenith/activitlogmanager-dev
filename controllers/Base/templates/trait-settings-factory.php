@@ -82,8 +82,13 @@ trait SettingsFactory
     protected $running_mode = '';
 
     /**
-     * Load the plugin settings. Default settings are merged with the settings saved in database.
+     * Load the plugin settings. Default settings are merged with the settings 
+     * saved in database.
+     * 
+     * @since 1.0.0
+     * 
      * @param stdClass $cache Specifies the controller cache object
+     * 
      * @return array List of plugin settings
      */
     protected function loadOptions( $cache = null )
@@ -93,6 +98,9 @@ trait SettingsFactory
 
     /**
      * Get the default running mode
+     * 
+     * @since 1.0.0
+     * 
      * @return string
      */
     public function getDefaultRunningMode()
@@ -355,7 +363,11 @@ trait SettingsFactory
 
     /**
      * Get all plugin settings
+     * 
+     * @since 1.0.0
+     * 
      * @param  bool  $force_update Specifies whether to ignore the cached settings values
+     * 
      * @return array
      */
     public function getSettings( $force_update = false )
@@ -545,11 +557,14 @@ trait SettingsFactory
 
     /**
 	 * Check whether the global settings exists
+     * 
+     * @since 1.0.0
+     * 
 	 * @return bool
 	 */
 	protected function globalOptionExists()
 	{
-		$this->isGlobalSettings(); // Enable global settings mode
+        $this->isGlobalSettings(); // Enable global settings mode
         $installed = $this->optionExists( $this->global_option_name );
         $this->isGlobalSettings( false ); // Disabled global settings mode
         return $installed;

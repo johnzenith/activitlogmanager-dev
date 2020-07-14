@@ -98,18 +98,34 @@ trait BlogFactory
         $this->is_user_admin         = is_user_admin();
         $this->current_blog_ID       = $this->blog_data->ID;
         $this->is_network_admin      = is_network_admin();
-        
-        $this->is_network_activation = $this->is_multisite ? 
-            is_plugin_active_for_network( ALM_PLUGIN_BASENAME ) : false;
+        $this->is_network_activation = $this->isNetworkActivation();
     }
 
     /**
      * Determine the blog prefix to use.
+     * 
+     * @since 1.0.0
+     * 
      * @return string
      */
     protected function getBlogPrefix()
     {
         return $this->wpdb->base_prefix;
+    }
+
+    /**
+     * Check whether the plugin is activation network wide
+     * 
+     * @since 1.0.0
+     * 
+     * @return bool
+     */
+    public function isNetworkActivation()
+    {
+        if ( ! $this->is_multisite || ! function_exists( 'is_plugin_active_for_network' ) )
+            return false;
+
+        return  is_plugin_active_for_network( ALM_PLUGIN_BASENAME );
     }
 
     /**

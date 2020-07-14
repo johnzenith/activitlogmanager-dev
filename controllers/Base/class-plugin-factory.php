@@ -114,7 +114,8 @@ abstract class PluginFactory
 
     /**
      * Get a specific property value.
-     * @param 
+     * 
+     * @since 1.0.0
      */
     public function __get( $name )
     {
@@ -129,6 +130,8 @@ abstract class PluginFactory
 
     /**
      * Update a specific property value
+     * 
+     *  @since 1.0.0
      */
     public function __set( $name, $value )
     {
@@ -141,7 +144,9 @@ abstract class PluginFactory
     }
 
     /**
-     * Allow access to correctly the controllers properties
+     * Check whether specific property is set
+     * 
+     * @since 1.0.0
      */
     public function __isset( $name )
     {
