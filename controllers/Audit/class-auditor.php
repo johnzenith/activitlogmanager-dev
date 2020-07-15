@@ -96,6 +96,9 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         // Will create a \SplObjectStorage() object instance
         $this->_observers = new \SplObjectStorage();
 
+        // Setup the plugin factory data
+        $this->init();
+
         // Setup the database factory
         $this->DB->setup($this->wpdb);
 
