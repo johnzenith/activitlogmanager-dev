@@ -30,7 +30,7 @@ trait TableSchema
                 $message = sprintf(
                     alm__( 'Hi there! An error occurred during the plugin activation process. The plugin database table: <strong>%s</strong> could not be created correctly. <hr> Please contact our <a href="%s">Support Team</a> for assistance.' ),
                     esc_html( $table_name ),
-                    $this->__getPluginSiteUrl()
+                    __alm_plugin_site_url()
                 );
 
                 $title = alm__( 'Plugin Activation Error' );
@@ -83,7 +83,7 @@ trait TableSchema
             $site_columns  = "blog_name varchar(100) NOT NULL DEFAULT '',";
             $blog_column   = 'blog_id bigint(20) UNSIGNED NOT NULL DEFAULT 0,';
 
-            $site_indexes  = 'KEY blog_name ( site_name ),';
+            $site_indexes  = 'KEY blog_name ( blog_name ),';
             $blog_index    = 'KEY blog_id ( blog_id ),';
 
             $site_columns .= $blog_column;
