@@ -437,7 +437,8 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
 
             if ($this->is_multisite) {
                 $this->log_data['blog_id']   = $this->current_blog_ID;
-                $this->log_data['site_name'] = $this->getBlogName();
+                $this->log_data['blog_url']  = $this->getBlogUrl(true);
+                $this->log_data['blog_name'] = $this->getBlogName(true, true);
             }
 
             // Event revision

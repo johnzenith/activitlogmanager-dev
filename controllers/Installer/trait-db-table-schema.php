@@ -80,14 +80,17 @@ trait TableSchema
         $site_indexes = '';
 
         if ( $this->is_multisite ) {
-            $site_columns = "site_name varchar(100) NOT NULL DEFAULT '',";
-            $blog_column  = 'blog_id bigint(20) UNSIGNED NOT NULL DEFAULT 0,';
+            $site_columns  = "blog_name varchar(100) NOT NULL DEFAULT '',";
+            $blog_column   = 'blog_id bigint(20) UNSIGNED NOT NULL DEFAULT 0,';
 
-            $site_indexes = 'KEY site_name ( site_name ),';
-            $blog_index   = 'KEY blog_id ( blog_id ),';
+            $site_indexes  = 'KEY blog_name ( site_name ),';
+            $blog_index    = 'KEY blog_id ( blog_id ),';
 
             $site_columns .= $blog_column;
             $site_indexes .= $blog_index;
+
+            $site_columns .= "blog_url varchar(200) NOT NULL DEFAULT '',";
+            $site_indexes .= 'KEY blog_url ( blog_url ),';
         }
         
         $activity_logs = $this->getTableName( 'activity_logs' );

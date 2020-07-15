@@ -85,6 +85,9 @@ trait BlogFactory
 
     /**
      * Setup the Blog Factory data
+     * 
+     * @since 1.0.0
+     * 
      * @param stdClass $cache Specifies the controller cache object
      */
     protected function  __setupBlogData( $cache = null )
@@ -185,7 +188,11 @@ trait BlogFactory
 
     /**
      * Get the network data
+     * 
+     * @since 1.0.0
+     * 
      * @see get_network()
+     * 
      * @return object The network data
      */
     protected function getNetworkData( $network = null )
@@ -336,15 +343,24 @@ trait BlogFactory
     /**
      * Retrieve the site name.
      * 
+     * @since 1.0.0
+     * 
      * @param bool    $current_blog  Specify whether to retrieve the site name for the current blog.
      *                               Applicable only on multisite.
      * 
+     * @param string $refresh        Specifies whether to use the updated blog data when the 
+     *                               switch_to_blog() function is called.
+     * 
      * @return string                The retrieved site name.
      */
-    public function getBlogName( $current_blog = true )
+    public function getBlogName( $current_blog = true, $refresh = false )
     {
         if ( $this->is_multisite ) {
-            $site_name = $current_blog ? $this->blog_data->name : $this->network_data->name;
+            if ( ! $refresh ) {
+                $site_name = $current_blog ? $this->blog_data->name : $this->network_data->name;
+            } else {
+                $site_name = get_bloginfo('name');
+            }
         } else {
             $site_name = wp_specialchars_decode( $this->blog_data->name, ENT_QUOTES );
         }
@@ -353,7 +369,30 @@ trait BlogFactory
     }
 
     /**
+     * Get the blog url
+     * 
+     * @since 1.0.0
+     * 
+     * @param string $refresh  Specifies whether to use the updated blog data when the 
+     *                         switch_to_blog() function is called
+     * 
+     * @return string          The blog url
+     */
+    public function getBlogUrl( $refresh = false )
+    {
+        if ( ! $refresh ) {
+            $url = $this->blog_data->url;
+        } else {
+            $url = get_bloginfo('url');
+        }
+        return esc_url_raw( $url );
+    }
+
+    /**
      * Get total number of sites (blogs) on the network
+     * 
+     * @since 1.0.0
+     * 
      * @return int
      */
     public function getSiteCount()
@@ -367,6 +406,9 @@ trait BlogFactory
 
     /**
      * Get List of sites ID
+     * 
+     * @since 1.0.0
+     * 
      * @return array
      */
     protected function getSitesId( $limit = '' )
