@@ -65,7 +65,7 @@ trait DatabaseMetaData
     protected function __setupDatabaseMetadata( $cache = null )
     {
         global $wpdb;
-        $this->wpdb               = is_null( $cache ) ? $wpdb : $cache->wpdb;
+        $this->wpdb               = $wpdb;
         $this->collate            = $this->wpdb->get_charset_collate();
         $this->base_prefix        = esc_attr( $this->wpdb->base_prefix );
         // $this->last_insert_ID     = (int) $this->wpdb->insert_id;
