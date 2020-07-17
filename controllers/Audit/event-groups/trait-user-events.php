@@ -5,9 +5,9 @@ namespace ALM\Controllers\Audit\Events\Groups;
 defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your own.' );
 
 /**
- * @package User Events
- * @since   1.0.0
- */
+                 * @package User Events
+                 * @since   1.0.0
+                 */
 
 trait UserEvents
 {
@@ -102,6 +102,25 @@ trait UserEvents
         // Password reset event setup
         add_action('retrieve_password',     [ $this, 'setupUserPasswordResetFlag'    ], 10);
         add_action('retrieve_password_key', [ $this, 'setupUserPasswordResetKeyFlag' ], 10, 2);
+
+        // Multisite events
+        if ($this->is_multisite)
+            $this->addMultisiteEventFlags();
+    }
+
+    /**
+     * Add multisite event flags
+     * 
+     * @since 1.0.0
+     */
+    protected function addMultisiteEventFlags()
+    {
+        /**
+         * Fires immediately after a new user is created.
+         */
+        add_action('wpmu_new_user', function () {
+            $this->setConstant('ALM_MS_NEW_USER_CREATED', true);
+        });
     }
 
     /**
@@ -249,23 +268,31 @@ trait UserEvents
             $blog_id = $user_msg_args['blog_id'];
 
             if ( ! isset( $user_msg_args['blog_name'] ) ) {
-                $user_msg_args['blog_name'] = $this->sanitizeOption( get_blog_option( $blog_id, 'name', '' ) );
+                $user_msg_args['blog_name'] = $this->sanitizeOption( get_blog_option( $blog_id, 'blogname', '' ) );
             }
             
             if ( ! isset( $user_msg_args['blog_url'] ) ) {
-                $user_msg_args['blog_url'] = $this->sanitizeOption( get_blog_option( $blog_id, 'url', '' ) );
+                $user_msg_args['blog_url'] = $this->sanitizeOption( get_blog_option( $blog_id, 'siteurl', '' ) );
             }
 
-            if ( ! isset( $user_msg_args['primary_blog'] ) ) {
-                $user_msg_args['primary_blog'] = $this->sanitizeOption( get_user_meta( $object_id, 'primary_blog', true ) );
-            }
+            // Don't setup the user primary blog data if the ignore flag is set
+            if ( !isset( $user_msg_args['_ignore_auto_setup'] ) )
+            {
+                if ( ! isset( $user_msg_args['primary_blog'] ) ) {
+                    $user_msg_args['primary_blog'] = $this->sanitizeOption( get_user_meta( $object_id, 'primary_blog', true ) );
+                }
 
-            if ( ! isset( $user_msg_args['source_domain'] ) ) {
-                $user_msg_args['source_domain'] = $this->sanitizeOption( get_user_meta( $object_id, 'source_domain', true ) );
-            }
+                if ( ! isset( $user_msg_args['source_domain'] ) ) {
+                    $user_msg_args['source_domain'] = $this->sanitizeOption( get_user_meta( $object_id, 'source_domain', true ) );
+                }
+                
+                if ( ! isset( $user_msg_args['primary_blog_url'] ) ) {
+                    $user_msg_args['primary_blog_url'] = $this->sanitizeOption( get_blog_option($user_msg_args['primary_blog'], 'siteurl', '' ) );
+                }
 
-            if ( ! isset( $user_msg_args['primary_blog_name'] ) ) {
-                $user_msg_args['primary_blog_name'] = $this->sanitizeOption( get_blog_option( $user_msg_args['primary_blog'], 'name', '' ) );
+                if ( ! isset( $user_msg_args['primary_blog_name'] ) ) {
+                    $user_msg_args['primary_blog_name'] = $this->sanitizeOption( get_blog_option( $user_msg_args['primary_blog'], 'blogname', '' ) );
+                }
             }
         }
 
@@ -1757,22 +1784,23 @@ trait UserEvents
                 /**
                  * Multisite Only
                  * 
-                 * Fires immediately after a user is added to a site.
+                 * Fires immediately after an existing user is added to a site 
+                 * by an admin without email confirmation
                  * 
                  * @since 1.0.0
                  * 
                  * @see add_user_to_blog()
                  */
                 'add_user_to_blog' => [
-                    'title'           => 'User added to a site',
-                    'action'          => 'Added',
-                    'event_id'        => 5051,
-                    'severity'        => 'critical',
-                    'screen'          => ['multisite'],
-                    'user_state'      => 'logged_in',
+                    'title'    => 'User added to a site',
+                    'action'   => 'existing_user_added',
+                    'event_id' => 5052,
+                    'severity' => 'critical',
+                    
+                    'screen'   => ['multisite'],
 
                     'message'  => [
-                        '_main'                    => 'Added a user to a site',
+                        '_main'                    => 'Added a user to a site without email confirmation',
 
                         '_space_start'             => '',
                         'blog_id'                  => ['blog_id'],
@@ -1801,6 +1829,285 @@ trait UserEvents
                 /**
                  * Multisite Only
                  * 
+                 * Fires immediately after an existing user is added to a site 
+                 * by an admin with email confirmation
+                 * 
+                 * @since 1.0.0
+                 * 
+                 * @see wpmu_signup_user()
+                 */
+                'invite_user' => [
+                    'title'               => 'Invited a user to a site',
+                    'action'              => 'user_invited',
+                    'event_id'            => 5053,
+                    'severity'            => 'notice',
+                    
+                    'screen'              => ['multisite'],
+                    'logged_in_user_caps' => ['promote_users'],
+
+                    'message'  => [
+                        '_main' => 'Invited a user to join a site with email confirmation',
+
+                        '_space_start'              => '',
+                        'blog_id'                   => ['blog_id'],
+                        'blog_name'                 => ['blog_name'],
+                        'blog_url'                  => ['blog_url'],
+                        'role_given'                => ['role_given'],
+                        'invitation_activation_key' => ['activation_key'],
+                        'user_primary_blog'         => ['primary_blog'],
+                        'primary_blog_name'         => ['primary_blog_name'],
+                        'source_domain'             => ['source_domain'],
+                        '_space_end'                => '',
+
+                        'user_id'                   => ['object_id'],
+                        'user_login'                => ['user_login'],
+                        'display_name'              => ['display_name'],
+                        'first_name'                => ['first_name'],
+                        'last_name'                 => ['last_name'],
+                        'user_email'                => ['user_email'],
+                        'profile_url'               => ['profile_url'],
+                    ],
+
+                    'event_handler' => [
+                        'num_args' => 3,
+                    ],
+                ],
+
+                /**
+                 * Multisite Only
+                 * 
+                 * Fires after a new user is created by admin.
+                 * 
+                 * This is fired only when the new user is created without email 
+                 * confirmation.
+                 * 
+                 * @since 1.0.0
+                 * 
+                 * @see add_new_user_to_blog()
+                 */
+                'add_new_user_to_blog_by_admin' => [
+                    'title'               => 'New user created',
+                    'action'              => 'new_user_added',
+                    'event_id'            => 5054,
+                    'severity'            => 'critical',
+                    
+                    'screen'              => ['multisite'],
+                    'logged_in_user_caps' => ['create_users'],
+
+                    'message'             => [
+                        '_main' => 'Created a new user without sending an email confirmation to the user. The user has been activated and added to the site automatically.',
+
+                        '_space_start'             => '',
+                        'blog_id'                  => ['blog_id'],
+                        'blog_name'                => ['blog_name'],
+                        'blog_url'                 => ['blog_url'],
+                        'role_given'               => ['role_given'],
+                        'user_primary_blog'        => ['primary_blog'],
+                        'primary_blog_name'        => ['primary_blog_name'],
+                        'source_domain'            => ['source_domain'],
+                        '_space_end'               => '',
+
+                        'user_id'                  => ['object_id'],
+                        'user_login'               => ['user_login'],
+                        'display_name'             => ['display_name'],
+                        'first_name'               => ['first_name'],
+                        'last_name'                => ['last_name'],
+                        'user_email'               => ['user_email'],
+                        'profile_url'              => ['profile_url'],
+                    ],
+
+                    'event_handler' => [
+                        'hook' => 'callback',
+                    ],
+                ],
+
+                /**
+                 * Multisite Only
+                 * 
+                 * Fires after a new user self-registers 
+                 * 
+                 * @since 1.0.0
+                 * 
+                 * @see add_new_user_to_blog()
+                 */
+                'add_new_user_to_blog_by_self' => [
+                    'title'               => 'New user registered',
+                    'action'              => 'new_user_registered',
+                    'event_id'            => 5055,
+                    'severity'            => 'critical',
+                    'screen'              => ['multisite'],
+
+                    'message'             => [
+                        '_main' => 'New user registration successful.',
+
+                        '_space_start'             => '',
+                        'blog_id'                  => ['blog_id'],
+                        'blog_name'                => ['blog_name'],
+                        'blog_url'                 => ['blog_url'],
+                        'role_given'               => ['role_given'],
+                        'user_primary_blog'        => ['primary_blog'],
+                        'primary_blog_name'        => ['primary_blog_name'],
+                        'source_domain'            => ['source_domain'],
+                        '_space_end'               => '',
+
+                        'user_id'                  => ['object_id'],
+                        'user_login'               => ['user_login'],
+                        'display_name'             => ['display_name'],
+                        'first_name'               => ['first_name'],
+                        'last_name'                => ['last_name'],
+                        'user_email'               => ['user_email'],
+                        'profile_url'              => ['profile_url'],
+                    ],
+
+                    'event_handler' => [
+                        'hook' => 'callback',
+                    ],
+                ],
+
+
+                /**
+                 * Multisite Only
+                 * 
+                 * Record user signup information for future activation.
+                 * 
+                 * This is fired only when the new user is created with email 
+                 * confirmation.
+                 * 
+                 * @since 1.0.0
+                 * 
+                 * @see wpmu_signup_user()
+                 */
+                'after_signup_user' => [
+                    // 'title'               => 'New user created',
+                    'title'     => 'New user signup information recorded',
+                    'action'    => 'new_user_recorded',
+                    'event_id'  => 5056,
+                    'severity'  => 'critical',
+                    'screen'    => ['multisite'],
+
+                    'message'   => [
+                        '_main' => 'Recorded a new user signup information for future activation. The user is not a member of the site until they confirm the request.',
+                        // '_main' => 'Created a new user with email confirmation for future activation',
+
+                        '_space_start'              => '',
+                        'blog_id'                   => ['blog_id'],
+                        'blog_name'                 => ['blog_name'],
+                        'blog_url'                  => ['blog_url'],
+                        'role_given'                => ['role_given'],
+                        'new_user_status'           => ['new_user_status'],
+                        'invitation_activation_key' => ['activation_key'],
+                        '_space_end'                => '',
+
+                        'user_id'                   => ['object_id'],
+                        'user_login'                => ['user_login'],
+                        'display_name'              => ['display_name'],
+                        'first_name'                => ['first_name'],
+                        'last_name'                 => ['last_name'],
+                        'user_email'                => ['user_email'],
+                        'profile_url'               => ['profile_url'],
+                    ],
+
+                    'event_handler' => [
+                        'num_args' => 4,
+                    ],
+                ],
+
+                /**
+                 * Multisite Only
+                 * 
+                 * Record user signup information for future activation.
+                 * 
+                 * This is fired only when the new user self-registers with 
+                 * email confirmation
+                 * 
+                 * @since 1.0.0
+                 * 
+                 * @see wpmu_create_user()
+                 */
+                'after_signup_user_by_self' => [
+                    'title'               => 'New user signup information recorded',
+                    'action'              => 'new_user_signup_recorded',
+                    'event_id'            => 5057,
+                    'severity'            => 'notice',
+                    'screen'              => ['multisite'],
+
+                    'message'             => [
+                        '_main' => 'A new user has recorded their signup information for future activation. The user is not a member of the site until they confirm the request.',
+                        // '_main' => 'Created a new user with email confirmation for future activation',
+
+                        '_space_start'              => '',
+                        'blog_id'                   => ['blog_id'],
+                        'blog_name'                 => ['blog_name'],
+                        'blog_url'                  => ['blog_url'],
+                        'role_given'                => ['role_given'],
+                        'new_user_status'           => ['new_user_status'],
+                        'invitation_activation_key' => ['activation_key'],
+                        '_space_end'                => '',
+
+                        'user_id'                   => ['object_id'],
+                        'user_login'                => ['user_login'],
+                        'display_name'              => ['display_name'],
+                        'first_name'                => ['first_name'],
+                        'last_name'                 => ['last_name'],
+                        'user_email'                => ['user_email'],
+                        'profile_url'               => ['profile_url'],
+                    ],
+
+                    'event_handler' => [
+                        'hook' => 'callback',
+                    ],
+                ],
+
+                /**
+                 * Multisite Only
+                 * 
+                 * Fires immediately after a new user is activated.
+                 * 
+                 * This is fired only when the new user self-registers with 
+                 * email confirmation
+                 * 
+                 * @since 1.0.0
+                 * 
+                 * @see wpmu_activate_signup()
+                 */
+                'wpmu_activate_user' => [
+                    'title'               => 'New user activated',
+                    'action'              => 'new_signup_user_activated',
+                    'event_id'            => 5058,
+                    'severity'            => 'notice',
+                    'screen'              => ['multisite'],
+
+                    'message'             => [
+                        '_main' => 'A new user has been activated successfully. The user is now a member of the site.',
+
+                        '_space_start'              => '',
+                        'blog_id'                   => ['blog_id'],
+                        'blog_name'                 => ['blog_name'],
+                        'blog_url'                  => ['blog_url'],
+                        'role_given'                => ['role_given'],
+                        'new_user_status'           => ['new_user_status'],
+                        'user_primary_blog'         => ['primary_blog'],
+                        'primary_blog_name'         => ['primary_blog_name'],
+                        'source_domain'             => ['source_domain'],
+                        '_space_end'                => '',
+
+                        'user_id'                   => ['object_id'],
+                        'user_login'                => ['user_login'],
+                        'display_name'              => ['display_name'],
+                        'first_name'                => ['first_name'],
+                        'last_name'                 => ['last_name'],
+                        'user_email'                => ['user_email'],
+                        'profile_url'               => ['profile_url'],
+                    ],
+
+                    'event_handler' => [
+                        'num_args' => 3,
+                    ],
+                ],
+
+                /**
+                 * Multisite Only
+                 * 
                  * Fires before a user is removed from a site.
                  * 
                  * @since 1.0.0
@@ -1810,7 +2117,7 @@ trait UserEvents
                 'remove_user_from_blog' => [
                     'title'           => 'User removed from a site',
                     'action'          => 'Removed',
-                    'event_id'        => 5054,
+                    'event_id'        => 5059,
                     'severity'        => 'critical',
                     'screen'          => ['multisite'],
                     'user_state'      => 'logged_in',
@@ -1842,11 +2149,6 @@ trait UserEvents
                         'num_args' => 3,
                     ],
                 ],
-                
-
-
-
-
 
 
 
@@ -1891,14 +2193,6 @@ trait UserEvents
                 'user_error',
             ]
         ];
-
-        /**
-         * @todo
-         * Include multisite events
-         * 
-         * make_spam_user: $user_id
-         * make_ham_user: $user_id
-         */
     }
 
     /**
@@ -1973,11 +2267,11 @@ trait UserEvents
                 'description' => alm__('Specifies whether to show the admin bar on the front end for the user.'),
             ],
             'primary_blog' => [
-                '_event_id'   => 5052,
+                '_event_id'   => 5060,
                 'description' => alm__('Specifies the user primary blog on a multisite installation'),
             ],
             'source_domain' => [
-                '_event_id'   => 5053,
+                '_event_id'   => 5061,
                 'description' => alm__('Specifies the user primary blog domain on a multisite installation'),
             ],
         ];
@@ -2064,8 +2358,9 @@ trait UserEvents
                 break;
                 
                 case 'meta_value':
-                    $info       = empty( $context ) ? 'Custom' : ucfirst( $context ) . ' custom';
-                    $meta_field = rtrim( 'meta_value_' . $context, '_' );
+                    $info        = empty( $context ) ? 'Custom' : ucfirst( $context ) . ' custom';
+                    $info       .= ' field value';
+                    $meta_field  = rtrim( 'meta_value_' . $context, '_' );
 
                     $info = "$info: " . $this->getEventMsgArg( $event, $meta_field, '', true );
                 break;
@@ -2100,8 +2395,12 @@ trait UserEvents
                     else {
                         $user_roles_label = count( $roles ) > 1 ? $info . 's' : $info;
 
-                        // Run translation on the user roles
-                        $roles = array_map( 'alm_translate_user_role', $roles );
+                        /**
+                         * @todo
+                         * Run translation on the user roles, but probably when 
+                         * displaying the logs
+                         */
+                        // $roles = array_map( 'alm_translate_user_role', $roles );
 
                         $info = "$user_roles_label: " . implode( ', ', $roles );
                     }
@@ -2344,6 +2643,9 @@ trait UserEvents
                 break;
             }
         }
+
+        // Append 'custom' to the field target
+        $field_target .= ' custom';
 
         if ( 'create' == $action )
         {
@@ -2786,9 +3088,10 @@ trait UserEvents
         $updated_str = '';
         if ( $this->isUserProfileDataAggregationActive() )
         {
-            $_new_val    = '';
-            $line_break  = $this->getEventMsgLineBreak();
-            $update_type = $this->getConstant('ALM_IS_USER_PROFILE_UPDATE_AGGREGATION'); 
+            $_new_val                    = '';
+            $line_break                  = $this->getEventMsgLineBreak();
+            $update_type                 = $this->getConstant('ALM_IS_USER_PROFILE_UPDATE_AGGREGATION');
+            $customized_user_meta_fields = $this->getCustomizedUserCustomFields();
 
             foreach ( $this->user_data_aggregation as $field => $value )
             {
@@ -2821,19 +3124,36 @@ trait UserEvents
                 }
 
                 // Add the user meta field name when on super mode
-                if ( $this->isSuperMode() )
+                $is_customized_user_meta_field = isset($customized_user_meta_fields[ $field ]);
+                if ( $is_customized_user_meta_field && $this->isSuperMode() )
                 {
-                    $updated_str .= sprintf( 'Field key: %s', $field );
+                    $updated_str .= sprintf( 'Custom field key: %s', $field );
 
                     // Line break;
                     $updated_str .= $line_break;
                 }
-                
-                $field_label = str_replace(
-                    [ '_', $this->getBlogPrefix() ],
-                    [ ' ', '' ],
-                    $field
-                );
+
+                /**
+                 * Don't customize any user meta fields that is not part of the 
+                 * default customized user meta field list
+                 */
+                if ( $is_customized_user_meta_field )
+                {
+                    if (isset( $customized_user_meta_fields[ $field ]['_title'] ))
+                    {
+                        $field_label = $customized_user_meta_fields[ $field ]['_title'];
+                    }
+                    else {
+                        $field_label = str_replace(
+                            [ '_', $this->getBlogPrefix() ],
+                            [ ' ', '' ],
+                            $field
+                        );
+                    }
+                }
+                else {
+                    $field_label = $field;
+                }
 
                 if ( ! empty( $use_field_title ) ) {
                     $field_label = $use_field_title;
@@ -2841,8 +3161,15 @@ trait UserEvents
 
                 if ( 'update' == $update_type )
                 {
-                    $previous_field_label = $field_has_confirmation ?  'Requested': 'Previous';
-                    $updated_str         .= "{$previous_field_label} {$field_label}: $previous_val";
+                    $previous_field_label = $field_has_confirmation ? 'Requested' : 'Previous';
+                    
+                    if ( ! $is_customized_user_meta_field ) {
+                        $previous_field_label .= ' value';
+                    } else {
+                        $previous_field_label = ucfirst($previous_field_label);
+                    }
+
+                    $updated_str .= "{$previous_field_label} {$field_label}: $previous_val";
 
                     // Line break;
                     $updated_str .= $line_break;
@@ -2856,7 +3183,13 @@ trait UserEvents
                     : 
                     ( $field_has_confirmation ? 'Current ' : 'New ' ) . $field_label;
 
-                $updated_str .= ucfirst( $new_field_label ) . ': ' . $_new_val;
+                if ( ! $is_customized_user_meta_field ) {
+                    $new_field_label .= ' value';
+                } else {
+                    $new_field_label = ucfirst($new_field_label);
+                }
+
+                $updated_str .= $new_field_label . ': ' . $_new_val;
 
                 // Line break;
                 $updated_str .= $line_break;
@@ -2947,5 +3280,24 @@ trait UserEvents
     public function setupUserLogAggregationFlag( $flag_value = true )
     {
         $this->setConstant( 'ALM_ALLOW_LOG_AGGREGATION', $flag_value );
+    }
+
+    /**
+     * Check whether the add new user admin screen is active.
+     * Works on multisite and non-multisite installation
+     * 
+     * @since 1.0.0
+     * 
+     * @param bool $bail_ajax Determine whether to bail the check if doing ajax request
+     * 
+     * @return bool
+     */
+    public function isAddNewUserAdminScreen( $bail_ajax = true )
+    {
+        if ( wp_doing_ajax() && $bail_ajax )  return true;
+        if ( !$this->is_admin ) return false;
+
+        $screen = $this->getCurrentPageScriptName();
+        return ('user-new.php' == $screen);
     }
 }

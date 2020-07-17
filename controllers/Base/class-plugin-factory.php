@@ -94,6 +94,9 @@ abstract class PluginFactory
         // Setup database metadata
         $this->__setupDatabaseMetadata( $this->controller_cache );
 
+        // Initialize settings
+        $this->maybeInitSettings();
+        
         $this->settings     = $this->loadOptions( $this->controller_cache );
         $this->running_mode = $this->getRunningMode();
 
@@ -203,6 +206,25 @@ abstract class PluginFactory
     final protected function getDB()
     {
         return $this->wpdb;
+    }
+
+    /**
+     * Get the current page script name.
+     * The get_current_screen() function may not be available at some point,
+     * this will return the current page script name
+     * 
+     * @since 1.0.0
+     * 
+     * @return string
+     */
+    public function getCurrentPageScriptName()
+    {
+        $current_page_file = explode('/', $this->getServerVar('PHP_SELF'));
+        if ( empty( $current_page_file ) )
+            return '';
+            
+        $script = end( $current_page_file );
+        return basename( $script );
     }
 
     /**
@@ -403,21 +425,26 @@ abstract class PluginFactory
 
     /**
      * Check whether a string ends with a given pattern
-     * @param  string       $str      Specify string to check for given pattern
-     * @param  string|array $pattern  The pattern to check for at end of string.
-     *                                This can be a string or list of string.
      * 
-     * @return bool                   True if the given string ends with the given pattern.
-     *                                Otherwise false.
+     * @param  string       $str              Specify string to check for given pattern
+     * 
+     * @param  string|array $pattern          The pattern to check for at end of string.
+     *                                        This can be a string or list of string.
+     * 
+     * @param bool          $case_insensitive Specifies whether the check should be case 
+     *                                        sensitive or not
+     * 
+     * @return bool                           True if the given string ends with the given pattern.
+     *                                        Otherwise false.
      */
-    public function strEndsWith( $str, $pattern )
+    public function strEndsWith( $str, $pattern, $case_insensitive = false )
     {
         $_pattern = (array) $pattern;
         foreach ( $_pattern as $p )
         {
             if ( ! is_array( $p ) )
             {
-                $match = '/'. preg_quote( $p ) .'$/';
+                $match = '/'. preg_quote( $p ) .'$/' . ($case_insensitive ? 'i' : '');;
                 if ( preg_match( $match, $str ) ) 
                     return true;
             }
@@ -428,20 +455,24 @@ abstract class PluginFactory
     /**
      * Check whether a string starts with a given pattern
      * 
-     * @param  string       $str      Specify string to check for given pattern
-     * @param  string|array $pattern  The pattern to check for at end of string.
+     * @param  string       $str              Specify string to check for given pattern
      * 
-     * @return bool                   True if the given string starts with the given pattern.
-     *                                Otherwise false.
+     * @param  string|array $pattern          The pattern to check for at beginning of string.
+     * 
+     * @param bool          $case_insensitive Specifies whether the check should be case 
+     *                                        sensitive or not
+     * 
+     * @return bool                           True if the given string starts with the given pattern.
+     *                                        Otherwise false.
      */
-    public function strStartsWith( $str, $pattern )
+    public function strStartsWith( $str, $pattern, $case_insensitive = false )
     {
         $_pattern = (array) $pattern;
         foreach ( $_pattern as $p )
         {
             if ( ! is_array( $p ) )
             {
-                $match = '/^'. preg_quote( $p ) .'/';
+                $match = '/^'. preg_quote( $p ) .'/' . ($case_insensitive ? 'i' : '');
                 if ( preg_match( $match, $str ) ) 
                     return true;
             }
@@ -1121,6 +1152,8 @@ abstract class PluginFactory
      * Parse data for DB.
      * Properly transform an array/object data before it is saved in database
      * 
+     * @since 1.0.0
+     * 
      * @see PluginFactory::isLargeArray()
      * 
      * @return mixed 
@@ -1132,5 +1165,15 @@ abstract class PluginFactory
 
         return $this->isLargeArray( $value ) ? 
             $this->serialize( $value ) : implode( ', ', $value  );
+    }
+
+    /**
+     * Get vowel letters
+     * 
+     * @return array
+     */
+    public function getVowelLetters()
+    {
+        return ['a', 'e', 'i', 'o', 'u'];
     }
 }

@@ -1,5 +1,4 @@
 <?php
-
 namespace ALM\Controllers\Audit;
 
 // Prevent direct file access
@@ -109,6 +108,28 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
 
         // Setup the Audit Observer
         $this->AuditObserver->init($this);
+
+        // echo '<pre>';
+        add_action('after_signup_user', function (){
+            (var_dump('after_signup_user'));
+            // wp_die();
+        }, 10, 4);
+        
+        add_action('wpmu_new_user', function (){
+            (var_dump('wpmu_new_user'));
+            // wp_die();
+        }, 10, 4);
+        
+        add_action('add_user_to_blog', function (){
+            (var_dump('add_user_to_blog') );
+            // wp_die();
+        }, 10, 4);
+        // echo '</pre>';
+
+        add_action('wpmu_activate_user', function () {
+            (var_dump('wpmu_activate_user'));
+            // wp_die();
+        }, 10, 3);
     }
 
     /**
@@ -325,22 +346,40 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
 
     /**
      * Get the user event data
-     * @param  int   $user_id Specifies the user ID whose event data should be returned
-     * @return array          Returns the user data for the active event.
+     * 
+     * @since 1.0.0
+     * 
+     * @param  int   $user_id           Specifies the user ID whose event data should be returned
+     * @param  bool  $user_description  Specifies whether to add user description data or not
+     * 
+     * @return array                    Returns the user data for the active event.
      */
-    protected function _getActiveEventUserData($user_id = 0)
+    protected function _getActiveEventUserData($user_id = 0, $user_description = true)
     {
+        $_user_id = (int) $user_id;
+        if ( 0 === $_user_id )
+            $_user_id = $this->User->current_user_ID;
+            
         $user_data = [
             'user_url'      => $this->User->getUserInfo(0, 'user_url', 'url'),
             'last_name'     => $this->User->getUserInfo(0, 'last_name', false),
+            'avatar_url'    => get_avatar_url( $_user_id ),
             'first_name'    => $this->User->getUserInfo(0, 'first_name', false),
             'user_status'   => $this->User->getUserInfo(0, 'user_status', 'int'),
-            'description'   => $this->User->getUserInfo(0, 'description'),
             'user_login'    => $this->User->getUserInfo(0, 'user_login', 'username'),
             'display_name'  => $this->User->getUserInfo(0, 'display_name'),
             'email_address' => $this->User->getUserInfo(0, 'user_email', 'email'),
             'user_nicename' => $this->User->getUserInfo(0, 'user_nicename', false),
         ];
+
+        if ($user_description) {
+            // We don't like the bar '|' character
+            $user_data['description'] = str_replace(
+                '|',
+                '',
+                $this->User->getUserInfo(0, 'description')
+            );
+        }
 
         return $user_data;
     }
@@ -423,6 +462,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
             $this->log_data['severity']      = $this->_getActiveEventData('severity');
             $this->log_data['source_ip']     = $client_ip;
             $this->log_data['object_id']     = $object_id;
+            $this->log_data['user_role']     = implode(', ', (array) $this->User->getUserInfo(0, 'roles'));
             $this->log_data['user_login']    = $this->User->getUserInfo(0, 'user_login', 'username');
             $this->log_data['event_group']   = $event_group;
             $this->log_data['event_title']   = $this->_getActiveEventData('title');
@@ -439,7 +479,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
             $this->log_data['is_mobile']     = $device_data['is_mobile'];
 
             if ($this->is_multisite) {
-                $this->log_data['blog_id']   = $this->current_blog_ID;
+                $this->log_data['blog_id']   = get_current_blog_id();
                 $this->log_data['blog_url']  = $this->getBlogUrl(true);
                 $this->log_data['blog_name'] = $this->getBlogName(true, true);
             }
@@ -474,7 +514,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
          * So even if the user data is modified after the logged event, the changes doesn't 
          * affect the logged event data.
          */
-        $this->log_data['user_data'] = $this->_getActiveEventUserData();
+        $this->log_data['user_data'] = $this->_getActiveEventUserData(0, false);
 
         /**
          * Object metadata

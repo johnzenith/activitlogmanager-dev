@@ -197,7 +197,7 @@ class BootLoader
 
     /**
      * Check whether we are doing installation
-     * @return (bool) True if the Activity Log Manager BootLoader has been halted.
+     * @return bool   True if the Activity Log Manager BootLoader has been halted.
      *                Although this should never happen, but we are good citizen,
      *                So let's avoid the risk.
      *                Otherwise false.
@@ -209,7 +209,7 @@ class BootLoader
 
     /**
      * Check whether we are doing installation
-     * @return (bool) True if the Activity Log Manager plugin is being activated. Otherwise false.
+     * @return bool  True if the Activity Log Manager plugin is being activated. Otherwise false.
      */
     public function __isActivation()
     {
@@ -218,7 +218,7 @@ class BootLoader
 
     /**
      * Check whether we are doing installation
-     * @return (bool) True if the Activity Log Manager plugin is being deactivated. Otherwise false.
+     * @return bool True if the Activity Log Manager plugin is being deactivated. Otherwise false.
      */
     public function __isDeactivation()
     {
@@ -227,7 +227,7 @@ class BootLoader
     
     /**
      * Check whether we are doing installation
-     * @return (bool) True if the Activity Log Manager plugin is being uninstalled. Otherwise false.
+     * @return bool True if the Activity Log Manager plugin is being uninstalled. Otherwise false.
      */
     public function __isUninstallation()
     {

@@ -147,6 +147,18 @@ trait EventList
         do_action_ref_array( 'alm/event/group/register', [ &$this->event_list, &$this ]);
 
         $this->normalizeEventGroupList();
+
+        /**
+         * Filters the main event message.
+         * 
+         * This filter is document in:
+         * /activitylogmanager/controllers/Audit/Templates/trait-event-list.php
+         * 
+         * This will prepend the logged-in user role to the event message
+         * 
+         * @since 1.0.0
+         */
+        add_filter( 'alm/event/message/save/main', [ $this, 'customizeEventMainMsg' ], 10, 3 );
     }
 
     /**
@@ -272,6 +284,63 @@ trait EventList
     }
 
     /**
+     * Customized the event main message
+     * 
+     * @see alm/event/message/save/main filter
+     */
+    public function customizeEventMainMsg($msg, $event_group, $event_data)
+    {
+        if ( !is_user_logged_in() ) return $msg;
+
+        $role_desc  = '';
+        $user_roles = $this->User->getCurrentUserRoles();
+
+        if ( in_array('super_admin', $user_roles, true) ) {
+            $role_desc = 'A Super Admin';
+        }
+        elseif ( in_array('administrator', $user_roles, true) ) {
+            $role_desc = 'An Administrator';
+        }
+        else {
+            // If user role starts with any vowel letters, then this will be 'An'
+            $role_prefix = 'A';
+
+            // Get the user role
+            foreach( $user_roles as $user_role ) {
+                if ( in_array($user_role, ['super_admin', 'administrator']) )
+                    continue;
+
+                // Custom user role may include the underscore or dash character
+                $delimiter  = (false === strpos($user_role, '-' )) ? '_' : '-';
+                
+                // If the user role start with any vowels, then prefix it with 'An'
+                
+                if ( $this->strStartsWith($user_role, $this->getVowelLetters(), true) )
+                    $role_prefix = 'An';
+
+                $role_desc = $role_prefix .' '. ucfirst( ucwords($user_role, $delimiter) );
+            }
+        }
+
+        // This should never happen, but we have to bail out if it does
+        if ( empty($role_desc) ) return $msg;
+
+        // If the message starts with "A ", let's replace it with an empty string
+        if ( $this->strStartsWith($msg, 'A ', true) )
+            $msg = substr($msg, 2);
+        
+        // Transform the first message character to lowercase
+        $first_char = strtolower( substr($msg, 0, 1) );
+
+        // Remove the first char from the message
+        $remove_first_char = substr($msg, 1);
+
+        $_msg = $first_char . $remove_first_char;
+
+        return "{$role_desc} {$_msg}";
+    }
+
+    /**
      * Add a new event group or add a new event to an exiting event group.
      * 
      * This is used outside the Auditor controller class to allow registration 
@@ -338,6 +407,37 @@ trait EventList
              */
             'error_flag'      => false,
             'is_aggregatable' => false,
+
+            /**
+             * Take actions
+             * 
+             * Specifies actions that can be performed when the [Take Action] 
+             * button is clicked.
+             * 
+             * The [Take Action] button is displayed along with the event log data 
+             * on the frontend.
+             * 
+             * This is a multi-dimensional array that describes how the button will 
+             * be created.
+             * 
+             * Example:
+             * 
+             * 'take_actions' => [
+             *      [
+             *          'id'          => 'unique-btn-id',
+             *          'type'        => 'button', // 'button' | 'link'
+             *          'href'        => '#', // Only used if 'type' is set to 'link'
+             *          'class'       => 'btn-class',
+             *          'label'       => alm__('First action'),
+             *          'custom_attr' => [
+             *              '_target'          => 'blank',
+             *              'data-first-attr'  => 'first value',
+             *              'data-second-attr' => 'second value',
+             *          ]
+             *      ],
+             * ]
+             */
+            'take_actions' => [],
 
             'event_handler' => [
                 /**
@@ -457,6 +557,8 @@ trait EventList
 
         /**
          * Filter the event message arguments before it is saved to database
+         * 
+         * @since 1.0.0
          *
          * @param array  $message_args  Specifies list of event message arguments to used in 
          *                              generating the message. 
@@ -489,6 +591,20 @@ trait EventList
                         $_message_args['_main'] 
                         : 
                         $this->_getActiveEventData( 'message', '_main' );
+
+                    /**
+                     * Filters the main event message before it is saved to database
+                     * 
+                     * @since 1.0.0
+                     * 
+                     * @param string $msg         Specifies the main message to display for the event
+                     * @param string $event_group Specifies the event group which the message belongs to.
+                     * @param array  $event_data  Specifies the event data which the message belongs to.
+                     */
+                    $info = apply_filters(
+                        'alm/event/message/save/main',
+                        $info, $event_group, $event_data
+                    );
                 }
                 else {
                     if ( ! in_array( $msg_name, $special_msg_args, true ) ) 

@@ -246,7 +246,7 @@ trait MenuPageBuilder
         if ( ! $this->isPluginMenuPage() ) return '';
 
         $hook_suffix   = $this->getPageHookSuffix();
-        $page_hook     = stackauth_admin_get_menu_page_hook();
+        $page_hook     = $this->getMenuPageHook();
         $is_page_valid = strcmp( $hook_suffix, $page_hook ) === 0;
 
         if ( ! $is_page_valid ) return '';

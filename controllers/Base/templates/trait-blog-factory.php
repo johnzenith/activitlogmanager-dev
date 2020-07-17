@@ -142,9 +142,11 @@ trait BlogFactory
         $bloginfo = [];
         $blog_id  = (int) $blog_id;
 
-        if ( empty( $blog_id ) ) {
+        if ( empty( $blog_id ) )
             $blog_id = $this->current_blog_ID;
-        }
+
+        if ( empty( $blog_id ) )
+            $blog_id = get_current_blog_id();
 
         $data = [
             'url',
@@ -230,9 +232,11 @@ trait BlogFactory
      */
     protected function getBlogOptionById( $blog_id = null, $option, $default = null, $escape = false )
     {
-        if ( ! $this->is_multisite 
-        || is_null( $blog_id ) 
-        || $this->current_blog_ID == $blog_id )
+        if ( 
+            ! $this->is_multisite 
+            || is_null( $blog_id ) 
+            || $this->current_blog_ID == $blog_id
+        )
         {
             $value = $this->getBlogOption( $option, $default, $escape );
         }

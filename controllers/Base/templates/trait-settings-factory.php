@@ -82,6 +82,32 @@ trait SettingsFactory
     protected $running_mode = '';
 
     /**
+     * Set the network mode
+     * @var string
+     * @since 1.0.0
+     */
+    protected $network_mode = null;
+
+    /**
+     * Set the blog mode
+     * @var string
+     * @since 1.0.0
+     */
+    protected $blog_mode = null;
+
+    /**
+     * Maybe we have to initialize the settings
+     */
+    protected function maybeInitSettings()
+    {
+        if ( is_null($this->network_mode))
+            $this->network_mode = $this->getNetworkMode();
+
+        if ( is_null($this->blog_mode))
+            $this->blog_mode = $this->getBlogMode();
+    }
+
+    /**
      * Load the plugin settings. Default settings are merged with the settings 
      * saved in database.
      * 
@@ -89,7 +115,7 @@ trait SettingsFactory
      * 
      * @param stdClass $cache Specifies the controller cache object
      * 
-     * @return array List of plugin settings
+     * @return array   List of plugin settings
      */
     protected function loadOptions( $cache = null )
     {
@@ -150,12 +176,17 @@ trait SettingsFactory
 
     /**
      * Get the network running mode global setting
+     * 
+     * On non-multisite installation, the network is equivalent to the blog
+     * 
+     * @since 1.0.0
+     * 
      * @return string
      */
     public function getNetworkMode()
     {
         if ( ! $this->is_multisite )
-            return $this->getBlogMode();
+            return is_null( $this->blog_mode ) ? $this->getBlogMode() : $this->blog_mode;
 
         $network_running_mode = $this->getGlobalSetting('network_running_mode');
 
@@ -220,12 +251,13 @@ trait SettingsFactory
      */
     public function getBlogMode()
     {
-        if ( $this->is_main_site )
-            return $this->getNetworkMode();
+        // if ( $this->is_main_site )
+        //     return $this->network_mode;
 
-        $blog_mode = $this->getSetting('blog_running_mode');
+        $blog_mode     = $this->getSetting('blog_running_mode');
+        $running_modes = $this->getRunningModes();
 
-        if ( ! in_array( $blog_mode, $this->getRunningModes(), true ) )
+        if ( ! in_array( $blog_mode, $running_modes, true ) )
             $blog_mode = $this->getDefaultRunningMode();
 
         /**
@@ -238,7 +270,7 @@ trait SettingsFactory
          */
         $blog_mode = apply_filters( 'alm/mode/blog', $blog_mode );
 
-        if ( ! in_array( $blog_mode, $this->getRunningModes() ) )
+        if ( ! in_array( $blog_mode, $running_modes ) )
             $blog_mode = $this->getDefaultRunningMode();
 
         return $blog_mode;
@@ -249,6 +281,8 @@ trait SettingsFactory
      * 
      * This setting is only used when the running mode state is set to 'off',
      * Which will override all other blogs running mode, except the main site.
+     * 
+     * @since 1.0.0
      */
     public function getForcedBlogMode()
     {
@@ -277,6 +311,9 @@ trait SettingsFactory
 
     /**
      * Get the plugin running mode
+     * 
+     * @since 1.0.0
+     * 
      * @return string
      */
     public function getRunningMode()
@@ -288,21 +325,19 @@ trait SettingsFactory
          * Bail out here if not running multisite or 
          * When the running mode state is set to 'flexible'
          */
-        if ( ! $this->is_multisite 
-        || ( ! $this->is_main_site && 'flexible' === $running_mode_state ) 
-        ) return $this->getBlogMode();
+        if (
+            ! $this->is_multisite
+            || ( ! $this->is_main_site && 'flexible' === $running_mode_state ) 
+        ) return $this->blog_mode;
 
-        $network_running_mode = $this->getNetworkMode();
-
-        if ( 'off' === $running_mode_state )
-        {
+        if ( 'off' === $running_mode_state ) {
             $force_blog_running_mode = $this->getForcedBlogMode();
 
             if ( ! in_array( $force_blog_running_mode, $plugin_running_modes, true ) )
                 $plugin_running_modes = $this->getDefaultRunningMode();
         }
 
-        return apply_filters( 'alm/mode/blog', $network_running_mode );
+        return apply_filters( 'alm/mode/blog', $this->network_mode );
 
     }
 

@@ -60,6 +60,9 @@ trait DatabaseMetaData
 
     /**
      * Setup database meta data
+     * 
+     * @since 1.0.0
+     * 
      * @param stdClass $cache Specifies the controller cache object
      */
     protected function __setupDatabaseMetadata( $cache = null )
@@ -69,8 +72,8 @@ trait DatabaseMetaData
         $this->collate            = $this->wpdb->get_charset_collate();
         $this->base_prefix        = esc_attr( $this->wpdb->base_prefix );
         // $this->last_insert_ID     = (int) $this->wpdb->insert_id;
-        $this->check_blog_flag    = $this->is_multisite ? "AND blog_id = $this->current_blog_ID" : '';
-        $this->check_network_flag = $this->is_multisite ? "AND blog_id = $this->main_site_ID"    : '';
+        $this->check_blog_flag    = $this->getBlogSqlFlag();
+        $this->check_network_flag = $this->getNetworkSqlFlag();
 
         // Setup the database tables names
         $this->tables = $this->getTableNames();
@@ -79,6 +82,8 @@ trait DatabaseMetaData
     /**
      * Get the query flag to use.
      * When in global settings mode, the network flag is used, otherwise the blog flag is used.
+     * 
+     * @since 1.0.0
      * 
      * @return string The mode specific query flag.
      */
@@ -90,6 +95,12 @@ trait DatabaseMetaData
 
     /**
      * Get the plugin database table names
+     * 
+     * @since 1.0.0
+     * 
+     * @param string $table_slug Specifies the table slug to check for
+     * 
+     * @return string|null       The table name if found. Otherwise null.
      */
     protected function getTableName( $table_slug )
     {
@@ -139,6 +150,10 @@ trait DatabaseMetaData
 
     /**
      * Get all database table names
+     * 
+     * @since 1.0.0
+     * 
+     * @return stdClass
      */
     protected function getTableNames()
     {
@@ -149,5 +164,39 @@ trait DatabaseMetaData
             'file_monitor'  => $this->base_prefix . 'alm_file_monitor',
             'activity_logs' => $this->base_prefix . 'alm_activity_logs',
         ];
+    }
+
+    /**
+     * Get the specified blog flag
+     * 
+     * @since 1.0.0
+     * 
+     * @param int $blog_id Specifies the blog apply the sql filter on 
+     * 
+     * @return string
+     */
+    public function getBlogSqlFlag( $blog_id = null )
+    {
+        if ( ! $this->is_multisite ) return '';
+
+        $blog_id = is_null( $blog_id ) ? $this->current_blog_ID : $blog_id;
+        return "AND blog_id = $blog_id ";
+    }
+
+    /**
+     * Get the current blog flag
+     * 
+     * @since 1.0.0
+     * 
+     * @param int $network_id Specifies the network to apply the sql filter on 
+     * 
+     * @return string
+     */
+    public function getNetworkSqlFlag( $network_id = null )
+    {
+        if ( ! $this->is_multisite ) return '';
+
+        $network_id = is_null( $network_id ) ? $this->main_site_ID : $network_id;
+        return "AND blog_id = $network_id ";
     }
 }

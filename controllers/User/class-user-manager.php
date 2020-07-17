@@ -299,13 +299,16 @@ class UserManager extends \ALM\Controllers\Base\PluginFactory
 	
 	/**
 	 * Get the current logged in user roles
+	 * 
+	 * @since 1.0.0
+	 * 
 	 * @return array
 	 */
 	public function getCurrentUserRoles()
 	{
-		$roles = $this->current_user_data->roles;
+		$roles = (array) $this->current_user_data->roles;
 
-		if ( $this->is_multisite )
+		if ( !$this->is_multisite )
 		{
 			// Bail administrator
 			if ( $this->is_administrator && ! in_array( 'administrator', $roles, true ) )

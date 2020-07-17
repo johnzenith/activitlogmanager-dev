@@ -449,7 +449,7 @@ trait UserEvents
 
         foreach ( $user_table_fields as $user_table_field => $field_title )
         {
-            if ( isset( $new_user_data->$user_table_field ) 
+            if ( isset( $new_user_data->$user_table_field )
             && isset( $old_user_data->$user_table_field ) )
             {
                 $was_user_field_updated = ( $new_user_data->$user_table_field != $old_user_data->$user_table_field );
@@ -576,7 +576,7 @@ trait UserEvents
             $this->setupUserEventArgs( compact( 'object_id' ) );
         }
 
-        if ( $this->isLogAggregatable() && empty( $user_profile_data ) ) 
+        if ( $this->isLogAggregatable() && empty( $user_profile_data ) )
             return;
 
         $this->LogActiveEvent( 'user', __METHOD__ );

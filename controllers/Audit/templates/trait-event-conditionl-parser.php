@@ -5,7 +5,7 @@ namespace ALM\Controllers\Audit\Templates;
 defined('ALM_PLUGIN_FILE') || exit('You are not allowed to do this on your own.');
 
 /**
-             * @package Event Conditional Parser
+ * @package Event Conditional Parser
 
  * @since   1.0.0
  */
