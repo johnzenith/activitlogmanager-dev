@@ -105,6 +105,18 @@ trait BlogFactory
     }
 
     /**
+     * Determine the blog base prefix to use.
+     * 
+     * @since 1.0.0
+     * 
+     * @return string
+     */
+    protected function getBasePrefix()
+    {
+        return sanitize_key($this->wpdb->base_prefix);
+    }
+
+    /**
      * Determine the blog prefix to use.
      * 
      * @since 1.0.0
@@ -113,7 +125,7 @@ trait BlogFactory
      */
     protected function getBlogPrefix()
     {
-        return $this->wpdb->base_prefix;
+        return sanitize_key($this->wpdb->prefix);
     }
 
     /**

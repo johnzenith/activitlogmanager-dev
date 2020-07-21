@@ -23,6 +23,22 @@ trait UserEvents
             false, 0, $meta_key
         );
 
+        // Setup the old user caps/role data
+        $blog_prefix         = $this->getBlogPrefix();
+        $user_cap_meta_field = $blog_prefix . 'capabilities';
+
+        if ($user_cap_meta_field == $meta_key) {
+            if ( $this->User->current_user_ID == $object_id ) {
+                $user_data = $this->User->current_user_data;
+            } else {
+                $user_data = get_userdata($object_id);
+            }
+            $this->old_user_caps['caps']  = $this->getVar($user_data, 'caps', []);
+            $this->old_user_caps['roles'] = $this->getVar($user_data, 'roles', []);
+
+            return;
+        }
+
         if ( $can_ignore_user_event ) 
             return;
 
@@ -36,7 +52,40 @@ trait UserEvents
     */
     public function added_user_meta_event( $meta_id, $object_id, $meta_key, $meta_value )
     {
-        if ( $this->canIgnoreUserMetaStrictly( $meta_key ) ) 
+        /**
+         * Trigger the user capability event alias if the capability meta 
+         * field is active
+         */
+        $blog_prefix         = $this->getBlogPrefix();
+        $user_cap_meta_field = $blog_prefix . 'capabilities';
+
+        // Check whether the cap was granted or not
+        $new_caps     = (array) $meta_value;
+        $old_caps     = (array) $this->getVar($this->old_user_caps, 'caps', []);
+
+        $granted_caps = array_values(array_diff_key($new_caps, $old_caps));
+
+        if ( in_array(true, $granted_caps, true) || in_array(1, $granted_caps, true) ) {
+            $user_cap_event_alias = 'alm_add_user_cap_event';
+        } else {
+            $user_cap_event_alias = 'alm_add_user_cap_denied_event';
+        }
+        
+        if ( $user_cap_meta_field == $meta_key ) {
+            \call_user_func_array(
+                [$this, $user_cap_event_alias],
+                [$object_id, $meta_value]
+            );
+            return;
+        }
+        
+        if ( $this->canIgnoreUserMetaStrictly( $meta_key ) )
+            return;
+
+        /**
+         * Check if the user meta field should be ignored
+         */
+        if ( $this->isActiveMetaFieldEventIgnorable($meta_key) )
             return;
 
         $can_ignore_user_event = apply_filters(
@@ -67,6 +116,22 @@ trait UserEvents
     */
     public function update_user_meta_event( $meta_id, $object_id, $meta_key, $meta_value )
     {
+        // Setup the old user caps/role data
+        $blog_prefix         = $this->getBlogPrefix();
+        $user_cap_meta_field = $blog_prefix . 'capabilities';
+
+        if ($user_cap_meta_field == $meta_key) {
+            if ($this->User->current_user_ID == $object_id) {
+                $user_data = $this->User->current_user_data;
+            } else {
+                $user_data = get_userdata($object_id);
+            }
+            $this->old_user_caps['caps']  = $this->getVar($user_data, 'caps', []);
+            $this->old_user_caps['roles'] = $this->getVar($user_data, 'roles', []);
+
+            return;
+        }
+
         if ( $this->canIgnoreUserMetaStrictly( $meta_key ) ) 
             return;
 
@@ -96,7 +161,45 @@ trait UserEvents
     */
     public function updated_user_meta_event( $meta_id, $object_id, $meta_key, $meta_value )
     {
+        /**
+         * Trigger the user capability event alias if the capability meta 
+         * field is active
+         */
+        $blog_prefix         = $this->getBlogPrefix();
+        $user_cap_meta_field = $blog_prefix . 'capabilities';
+        
+        if ($user_cap_meta_field == $meta_key)
+        {
+            // Check whether we need to call the 'add' or 'remove' 
+            // user cap event alias
+            $new_caps = (array) $meta_value;
+            $old_caps = (array) $this->getVar($this->old_user_caps, 'caps', []);
+
+            $user_cap_event_alias = count($new_caps) > count($old_caps) ?
+                'alm_add_user_cap_event' : 'alm_remove_user_cap_event';
+
+            if ('alm_added_user_cap_event' == $user_cap_event_alias)
+            {
+                $granted_caps = array_values(array_diff_key($new_caps, $old_caps));
+
+                if ( !in_array(true, $granted_caps, true) && !in_array(1, $granted_caps, true) )
+                    $user_cap_event_alias = 'user_cap_event_alias';
+            }
+
+            \call_user_func_array(
+                [$this, $user_cap_event_alias],
+                [$object_id, $meta_value]
+            );
+            return;
+        }
+
         if ( $this->canIgnoreUserMetaStrictly( $meta_key ) ) 
+            return;
+
+        /**
+         * Check if the user meta field should be ignored
+         */
+        if ($this->isActiveMetaFieldEventIgnorable($meta_key))
             return;
 
         $can_ignore_user_event = apply_filters(
@@ -127,6 +230,22 @@ trait UserEvents
     */
     public function delete_user_meta_event( $meta_ids, $object_id, $meta_key, $meta_value )
     {
+        // Setup the old user caps/role data
+        $blog_prefix         = $this->getBlogPrefix();
+        $user_cap_meta_field = $blog_prefix . 'capabilities';
+
+        if ($user_cap_meta_field == $meta_key) {
+            if ($this->User->current_user_ID == $object_id) {
+                $user_data = $this->User->current_user_data;
+            } else {
+                $user_data = get_userdata($object_id);
+            }
+            $this->old_user_caps['caps']  = $this->getVar($user_data, 'caps', []);
+            $this->old_user_caps['roles'] = $this->getVar($user_data, 'roles', []);
+
+            return;
+        }
+
         // Set the deleted meta value
         $this->metadata_value_deleted = get_user_meta( $object_id, $meta_key, true );
 
@@ -157,6 +276,23 @@ trait UserEvents
     public function deleted_user_meta_event( $meta_ids, $object_id, $meta_key, $meta_value )
     {
         /**
+         * Trigger the user capability event alias if the capability meta 
+         * field is active
+         */
+        $blog_prefix         = $this->getBlogPrefix();
+        $user_cap_meta_field = $blog_prefix . 'capabilities';
+
+        if ($user_cap_meta_field == $meta_key) {
+            $user_cap_event_alias = 'alm_remove_all_user_cap_event';
+
+            \call_user_func_array(
+                [$this, $user_cap_event_alias],
+                [$object_id, []]
+            );
+            return;
+        }
+
+        /**
          * Set the user meta deleted flag.
          * 
          * This is used by handle custom events like monitoring when the 
@@ -177,6 +313,12 @@ trait UserEvents
         if ( $this->canIgnoreUserMetaStrictly( $meta_key ) ) 
             return;
 
+        /**
+         * Check if the user meta field should be ignored
+         */
+        if ($this->isActiveMetaFieldEventIgnorable($meta_key))
+            return;
+
         $can_ignore_user_event = apply_filters(
             'alm/event/user/custom_field/ignore',
             false, $meta_ids, $meta_key
@@ -194,8 +336,7 @@ trait UserEvents
             'previous' => '',
         ]);
 
-        if ( $can_ignore_user_event ) 
-            return;
+        if ( $can_ignore_user_event ) return;
 
         $this->setupUserEventArgs( compact( 'meta_ids', 'object_id', 'meta_key', 'meta_value' ) );
         $this->LogActiveEvent( 'user', __METHOD__ );
@@ -408,7 +549,7 @@ trait UserEvents
      * 
      * @see edit_user_created_user action hook
      */
-    public function profile_update_event( $user_id, $old_user_data )
+    public function profile_update_event($user_id, $old_user_data)
     {
         /**
          * Setup the user profile updated flag.
@@ -429,7 +570,7 @@ trait UserEvents
             return;
 
         $object_id     = $user_id;
-        $new_user_data = get_userdata( $user_id );
+        $new_user_data = $this->User->getUserData($user_id, true);
 
         $callback_args = [ $user_id, $new_user_data, $old_user_data ];
 
@@ -579,7 +720,7 @@ trait UserEvents
         if ( $this->isLogAggregatable() && empty( $user_profile_data ) )
             return;
 
-        $this->LogActiveEvent( 'user', __METHOD__ );
+        $this->LogActiveEvent('user', __METHOD__);
     }
 
     /**
@@ -1027,5 +1168,313 @@ trait UserEvents
 
         $this->setupUserEventArgs( compact( 'object_id' ) );
         $this->LogActiveEvent( 'user', __METHOD__ );
+    }
+
+    /**
+     * Fires immediately after a user is deleted from the database.
+     * 
+     * @since 1.0.0
+     */
+    public function deleted_user_event($object_id, $reassign)
+    {
+        $blog_id                 = get_current_blog_id();
+        $blog_url                = '';
+        $blog_name               = '';
+        $primary_blog            = '';
+        $source_domain           = '';
+        $primary_blog_url        = '';
+        $primary_blog_name       = '';
+        $deleted_user_statistics = '';
+
+        /**
+         * Setup the user aggregation flag
+         */
+        $this->setupUserLogAggregationFlag();
+
+        if ($this->is_multisite)
+        {
+            if ($this->current_blog_ID == $blog_id) {
+                $blog_url  = $this->sanitizeOption($this->getVar($this->blog_data, 'url'), 'url');
+                $blog_name = $this->sanitizeOption($this->getVar($this->blog_data, 'name'));
+            } else {
+                $blog_url  = $this->sanitizeOption(get_blog_option($blog_id, 'siteurl', ''), 'url');
+                $blog_name = $this->sanitizeOption(get_blog_option($blog_id, 'blogname', ''));
+            }
+
+            $primary_blog      = $this->sanitizeOption(get_user_meta($object_id, 'primary_blog', true));
+            $source_domain     = $this->sanitizeOption(get_user_meta($object_id, 'source_domain', true));
+            $primary_blog_url  = $this->sanitizeOption(get_blog_option($primary_blog, 'siteurl', ''), 'url');
+            $primary_blog_name = $this->sanitizeOption(get_blog_option($primary_blog, 'name', ''));
+        }
+
+        // Check whether the user post is reassigned to another user
+        if ( !empty($reassign) ) {
+            $reassign = (int) $reassign;
+            $post_ids = (int) $this->wpdb->get_var($this->wpdb->prepare("SELECT COUNT(ID) FROM $this->wpdb->posts WHERE post_author = %d LIMIT 1", $object_id));
+
+            if ($post_ids > 0) {
+                $reassign_user       = get_userdata($reassign);
+                $reassign_user_login = $this->sanitizeOption($reassign_user->user_login);
+                $reassign_post       = "{$reassign}_{$reassign_user_login}";
+            } else {
+                $reassign_post = 'No post found';
+            }
+        } else {
+            $reassign_post = 'Posts was not reassigned to any user';
+        }
+
+        // Set the user data object since we may not be able to retrieve the user 
+        // data prior to calling this action
+        $user_obj = $this->user_data_ref;
+
+        $this->setupUserEventArgs(compact(
+            'blog_id',
+            'blog_url',
+            'user_obj',
+            'object_id',
+            'blog_name',
+            'primary_blog',
+            'source_domain',
+            'reassign_post',
+            'primary_blog_url',
+            'primary_blog_name',
+            'deleted_user_statistics'
+        ));
+
+        /**
+         * Fire the deleted user event alias
+         */
+        if ($this->getConstant('ALM_MS_USER_DELETE_USER')) {
+            $this->alm_deleted_user_from_network($object_id, $reassign);
+            return;
+        }
+        
+        $this->LogActiveEvent('user', __METHOD__);
+    }
+
+    /**
+     * Fires immediately after a user is deleted from the network
+     * 
+     * This event is an alias of the {@see deleted_user action}
+     * 
+     * @see wpmu_delete_user()
+     */
+    public function alm_deleted_user_from_network($object_id, $reassign)
+    {
+        $this->LogActiveEvent('user', __METHOD__);
+    }
+
+    /**
+     * Fires after the user's role has changed.
+     * 
+     * @see WP_User::set_role()
+     */
+    public function set_user_role_event($object_id, $role, $old_roles)
+    {
+        $user = $this->User->getUserData($object_id, true);
+        
+        // Setup the user's roles properties correctly
+        $user->get_role_caps();
+        
+        $user_roles    = $user->roles;
+        $role_new      = $this->parseValueForDb($user_roles, 5, true);
+        $role_previous = $this->parseValueForDb($old_roles, 5, true);
+
+        $no_role_found = 'No role found';
+        if ('' === $role_new) {
+            $role_new = $no_role_found;
+        }
+        if ('' === $role_previous) {
+            $role_previous = $no_role_found;
+        }
+
+        $this->setupUserEventArgs(compact(
+            'role_new',
+            'object_id',
+            'role_previous'
+        ));
+
+        $this->LogActiveEvent('user', __METHOD__);
+    }
+
+    /**
+     * Fires after the user is given a new role
+     * 
+     * @see WP_User::add_role()
+     */
+    public function add_user_role_event($object_id, $role)
+    {
+        $user = $this->User->getUserData($object_id, true);
+
+        // Setup the user's roles properties correctly
+        $user->get_role_caps();
+
+        $user_roles    = $user->roles;
+
+        $role_new      = $this->parseValueForDb($user_roles, 5, true);
+        $added_role    = $role;
+
+        $prev_roles    = empty($user_roles) ? '' : array_diff_key($user_roles, [$role]);
+        $role_previous = $this->parseValueForDb($prev_roles, 5, true);
+
+        $no_role_found = 'No role found';
+        if ('' === $role_previous) {
+            $role_previous = $no_role_found;
+        }
+
+        $this->setupUserEventArgs(compact(
+            'role_new',
+            'object_id',
+            'added_role',
+            'role_previous'
+        ));
+
+        $this->LogActiveEvent('user', __METHOD__);
+    }
+
+    /**
+     * Fires immediately after a role as been removed from a user.
+     * 
+     * @see WP_User::add_role()
+     */
+    public function remove_user_role_event($object_id, $role)
+    {
+        $user = $this->User->getUserData($object_id, true);
+
+        // Setup the user's roles properties correctly
+        $user->get_role_caps();
+
+        $user_roles    = $user->roles;
+
+        $role_new      = $this->parseValueForDb($user_roles, 5, true);
+        $removed_role  = $role;
+
+        $prev_roles    = array_merge($user_roles, [$role]);
+        $role_previous = $this->parseValueForDb($prev_roles, 5, true);
+
+        $no_role_found = 'No role found';
+        if ('' === $role_new) {
+            $role_new = $no_role_found;
+        }
+        if ('' === $role_previous) {
+            $role_previous = $no_role_found;
+        }
+
+        $this->setupUserEventArgs(compact(
+            'role_new',
+            'object_id',
+            'removed_role',
+            'role_previous'
+        ));
+
+        $this->LogActiveEvent('user', __METHOD__);
+    }
+
+    /**
+     * Fires immediately after a capability has been given to a user
+     * 
+     * @see WP_User::add_cap()
+     */
+    public function alm_add_user_cap_event($object_id, $new_caps)
+    {
+        $user = $this->User->getUserData($object_id, true);
+
+        // Setup the user's caps correctly
+        $user->get_role_caps();
+
+        $new_user_caps       = $user->caps;
+        $old_user_caps       = $this->getVar($this->old_user_caps, 'caps', []);
+        
+        $capability_new      = $this->parseValueForDb($new_user_caps, 5, true);
+        
+        $cap_added           = empty($old_user_caps) ? 
+            $new_user_caps : array_diff_key($old_user_caps, $new_user_caps);
+
+        $capability_added    = $this->parseValueForDb($cap_added, 5, true);
+
+        $prev_caps           = array_diff_key($new_user_caps, $old_user_caps);
+        $capability_previous = $this->parseValueForDb($prev_caps, 5, true);
+
+        $no_cap_found = 'No capability found';
+        if ('' === $capability_new) {
+            $capability_new = $no_cap_found;
+        }
+        if ('' === $capability_previous) {
+            $capability_previous = $no_cap_found;
+        }
+
+        $this->setupUserEventArgs(compact(
+            'object_id',
+            'capability_new',
+            'capability_added',
+            'capability_previous'
+        ));
+
+        $this->LogActiveEvent('user', __METHOD__);
+    }
+
+    /**
+     * Fires immediately after a capability has been removed from a user
+     * 
+     * @see WP_User::remove_cap()
+     */
+    public function alm_remove_user_cap_event($object_id, $new_caps)
+    {
+        $user = $this->User->getUserData($object_id, true);
+
+        // Setup the user's caps correctly
+        $user->get_role_caps();
+
+        $new_user_caps       = $user->caps;
+        $old_user_caps       = $this->getVar($this->old_user_caps, 'caps', []);
+
+        $capability_new      = $this->parseValueForDb($new_user_caps, 5, true);
+
+        $caps_removed        = array_diff_key($old_user_caps, $new_user_caps);
+        $removed_capability  = $this->parseValueForDb($caps_removed, 5, true);
+
+        $prev_caps           = array_diff_key($new_user_caps, $old_user_caps);
+        $capability_previous = $this->parseValueForDb($prev_caps, 5, true);
+
+        $no_cap_found = 'No capability found';
+        if ('' === $capability_new) {
+            $capability_new = $no_cap_found;
+        }
+        if ('' === $capability_previous) {
+            $capability_previous = $no_cap_found;
+        }
+
+        $this->setupUserEventArgs(compact(
+            'object_id',
+            'removed_capability',
+            'capability_new',
+            'capability_previous'
+        ));
+
+        $this->LogActiveEvent('user', __METHOD__);
+    }
+
+    /**
+     * Fires immediately after all the user capabilities have been removed
+     * 
+     * @see WP_User::add_cap()
+     */
+    public function alm_remove_all_user_cap_event($object_id, $new_caps)
+    {
+        $capability_new      = 'No capability found';
+        $capability_previous = $this->getVar($this->old_user_caps, 'caps', []);
+
+        $no_cap_found = 'No capability found';
+        if ('' === $capability_previous) {
+            $capability_previous = $no_cap_found;
+        }
+
+        $this->setupUserEventArgs(compact(
+            'object_id',
+            'capability_new',
+            'capability_previous'
+        ));
+
+        $this->LogActiveEvent('user', __METHOD__);
     }
 }

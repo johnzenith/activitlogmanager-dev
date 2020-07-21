@@ -129,13 +129,13 @@ trait MS_UserEvents
              * let's call the hook alias
              */
             if (isset($_POST['noconfirmation']) && current_user_can('manage_network_users')) {
-                $this->add_new_user_to_blog_by_admin_event();
+                $this->alm_add_new_user_to_blog_by_admin_event();
             }
         }
         else {
             if( $this->isAddNewUserAdminScreen() ) return;
                 
-            $this->add_new_user_to_blog_by_self_event();
+            $this->alm_add_new_user_to_blog_by_self_event();
         }
     }
 
@@ -144,7 +144,7 @@ trait MS_UserEvents
      * 
      * @since 1.0.0
      */
-    public function add_new_user_to_blog_by_admin_event()
+    public function alm_add_new_user_to_blog_by_admin_event()
     {
         $this->LogActiveEvent('user', __METHOD__);
     }
@@ -154,7 +154,7 @@ trait MS_UserEvents
      * 
      * @since 1.0.0
      */
-    public function add_new_user_to_blog_by_self_event()
+    public function alm_add_new_user_to_blog_by_self_event()
     {
         $this->LogActiveEvent('user', __METHOD__);
     }
@@ -243,7 +243,7 @@ trait MS_UserEvents
         if( $this->isAddNewUserAdminScreen() ) {
             $this->LogActiveEvent('user', __METHOD__);
         } else {
-            $this->after_signup_user_by_self_event();
+            $this->alm_after_signup_user_by_self_event();
         }
     }
 
@@ -252,7 +252,7 @@ trait MS_UserEvents
      * 
      * @since 1.0.0
      */
-    public function after_signup_user_by_self_event()
+    public function alm_after_signup_user_by_self_event()
     {
         $this->LogActiveEvent('user', __METHOD__);
     }
@@ -341,6 +341,7 @@ trait MS_UserEvents
 
         $primary_blog  = $this->sanitizeOption(get_user_meta($object_id, 'primary_blog', true));
         $source_domain = $this->sanitizeOption(get_user_meta($object_id, 'source_domain', true));
+
         /**
          * If the user is being removed from the primary blog,
          * WordPress will set a new primary blog if the user is assigned to multiple blogs
@@ -353,26 +354,27 @@ trait MS_UserEvents
                 }
                 $primary_blog     = (int) $blog->userblog_id;
                 $source_domain    = $this->sanitizeOption($blog->domain);
-                $primary_blog_url = get_blog_option($primary_blog, 'siteurl', '');
+                $primary_blog_url = $this->sanitizeOption(get_blog_option($primary_blog, 'siteurl', ''), 'url');
                 break;
             }
         } else {
             $source_domain    = $this->sanitizeOption(get_user_meta($object_id, 'source_domain', true));
-            $primary_blog_url = get_blog_option($primary_blog, 'siteurl', '');
         }
 
-        // Make sure the user primary blog and primary blog url is not set to 
+        // Make sure the user primary blog ID url are not set to 
         // the blog they were removed from
         if (count($blogs) == 0) {
-            $primary_blog     = '';
-            $source_domain    = '';
-            $primary_blog_url = '';
+            $primary_blog      = '';
+            $source_domain     = '';
+            $primary_blog_url  = '';
+            $primary_blog_name = '';
+        } else {
+            $primary_blog_url = $this->sanitizeOption(get_blog_option($primary_blog, 'siteurl', ''), 'url');
+            $primary_blog_name = $this->sanitizeOption(get_blog_option($primary_blog, 'name', ''));
         }
 
-        $primary_blog_name = $this->sanitizeOption(get_blog_option($primary_blog, 'name', ''));
-
         // Check whether the user post is reassigned to another user
-        if ($reassign) {
+        if ( !empty($reassign) ) {
             $reassign = (int) $reassign;
             $post_ids = (int) $this->wpdb->get_var($this->wpdb->prepare("SELECT COUNT(ID) FROM $this->wpdb->posts WHERE post_author = %d LIMIT 1", $object_id));
 
@@ -384,8 +386,8 @@ trait MS_UserEvents
                 $reassign_post = 'No post found';
             }
         } else {
-            $reassign_post = 'Posts was not reassigned';
-        }
+            $reassign_post = 'Posts was not reassigned to any user';
+        }   
 
         $this->setupUserEventArgs(compact(
             'blog_id',

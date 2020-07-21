@@ -6,9 +6,8 @@ defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your ow
 
 /**
                  * @package User Events
-                 * @since   1.0.0
-                 */
-
+ * @since   1.0.0
+ */
 trait UserEvents
 {
     /**
@@ -16,8 +15,23 @@ trait UserEvents
      * @var array
      * @since 1.0.0
      */
+    protected $user_data_ref          = [];
     protected $user_data_aggregation  = [];
     protected $_user_profile_metadata = [];
+
+    /**
+     * Specifies the user's roles and capabilities prior to update
+     * @var array
+     * @since 1.0.0
+     */
+    protected $old_user_caps = [];
+
+    /**
+     * User event data statistics
+     * @var string
+     * @since 1.0.0
+     */
+    protected $user_data_statistics = '';
 
     /**
      * Holds the user profile data to be updated
@@ -102,6 +116,9 @@ trait UserEvents
         // Password reset event setup
         add_action('retrieve_password',     [ $this, 'setupUserPasswordResetFlag'    ], 10);
         add_action('retrieve_password_key', [ $this, 'setupUserPasswordResetKeyFlag' ], 10, 2);
+        
+        // User deletion flag setup
+        add_action('delete_user', [ $this, 'setupUserDeletionFlag' ], 10, 2);
 
         // Multisite events
         if ($this->is_multisite)
@@ -121,6 +138,12 @@ trait UserEvents
         add_action('wpmu_new_user', function () {
             $this->setConstant('ALM_MS_NEW_USER_CREATED', true);
         });
+
+        // Setup the delete user flag on multisite
+        add_action('wpmu_delete_user', function () {
+            $this->setConstant('ALM_MS_USER_DELETE_USER', true);
+        });
+        add_action('wpmu_delete_user', [ $this, 'setupUserDeletionFlag' ], 10, 2);
     }
 
     /**
@@ -211,8 +234,8 @@ trait UserEvents
         }
 
         // WP_Error
-        if ( isset( $wp_error ) && $wp_error ) {
-            $user_role = isset( $user->role ) ? $user->role : '';
+        if ( isset($user->role) ) {
+            $user_role = $user->role;
         } else {
             $user_role = $this->User->getUserRoles( $object_id );
         }
@@ -369,9 +392,8 @@ trait UserEvents
          * If the site is using a customized user dashboard and IS_PROFILE_PAGE 
          * constant is not defined, we have to set it up
          */
-        if ( ! $this->getConstant('IS_PROFILE_PAGE') ) {
+        if ( ! $this->getConstant('IS_PROFILE_PAGE') )
             $this->setConstant('ALM_IS_PROFILE_PAGE');
-        }
     }
 
     /**
@@ -466,6 +488,66 @@ trait UserEvents
     }
 
     /**
+     * Setup the user deletion flag 
+     * 
+     * @since 1.0.0
+     * 
+     * @see wp_delete_user()
+     * @see wpmu_delete_user()
+     * 
+     * @todo Get the deleted post, links and metadata
+     * @todo if post was reassigned, show the statistics update
+     */
+    public function setupUserDeletionFlag( $user_id, $reassign = null )
+    {
+        $this->setConstant( 'ALM_USER_DELETE_USER', $user_id );
+
+        /**
+         * Keep reference to some user data
+         */
+        $user_data = $this->User->getUserData($user_id);
+
+        if ( empty($this->getVar($user_data, 'ID')) ) return;
+
+        $this->user_data_ref = (object) [
+            'roles'        => (array) $user_data->roles,
+            'nickname'     => $this->sanitizeOption($user_data->nickname),
+            'user_login'   => $this->sanitizeOption($user_data->user_login, 'username'),
+            'user_email'   => $this->sanitizeOption($user_data->user_email, 'email'),
+            'last_name'    => $this->sanitizeOption($user_data->last_name),
+            'first_name'   => $this->sanitizeOption($user_data->first_name),
+            'display_name' => $this->sanitizeOption($user_data->display_name),
+        ];
+
+        /**
+         * Get a summary of all deleted user posts, links, metadata
+         */
+        $reassign = (int) $reassign;
+
+        /**
+         * Get the list of post types to delete with a user
+         * This works only on non-multisite installation
+         */
+        if ( !$this->is_multisite )
+        {
+            $_post_types_to_delete = [];
+
+            add_filter('post_types_to_delete_with_user',
+                function( $post_types_to_delete, $id ) use ( &$_post_types_to_delete )
+                {
+                    $_post_types_to_delete = $post_types_to_delete;
+                    return $post_types_to_delete;
+                },
+                10, 2
+            );
+
+            $_post_types_to_delete = implode( "', '", $_post_types_to_delete );
+        }
+
+        $this->user_data_statistics = '';
+    }
+
+    /**
      * Setup the users events
      * 
      * @since 1.0.0
@@ -549,10 +631,7 @@ trait UserEvents
                     ],
 
                     'event_handler' => [
-                        'hook '    => 'action',
                         'num_args' => 3,
-                        'priority' => 10,
-                        'callback' => null,
                     ],
                 ],
 
@@ -580,16 +659,16 @@ trait UserEvents
                         'first_name'               => ['first_name'],
                         'last_name'                => ['last_name'],
                         'user_email'               => ['user_email'],
-                        'log_counter'              => $this->getLogCounterInfo(),
                         'is_user_owner_of_account' => ['is_user_owner_of_account'],
                         'profile_url'              => ['profile_url'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
+                        'source_domain'            => ['source_domain'],
                     ],
 
                     'event_handler' => [
-                        'hook'     => 'action',
                         'num_args' => 4,
-                        'priority' => 10,
-                        'callback' => null,
                     ],
                 ],
 
@@ -626,10 +705,7 @@ trait UserEvents
                     ],
 
                     'event_handler' => [
-                        'hook'     => 'action',
                         'num_args' => 4,
-                        'priority' => 10,
-                        'callback' => null,
                     ],
                 ],
 
@@ -658,17 +734,17 @@ trait UserEvents
                         'first_name'               => ['first_name'],
                         'last_name'                => ['last_name'],
                         'user_email'               => ['user_email'],
-                        'log_counter'              => $this->getLogCounterInfo(),
                         'custom_field_updated'     => ['custom_field_updated'],
                         'is_user_owner_of_account' => ['is_user_owner_of_account'],
                         'profile_url'              => ['profile_url'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
+                        'source_domain'            => ['source_domain'],
                     ],
 
                     'event_handler' => [
-                        'hook'     => 'action',
                         'num_args' => 4,
-                        'priority' => 10,
-                        'callback' => null,
                     ],
                 ],
 
@@ -704,10 +780,7 @@ trait UserEvents
                     ],
 
                     'event_handler' => [
-                        'hook'     => 'action',
                         'num_args' => 4,
-                        'priority' => 10,
-                        'callback' => null,
                     ],
                 ],
 
@@ -735,17 +808,17 @@ trait UserEvents
                         'first_name'               => ['first_name'],
                         'last_name'                => ['last_name'],
                         'user_email'               => ['user_email'],
-                        'log_counter'              => $this->getLogCounterInfo(),
                         'custom_field_added'       => ['custom_field_added'],
                         'is_user_owner_of_account' => ['is_user_owner_of_account'],
                         'profile_url'              => ['profile_url'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
+                        'source_domain'            => ['source_domain'],
                     ],
 
                     'event_handler' => [
-                        'hook'     => 'action',
                         'num_args' => 4,
-                        'priority' => 10,
-                        'callback' => null,
                     ],
                 ],
 
@@ -777,9 +850,12 @@ trait UserEvents
                         'first_name'               => ['first_name'],
                         'last_name'                => ['last_name'],
                         'user_email'               => ['user_email'],
-                        'log_counter'              => $this->getLogCounterInfo(),
                         'is_user_owner_of_account' => ['is_user_owner_of_account'],
                         'profile_url'              => ['profile_url'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
+                        'source_domain'            => ['source_domain'],
                     ],
                 ],
 
@@ -815,12 +891,14 @@ trait UserEvents
                         'log_counter'              => $this->getLogCounterInfo(),
                         'is_user_owner_of_account' => ['is_user_owner_of_account'],
                         'profile_url'              => ['profile_url'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
+                        'source_domain'            => ['source_domain'],
                     ],
 
                     'event_handler' => [
-                        'hook'     => 'action',
                         'num_args' => 3,
-                        'priority' => 10,
                     ],
                 ],
 
@@ -881,6 +959,7 @@ trait UserEvents
                         // Will contain all updated user profile data
                         'user_profile_data'        => ['user_profile_data'],
 
+                        '_inspect_user_role'       => '',
                         '_space_end'               => '',
                         
                         'user_id'                  => ['object_id'],
@@ -890,7 +969,6 @@ trait UserEvents
                         'first_name'               => ['first_name'],
                         'last_name'                => ['last_name'],
                         'user_email'               => ['user_email'],
-                        'log_counter'              => $this->getLogCounterInfo(),
                         'profile_url'              => ['profile_url'],
                     ],
 
@@ -921,6 +999,7 @@ trait UserEvents
                         // Will contain all updated user profile data
                         'user_profile_data'        => ['user_profile_data'],
 
+                        '_inspect_user_role'       => '',
                         '_space_end'               => '',
                         
                         'user_id'                  => ['object_id'],
@@ -930,7 +1009,6 @@ trait UserEvents
                         'first_name'               => ['first_name'],
                         'last_name'                => ['last_name'],
                         'user_email'               => ['user_email'],
-                        'log_counter'              => $this->getLogCounterInfo(),
                         'profile_url'              => ['profile_url'],
                     ],
                 ],
@@ -957,7 +1035,6 @@ trait UserEvents
                     ],
 
                     'event_handler' => [
-                        'hook'     => 'action',
                         'num_args' => 3,
                     ],
                 ],
@@ -983,6 +1060,7 @@ trait UserEvents
                         // Will contain all updated user profile data
                         'user_profile_data'        => ['user_profile_data'],
 
+                        '_inspect_user_role'       => '',
                         '_space_end'               => '',
                         
                         'user_id'                  => ['object_id'],
@@ -992,8 +1070,12 @@ trait UserEvents
                         'first_name'               => ['first_name'],
                         'last_name'                => ['last_name'],
                         'user_email'               => ['user_email'],
-                        'log_counter'              => $this->getLogCounterInfo(),
+                        'is_user_owner_of_account' => ['is_user_owner_of_account'],
                         'profile_url'              => ['profile_url'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
+                        'source_domain'            => ['source_domain'],
                     ],
 
                     'event_handler' => [
@@ -1028,46 +1110,12 @@ trait UserEvents
                         'first_name'               => ['first_name'],
                         'last_name'                => ['last_name'],
                         'user_email'               => ['user_email'],
-                        'log_counter'              => $this->getLogCounterInfo(),
+                        'is_user_owner_of_account' => ['is_user_owner_of_account'],
                         'profile_url'              => ['profile_url'],
-                    ],
-
-                    'event_handler' => [
-                        'hook'     => 'callback',
-                        'num_args' => 3,
-                    ],
-                ],
-
-                /**
-                 * Profile update alias for user_nicename
-                 * 
-                 * @since 1.0.0
-                 */
-                'alm_profile_update_user_nicename' => [
-                    'title'    => 'User nicename updated',
-                    'action'   => 'modified',
-                    'event_id' => 5033,
-                    'severity' => 'notice',
-
-                    'user_state' => 'logged_in',
-
-                    'message'  => [
-                        '_main' => 'Changed the user ---Nicename---',
-                        
-                        '_space_start'             => '',
-                        'user_nicename_previous'   => ['user_nicename', 'previous'],
-                        'user_nicename_new'        => ['user_nicename', 'new'],
-                        '_space_end'               => '',
-                        
-                        'user_id'                  => ['object_id'],
-                        'user_login'               => ['user_login'],
-                        'display_name'             => ['display_name'],
-                        'roles'                    => ['roles'],
-                        'first_name'               => ['first_name'],
-                        'last_name'                => ['last_name'],
-                        'user_email'               => ['user_email'],
-                        'log_counter'              => $this->getLogCounterInfo(),
-                        'profile_url'              => ['profile_url'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
+                        'source_domain'            => ['source_domain'],
                     ],
 
                     'event_handler' => [
@@ -1106,8 +1154,12 @@ trait UserEvents
                         'roles'                    => ['roles'],
                         'first_name'               => ['first_name'],
                         'last_name'                => ['last_name'],
-                        'log_counter'              => $this->getLogCounterInfo(),
+                        'is_user_owner_of_account' => ['is_user_owner_of_account'],
                         'profile_url'              => ['profile_url'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
+                        'source_domain'            => ['source_domain'],
                     ],
 
                     'event_handler' => [
@@ -1130,11 +1182,12 @@ trait UserEvents
                     'user_state' => 'logged_in',
 
                     'message'  => [
-                        '_main' => 'Changed the ---User email address---',
+                        '_main' => 'Changed the user ---Email address---',
 
                         '_space_start'             => '',
                         'user_email_previous'      => ['user_email', 'previous'],
                         'user_email_new'           => ['user_email', 'new'],
+                        '_inspect_user_role'       => '',
                         '_space_end'               => '',
 
                         'user_id'                  => ['object_id'],
@@ -1143,8 +1196,12 @@ trait UserEvents
                         'roles'                    => ['roles'],
                         'first_name'               => ['first_name'],
                         'last_name'                => ['last_name'],
-                        'log_counter'              => $this->getLogCounterInfo(),
+                        'is_user_owner_of_account' => ['is_user_owner_of_account'],
                         'profile_url'              => ['profile_url'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
+                        'source_domain'            => ['source_domain'],
                     ],
 
                     'event_handler' => [
@@ -1168,11 +1225,12 @@ trait UserEvents
                     'user_state' => 'logged_in',
 
                     'message'  => [
-                        '_main' => 'Cancelled the request to change the ---User email address---',
+                        '_main' => 'Cancelled the request to change the user ---Email address---',
 
                         '_space_start'             => '',
                         'user_email_requested'     => ['user_email', 'requested'],
                         'user_email_current'       => ['user_email', 'current'],
+                        '_inspect_user_role'       => '',
                         '_space_end'               => '',
 
                         'user_id'                  => ['object_id'],
@@ -1181,8 +1239,12 @@ trait UserEvents
                         'roles'                    => ['roles'],
                         'first_name'               => ['first_name'],
                         'last_name'                => ['last_name'],
-                        'log_counter'              => $this->getLogCounterInfo(),
+                        'is_user_owner_of_account' => ['is_user_owner_of_account'],
                         'profile_url'              => ['profile_url'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
+                        'source_domain'            => ['source_domain'],
                     ],
 
                     'event_handler' => [
@@ -1205,7 +1267,7 @@ trait UserEvents
                     'user_state' => 'logged_in',
 
                     'message'  => [
-                        '_main' => 'Changed the ---User nicename---',
+                        '_main' => 'Changed the user ---Nice name---',
 
                         '_space_start'             => '',
                         'user_nicename_previous'   => ['user_nicename', 'previous'],
@@ -1219,8 +1281,12 @@ trait UserEvents
                         'first_name'               => ['first_name'],
                         'last_name'                => ['last_name'],
                         'user_email'               => ['user_email'],
-                        'log_counter'              => $this->getLogCounterInfo(),
+                        'is_user_owner_of_account' => ['is_user_owner_of_account'],
                         'profile_url'              => ['profile_url'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
+                        'source_domain'            => ['source_domain'],
                     ],
 
                     'event_handler' => [
@@ -1243,7 +1309,7 @@ trait UserEvents
                     'user_state' => 'logged_in',
 
                     'message'  => [
-                        '_main' => 'Changed the ---User url---',
+                        '_main' => 'Changed the user ---URL---',
 
                         '_space_start'             => '',
                         'user_url_previous'        => ['user_url', 'previous'],
@@ -1257,8 +1323,12 @@ trait UserEvents
                         'first_name'               => ['first_name'],
                         'last_name'                => ['last_name'],
                         'user_email'               => ['user_email'],
-                        'log_counter'              => $this->getLogCounterInfo(),
+                        'is_user_owner_of_account' => ['is_user_owner_of_account'],
                         'profile_url'              => ['profile_url'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
+                        'source_domain'            => ['source_domain'],
                     ],
 
                     'event_handler' => [
@@ -1281,7 +1351,7 @@ trait UserEvents
                     'user_state' => 'logged_in',
 
                     'message'  => [
-                        '_main' => 'Changed the ---User status---',
+                        '_main' => 'Changed the user ---Status---',
 
                         '_space_start'             => '',
                         'user_status_previous'     => ['user_status', 'previous'],
@@ -1295,8 +1365,12 @@ trait UserEvents
                         'first_name'               => ['first_name'],
                         'last_name'                => ['last_name'],
                         'user_email'               => ['user_email'],
-                        'log_counter'              => $this->getLogCounterInfo(),
+                        'is_user_owner_of_account' => ['is_user_owner_of_account'],
                         'profile_url'              => ['profile_url'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
+                        'source_domain'            => ['source_domain'],
                     ],
 
                     'event_handler' => [
@@ -1319,7 +1393,7 @@ trait UserEvents
                     'logged_in_user_caps' => [ 'edit_users' ],
 
                     'message'  => [
-                        '_main' => 'Changed the ---User password---',
+                        '_main' => 'Changed the user ---Password---',
 
                         'user_id'                  => ['object_id'],
                         'user_login'               => ['user_login'],
@@ -1328,8 +1402,12 @@ trait UserEvents
                         'first_name'               => ['first_name'],
                         'last_name'                => ['last_name'],
                         'user_email'               => ['user_email'],
-                        'log_counter'              => $this->getLogCounterInfo(),
+                        'is_user_owner_of_account' => ['is_user_owner_of_account'],
                         'profile_url'              => ['profile_url'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
+                        'source_domain'            => ['source_domain'],
                     ],
 
                     'event_handler' => [
@@ -1371,10 +1449,13 @@ trait UserEvents
                         'user_email'               => ['user_email'],
                         'log_counter'              => $this->getLogCounterInfo(),
                         'profile_url'              => ['profile_url'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
+                        'source_domain'            => ['source_domain'],
                     ],
 
                     'event_handler' => [
-                        'hook'     => 'action',
                         'num_args' => 2,
                     ],
                 ],
@@ -1412,6 +1493,10 @@ trait UserEvents
                         'user_email'               => ['user_email'],
                         'log_counter'              => $this->getLogCounterInfo(),
                         'profile_url'              => ['profile_url'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
+                        'source_domain'            => ['source_domain'],
                     ],
 
                     'event_handler' => [
@@ -1459,6 +1544,7 @@ trait UserEvents
                         'password_expiration_time' => ['password_expiration_time'],
                         'password_reset_url'       => ['password_reset_url'],
 
+                        '_inspect_user_role'       => '',
                         '_space_end'               => '',
 
                         'user_id'                  => ['object_id'],
@@ -1468,8 +1554,11 @@ trait UserEvents
                         'first_name'               => ['first_name'],
                         'last_name'                => ['last_name'],
                         'user_email'               => ['user_email'],
-                        'log_counter'              => $this->getLogCounterInfo(),
                         'profile_url'              => ['profile_url'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
+                        'source_domain'            => ['source_domain'],
                     ],
 
                     'event_handler' => [
@@ -1513,6 +1602,10 @@ trait UserEvents
                         'user_email'                   => ['user_email'],
                         'log_counter'                  => $this->getLogCounterInfo(),
                         'profile_url'                  => ['profile_url'],
+                        'user_primary_site'            => ['primary_blog'],
+                        'primary_site_name'            => ['primary_blog_name'],
+                        'primary_site_url'             => ['primary_blog_url'],
+                        'source_domain'                => ['source_domain'],
                     ],
 
                     'event_handler' => [
@@ -1550,10 +1643,13 @@ trait UserEvents
                         'last_name'                => ['last_name'],
                         'user_email'               => ['user_email'],
                         'profile_url'              => ['profile_url'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
+                        'source_domain'            => ['source_domain'],
                     ],
 
                     'event_handler' => [
-                        'hook'     => 'action',
                         'num_args' => 2,
                     ],
                 ],
@@ -1590,10 +1686,13 @@ trait UserEvents
                         'last_name'                => ['last_name'],
                         'user_email'               => ['user_email'],
                         'profile_url'              => ['profile_url'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
+                        'source_domain'            => ['source_domain'],
                     ],
 
                     'event_handler' => [
-                        'hook'     => 'action',
                         'num_args' => 2,
                     ],
                 ],
@@ -1616,6 +1715,7 @@ trait UserEvents
 
                         '_space_start'             => '',
                         'login_url'                => ['login_url'],
+                        '_inspect_user_role'       => '',
                         '_space_end'               => '',
 
                         'user_id'                  => ['object_id'],
@@ -1626,10 +1726,13 @@ trait UserEvents
                         'last_name'                => ['last_name'],
                         'user_email'               => ['user_email'],
                         'profile_url'              => ['profile_url'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
+                        'source_domain'            => ['source_domain'],
                     ],
 
                     'event_handler' => [
-                        'hook'     => 'action',
                         'num_args' => 2,
                     ],
                 ],
@@ -1658,6 +1761,10 @@ trait UserEvents
                         'last_name'                => ['last_name'],
                         'user_email'               => ['user_email'],
                         'profile_url'              => ['profile_url'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
+                        'source_domain'            => ['source_domain'],
                     ]
                 ],
 
@@ -1690,8 +1797,9 @@ trait UserEvents
                         'last_name'                => ['last_name'],
                         'user_email'               => ['user_email'],
                         'profile_url'              => ['profile_url'],
-                        'user_primary_blog'        => ['primary_blog'],
-                        'primary_blog_name'        => ['primary_blog_name'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
                         'source_domain'            => ['source_domain'],
                     ]
                 ],
@@ -1725,8 +1833,9 @@ trait UserEvents
                         'last_name'                => ['last_name'],
                         'user_email'               => ['user_email'],
                         'profile_url'              => ['profile_url'],
-                        'user_primary_blog'        => ['primary_blog'],
-                        'primary_blog_name'        => ['primary_blog_name'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
                         'source_domain'            => ['source_domain'],
                     ]
                 ],
@@ -1755,9 +1864,9 @@ trait UserEvents
 
                         '_space_start'             => '',
                         'failed_attempts'          => ['failed_attempts'],
-                        'blog_id'                  => ['blog_id'],
-                        'blog_name'                => ['blog_name'],
-                        'blog_url'                 => ['blog_url'],
+                        'site_id'                  => ['blog_id'],
+                        'site_name'                => ['blog_name'],
+                        'site_url'                 => ['blog_url'],
                         'role_given'               => ['role_given'],
                         '_error_msg'               => '',
                         '_space_end'               => '',
@@ -1770,8 +1879,9 @@ trait UserEvents
                         'last_name'                => ['last_name'],
                         'user_email'               => ['user_email'],
                         'profile_url'              => ['profile_url'],
-                        'user_primary_blog'        => ['primary_blog'],
-                        'primary_blog_name'        => ['primary_blog_name'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
                         'source_domain'            => ['source_domain'],
                     ],
 
@@ -1803,13 +1913,15 @@ trait UserEvents
                         '_main'                    => 'Added a user to a site without email confirmation',
 
                         '_space_start'             => '',
-                        'blog_id'                  => ['blog_id'],
-                        'blog_name'                => ['blog_name'],
-                        'blog_url'                 => ['blog_url'],
+                        'site_id'                  => ['blog_id'],
+                        'site_name'                => ['blog_name'],
+                        'site_url'                 => ['blog_url'],
                         'role_given'               => ['role_given'],
-                        'user_primary_blog'        => ['primary_blog'],
-                        'primary_blog_name'        => ['primary_blog_name'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
                         'source_domain'            => ['source_domain'],
+                        '_inspect_user_role'       => '',
                         '_space_end'               => '',
 
                         'user_id'                  => ['object_id'],
@@ -1849,14 +1961,16 @@ trait UserEvents
                         '_main' => 'Invited a user to join a site with email confirmation',
 
                         '_space_start'              => '',
-                        'blog_id'                   => ['blog_id'],
-                        'blog_name'                 => ['blog_name'],
-                        'blog_url'                  => ['blog_url'],
+                        'site_id'                   => ['blog_id'],
+                        'site_name'                 => ['blog_name'],
+                        'site_url'                  => ['blog_url'],
                         'role_given'                => ['role_given'],
                         'invitation_activation_key' => ['activation_key'],
-                        'user_primary_blog'         => ['primary_blog'],
-                        'primary_blog_name'         => ['primary_blog_name'],
+                        'user_primary_site'         => ['primary_blog'],
+                        'primary_site_name'         => ['primary_blog_name'],
+                        'primary_site_url'          => ['primary_blog_url'],
                         'source_domain'             => ['source_domain'],
+                        '_inspect_user_role'        => '',
                         '_space_end'                => '',
 
                         'user_id'                   => ['object_id'],
@@ -1885,7 +1999,7 @@ trait UserEvents
                  * 
                  * @see add_new_user_to_blog()
                  */
-                'add_new_user_to_blog_by_admin' => [
+                'alm_add_new_user_to_blog_by_admin' => [
                     'title'               => 'New user created',
                     'action'              => 'new_user_added',
                     'event_id'            => 5054,
@@ -1898,13 +2012,15 @@ trait UserEvents
                         '_main' => 'Created a new user without sending an email confirmation to the user. The user has been activated and added to the site automatically.',
 
                         '_space_start'             => '',
-                        'blog_id'                  => ['blog_id'],
-                        'blog_name'                => ['blog_name'],
-                        'blog_url'                 => ['blog_url'],
+                        'site_id'                  => ['blog_id'],
+                        'site_name'                => ['blog_name'],
+                        'site_url'                 => ['blog_url'],
                         'role_given'               => ['role_given'],
-                        'user_primary_blog'        => ['primary_blog'],
-                        'primary_blog_name'        => ['primary_blog_name'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
                         'source_domain'            => ['source_domain'],
+                        '_inspect_user_role'       => '',
                         '_space_end'               => '',
 
                         'user_id'                  => ['object_id'],
@@ -1930,7 +2046,7 @@ trait UserEvents
                  * 
                  * @see add_new_user_to_blog()
                  */
-                'add_new_user_to_blog_by_self' => [
+                'alm_add_new_user_to_blog_by_self' => [
                     'title'               => 'New user registered',
                     'action'              => 'new_user_registered',
                     'event_id'            => 5055,
@@ -1941,13 +2057,15 @@ trait UserEvents
                         '_main' => 'New user registration successful.',
 
                         '_space_start'             => '',
-                        'blog_id'                  => ['blog_id'],
-                        'blog_name'                => ['blog_name'],
-                        'blog_url'                 => ['blog_url'],
+                        'site_id'                  => ['blog_id'],
+                        'site_name'                => ['blog_name'],
+                        'site_url'                 => ['blog_url'],
                         'role_given'               => ['role_given'],
-                        'user_primary_blog'        => ['primary_blog'],
-                        'primary_blog_name'        => ['primary_blog_name'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
                         'source_domain'            => ['source_domain'],
+                        '_inspect_user_role'       => '',
                         '_space_end'               => '',
 
                         'user_id'                  => ['object_id'],
@@ -1990,12 +2108,13 @@ trait UserEvents
                         // '_main' => 'Created a new user with email confirmation for future activation',
 
                         '_space_start'              => '',
-                        'blog_id'                   => ['blog_id'],
-                        'blog_name'                 => ['blog_name'],
-                        'blog_url'                  => ['blog_url'],
+                        'site_id'                   => ['blog_id'],
+                        'site_name'                 => ['blog_name'],
+                        'site_url'                  => ['blog_url'],
                         'role_given'                => ['role_given'],
                         'new_user_status'           => ['new_user_status'],
                         'invitation_activation_key' => ['activation_key'],
+                        '_inspect_user_role'        => '',
                         '_space_end'                => '',
 
                         'user_id'                   => ['object_id'],
@@ -2024,7 +2143,7 @@ trait UserEvents
                  * 
                  * @see wpmu_create_user()
                  */
-                'after_signup_user_by_self' => [
+                'alm_after_signup_user_by_self' => [
                     'title'               => 'New user signup information recorded',
                     'action'              => 'new_user_signup_recorded',
                     'event_id'            => 5057,
@@ -2036,12 +2155,13 @@ trait UserEvents
                         // '_main' => 'Created a new user with email confirmation for future activation',
 
                         '_space_start'              => '',
-                        'blog_id'                   => ['blog_id'],
-                        'blog_name'                 => ['blog_name'],
-                        'blog_url'                  => ['blog_url'],
+                        'site_id'                   => ['blog_id'],
+                        'site_name'                 => ['blog_name'],
+                        'site_url'                  => ['blog_url'],
                         'role_given'                => ['role_given'],
                         'new_user_status'           => ['new_user_status'],
                         'invitation_activation_key' => ['activation_key'],
+                        '_inspect_user_role'        => '',
                         '_space_end'                => '',
 
                         'user_id'                   => ['object_id'],
@@ -2081,14 +2201,16 @@ trait UserEvents
                         '_main' => 'A new user has been activated successfully. The user is now a member of the site.',
 
                         '_space_start'              => '',
-                        'blog_id'                   => ['blog_id'],
-                        'blog_name'                 => ['blog_name'],
-                        'blog_url'                  => ['blog_url'],
+                        'site_id'                   => ['blog_id'],
+                        'site_name'                 => ['blog_name'],
+                        'site_url'                  => ['blog_url'],
                         'role_given'                => ['role_given'],
                         'new_user_status'           => ['new_user_status'],
-                        'user_primary_blog'         => ['primary_blog'],
-                        'primary_blog_name'         => ['primary_blog_name'],
+                        'user_primary_site'         => ['primary_blog'],
+                        'primary_site_name'         => ['primary_blog_name'],
+                        'primary_site_url'          => ['primary_blog_url'],
                         'source_domain'             => ['source_domain'],
+                        '_inspect_user_role'        => '',
                         '_space_end'                => '',
 
                         'user_id'                   => ['object_id'],
@@ -2123,12 +2245,12 @@ trait UserEvents
                     'user_state'      => 'logged_in',
 
                     'message'  => [
-                        '_main'                    => 'Removed a user from a site',
+                        '_main'                    => 'Removed a user from the site',
 
                         '_space_start'             => '',
-                        'blog_id'                  => ['blog_id'],
-                        'blog_name'                => ['blog_name'],
-                        'blog_url'                 => ['blog_url'],
+                        'site_id'                  => ['blog_id'],
+                        'site_name'                => ['blog_name'],
+                        'site_url'                 => ['blog_url'],
                         'role_given'               => ['role_given'],
                         'reassign_user_post_to'    => ['reassign_post'],
                         '_space_end'               => '',
@@ -2140,8 +2262,9 @@ trait UserEvents
                         'last_name'                => ['last_name'],
                         'user_email'               => ['user_email'],
                         'profile_url'              => ['profile_url'],
-                        'user_primary_blog'        => ['primary_blog'],
-                        'primary_blog_name'        => ['primary_blog_name'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
                         'source_domain'            => ['source_domain'],
                     ],
 
@@ -2150,22 +2273,27 @@ trait UserEvents
                     ],
                 ],
 
+                /**
+                 * Fires immediately before a user is deleted from the database.
+                 * 
+                 * @since 1.0.0
+                 */
+                'deleted_user' => [
+                    'title'               => 'User deleted',
+                    'action'              => 'user_deleted',
+                    'event_id'            => 5062,
+                    'severity'            => 'critical',
+                    'logged_in_user_caps' => ['delete_users'],
 
+                    'message' => [
+                        '_main' => 'Deleted a user account from the site.',
 
-
-
-
-                // Fires immediately before a user is deleted from the database.
-                'delete_user' => [
-                    'title'    => 'User deletion triggered',
-                    'action'   => 'delete',
-                    'event_id' => 0000,
-                    'severity' => 'critical',
-
-                    'message'  => [
-                        '_main' => 'User triggered the ---delete user--- request on another user account.',
-                        
                         '_space_start'             => '',
+                        'deleted_user_statistics'  => '',
+                        'site_id'                  => ['blog_id'],
+                        'site_name'                => ['blog_name'],
+                        'site_url'                 => ['blog_url'],
+                        'reassign_user_post_to'    => ['reassign_post'],
                         '_space_end'               => '',
                         
                         'user_id'                  => ['object_id'],
@@ -2175,8 +2303,12 @@ trait UserEvents
                         'first_name'               => ['first_name'],
                         'last_name'                => ['last_name'],
                         'user_email'               => ['user_email'],
-                        'log_counter'              => $this->getLogCounterInfo(),
+                        'is_user_owner_of_account' => ['is_user_owner_of_account'],
                         'profile_url'              => ['profile_url'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
+                        'source_domain'            => ['source_domain'],
                     ],
 
                     'event_handler' => [
@@ -2184,13 +2316,497 @@ trait UserEvents
                     ],
                 ],
 
+                /**
+                 * Fires immediately before a user is deleted from the network.
+                 * 
+                 * Multisite only
+                 * 
+                 * @since 1.0.0
+                 */
+                'alm_deleted_user_from_network' => [
+                    'title'               => 'User deleted',
+                    'action'              => 'user_deleted',
+                    'event_id'            => 5063,
+                    'severity'            => 'critical',
+                    'screen'              => ['multisite'],
+                    'logged_in_user_caps' => ['delete_users'],
 
-                'user_sessions_management',
+                    'message' => [
+                        '_main' => 'Deleted a user account from the network.',
+
+                        '_space_start'             => '',
+                        'deleted_user_statistics'  => '',
+                        '_space_end'               => '',
+                        
+                        'user_id'                  => ['object_id'],
+                        'user_login'               => ['user_login'],
+                        'display_name'             => ['display_name'],
+                        'roles'                    => ['roles'],
+                        'first_name'               => ['first_name'],
+                        'last_name'                => ['last_name'],
+                        'user_email'               => ['user_email'],
+                        'is_user_owner_of_account' => ['is_user_owner_of_account'],
+                        'profile_url'              => ['profile_url'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
+                        'source_domain'            => ['source_domain'],
+                    ],
+
+                    'event_handler' => [
+                        'hook'     => 'callback',
+                        'num_args' => 2,
+                    ],
+                ],
 
                 /**
-                 * Will handle user's moderation events by admins such as creation, update, or deletion failed.
-                */
-                'user_error',
+                 * Fires after the user's role has changed.
+                 * 
+                 * @since 1.0.0
+                 */
+                'set_user_role' => [
+                    'title'    => 'User role changed',
+                    'action'   => 'user_role_modified',
+                    'event_id' => 5064,
+                    'severity' => 'critical',
+
+                    /**
+                     * Ignore the user capability meta field
+                     */
+                    'ignore_meta_fields' => [
+                        $this->getBlogPrefix() . 'capabilities',
+                    ],
+
+                    /**
+                     * Translation arguments
+                     */
+                    '_translate' => [
+                        'all_previous_role' => [
+                            'plural'      => 'all_previous_roles',
+                            'singular'    => 'all_previous_role',
+
+                            // Specifies the character to check for before pluralizing 
+                            // the string. Basically, this is the character used to join the 
+                            // array elements, same as the one used in the implode() function
+                            'plural_char' => ', ',
+                        ],
+                        'all_new_role' => [
+                            'plural'   => 'all_new_roles',
+                            'singular' => 'new_role',
+                        ]
+                    ],
+
+                    'message'  => [
+                        '_main'                    => 'Changed the role of the user.',
+
+                        '_space_start'             => '',
+                        'all_previous_role'        => ['role_previous'],
+                        'all_new_role'             => ['role_new'],
+                        '_inspect_user_role'       => '',
+                        '_space_end'               => '',
+                        
+                        'user_id'                  => ['object_id'],
+                        'user_login'               => ['user_login'],
+                        'display_name'             => ['display_name'],
+                        'first_name'               => ['first_name'],
+                        'last_name'                => ['last_name'],
+                        'user_email'               => ['user_email'],
+                        'is_user_owner_of_account' => ['is_user_owner_of_account'],
+                        'profile_url'              => ['profile_url'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
+                        'source_domain'            => ['source_domain'],
+                    ],
+
+                    'event_handler' => [
+                        'num_args' => 3,
+                    ],
+                ],
+
+                /**
+                 * Fires immediately after the user has been given a new role.
+                 * 
+                 * @since 1.0.0
+                 */
+                'add_user_role' => [
+                    'title'    => 'New user role added',
+                    'action'   => 'user_role_modified',
+                    'event_id' => 5065,
+                    'severity' => 'critical',
+
+                    /**
+                     * Ignore the user capability meta field
+                     */
+                    'ignore_meta_fields' => [
+                        $this->getBlogPrefix() . 'capabilities',
+                    ],
+
+                    /**
+                     * Translation arguments
+                     */
+                    '_translate' => [
+                        'all_previous_role' => [
+                            'plural'   => 'all_previous_roles',
+                            'singular' => 'previous_role',
+                        ],
+                        'all_new_role' => [
+                            'plural'   => 'all_new_roles',
+                            'singular' => 'all_new_role',
+                        ]
+                    ],
+
+                    'message'  => [
+                        '_main'                    => 'Added a new role to the user',
+
+                        '_space_start'             => '',
+                        'added_role'               => ['added_role'],
+                        'all_previous_role'        => ['role_previous'],
+                        'all_new_role'             => ['role_new'],
+                        '_inspect_user_role'       => '',
+                        '_space_end'               => '',
+
+                        'user_id'                  => ['object_id'],
+                        'user_login'               => ['user_login'],
+                        'display_name'             => ['display_name'],
+                        'first_name'               => ['first_name'],
+                        'last_name'                => ['last_name'],
+                        'user_email'               => ['user_email'],
+                        'is_user_owner_of_account' => ['is_user_owner_of_account'],
+                        'profile_url'              => ['profile_url'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
+                        'source_domain'            => ['source_domain'],
+                    ],
+
+                    'event_handler' => [
+                        'num_args' => 2,
+                    ],
+                ],
+
+                /**
+                 * Fires immediately after the user has been given a new role.
+                 * 
+                 * @since 1.0.0
+                 */
+                'remove_user_role' => [
+                    'title'    => 'User role removed',
+                    'action'   => 'user_role_modified',
+                    'event_id' => 5066,
+                    'severity' => 'critical',
+
+                    /**
+                     * Ignore the user capability meta field
+                     */
+                    'ignore_meta_fields' => [
+                        $this->getBlogPrefix() . 'capabilities',
+                    ],
+
+                    /**
+                     * Translation arguments
+                     */
+                    '_translate' => [
+                        'all_previous_role' => [
+                            'plural'   => 'all_previous_roles',
+                            'singular' => 'previous_role',
+                        ],
+                        'all_new_role' => [
+                            'plural'   => 'all_new_roles',
+                            'singular' => 'all_new_role',
+                        ]
+                    ],
+
+                    'message'  => [
+                        '_main'                    => 'Removed a role from the user',
+
+                        '_space_start'             => '',
+                        'removed_role'             => ['removed_role'],
+                        'all_previous_role'        => ['role_previous'],
+                        'all_new_role'             => ['role_new'],
+                        '_inspect_user_role'       => '',
+                        '_space_end'               => '',
+
+                        'user_id'                  => ['object_id'],
+                        'user_login'               => ['user_login'],
+                        'display_name'             => ['display_name'],
+                        'first_name'               => ['first_name'],
+                        'last_name'                => ['last_name'],
+                        'user_email'               => ['user_email'],
+                        'is_user_owner_of_account' => ['is_user_owner_of_account'],
+                        'profile_url'              => ['profile_url'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
+                        'source_domain'            => ['source_domain'],
+                    ],
+
+                    'event_handler' => [
+                        'num_args' => 2,
+                    ],
+                ],
+
+                /**
+                 * Fires immediately after the user has been given a new capability.
+                 * 
+                 * @since 1.0.0
+                 */
+                'alm_add_user_cap_event' => [
+                    'title'    => 'New user capability added',
+                    'action'   => 'user_capability_modified',
+                    'event_id' => 5067,
+                    'severity' => 'critical',
+
+                    /**
+                     * Ignore the user capability meta field
+                     */
+                    'ignore_meta_fields' => [
+                        $this->getBlogPrefix() . 'capabilities',
+                    ],
+
+                    /**
+                     * Translation arguments
+                     */
+                    '_translate' => [
+                        'all_capability_previous' => [
+                            'plural'   => 'all_previous_capabilities',
+                            'singular' => 'previous_capability',
+                        ],
+                        'all_capability_new' => [
+                            'plural'   => 'all_new_capabilities',
+                            'singular' => 'new_capability',
+                        ],
+                        'added_capability' => [
+                            'plural'   => 'added_capabilities',
+                            'singular' => 'added_capability',
+                        ],
+                    ],
+
+                    'message'  => [
+                        '_main' => 'Added a new capability to the user and granted the user access to use it',
+
+                        '_space_start'             => '',
+                        'added_capability'         => ['added_capability'],
+                        'all_previous_capability'  => ['capability_previous'],
+                        'all_new_capability'       => ['capability_new'],
+                        '_inspect_user_capability' => '',
+                        '_space_end'               => '',
+
+                        'user_id'                  => ['object_id'],
+                        'user_login'               => ['user_login'],
+                        'display_name'             => ['display_name'],
+                        'first_name'               => ['first_name'],
+                        'last_name'                => ['last_name'],
+                        'user_email'               => ['user_email'],
+                        'is_user_owner_of_account' => ['is_user_owner_of_account'],
+                        'profile_url'              => ['profile_url'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
+                        'source_domain'            => ['source_domain'],
+                    ],
+
+                    'event_handler' => [
+                        'hook'     => 'callback',
+                        'num_args' => 2,
+                    ],
+                ],
+
+                /**
+                 * Fires immediately after the user has been given a new capability 
+                 * but access was denied
+                 * 
+                 * @since 1.0.0
+                 */
+                'alm_add_user_cap_denied_event' => [
+                    'title'    => 'New user capability added but access denied',
+                    'action'   => 'user_capability_modified',
+                    'event_id' => 5068,
+                    'severity' => 'critical',
+
+                    /**
+                     * Ignore the user capability meta field
+                     */
+                    'ignore_meta_fields' => [
+                        $this->getBlogPrefix() . 'capabilities',
+                    ],
+
+                    /**
+                     * Translation arguments
+                     */
+                    '_translate' => [
+                        'all_capability_previous' => [
+                            'plural'   => 'all_previous_capabilities',
+                            'singular' => 'previous_capability',
+                        ],
+                        'all_capability_new' => [
+                            'plural'   => 'all_new_capabilities',
+                            'singular' => 'new_capability',
+                        ],
+                        'added_capability' => [
+                            'plural'   => 'added_capabilities',
+                            'singular' => 'added_capability',
+                        ],
+                    ],
+
+                    'message'  => [
+                        '_main' => 'Added a new capability to the user and denied the user access from using it.' . $this->explainEventMsg(
+                            ' (This means that the capability exists on the user account but the user cannot used it just yet because grant access was denied).'
+                        ),
+
+                        '_space_start'             => '',
+                        'added_capability'         => ['added_capability'],
+                        'all_previous_capability'  => ['capability_previous'],
+                        'all_new_capability'       => ['capability_new'],
+                        '_inspect_user_capability' => '',
+                        '_space_end'               => '',
+
+                        'user_id'                  => ['object_id'],
+                        'user_login'               => ['user_login'],
+                        'display_name'             => ['display_name'],
+                        'first_name'               => ['first_name'],
+                        'last_name'                => ['last_name'],
+                        'user_email'               => ['user_email'],
+                        'is_user_owner_of_account' => ['is_user_owner_of_account'],
+                        'profile_url'              => ['profile_url'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
+                        'source_domain'            => ['source_domain'],
+                    ],
+
+                    'event_handler' => [
+                        'hook'     => 'callback',
+                        'num_args' => 2,
+                    ],
+                ],
+                
+                /**
+                 * Fires immediately after a given capability is removed from the user
+                 * 
+                 * @since 1.0.0
+                 */
+                'alm_remove_user_cap_event' => [
+                    'title'    => 'User capability removed',
+                    'action'   => 'user_capability_modified',
+                    'event_id' => 5069,
+                    'severity' => 'critical',
+
+                    /**
+                     * Ignore the user capability meta field
+                     */
+                    'ignore_meta_fields' => [
+                        $this->getBlogPrefix() . 'capabilities',
+                    ],
+
+                    /**
+                     * Translation arguments
+                     */
+                    '_translate' => [
+                        'all_capability_previous' => [
+                            'plural'   => 'all_previous_capabilities',
+                            'singular' => 'previous_capability',
+                        ],
+                        'all_capability_new' => [
+                            'plural'   => 'all_new_capabilities',
+                            'singular' => 'new_capability',
+                        ],
+                        'removed_capability' => [
+                            'plural'   => 'removed_capabilities',
+                            'singular' => 'removed_capability',
+                        ],
+                    ],
+
+                    'message'  => [
+                        '_main'                    => 'Removed a capability from the user',
+
+                        '_space_start'             => '',
+                        'removed_capability'       => ['removed_capability'],
+                        'all_previous_capability'  => ['capability_previous'],
+                        'all_new_capability'       => ['capability_new'],
+                        '_inspect_user_capability' => '',
+                        '_space_end'               => '',
+
+                        'user_id'                  => ['object_id'],
+                        'user_login'               => ['user_login'],
+                        'display_name'             => ['display_name'],
+                        'first_name'               => ['first_name'],
+                        'last_name'                => ['last_name'],
+                        'user_email'               => ['user_email'],
+                        'custom_field_updated'     => ['custom_field_updated'],
+                        'is_user_owner_of_account' => ['is_user_owner_of_account'],
+                        'profile_url'              => ['profile_url'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
+                        'source_domain'            => ['source_domain'],
+                    ],
+
+                    'event_handler' => [
+                        'hook'     => 'callback',
+                        'num_args' => 2,
+                    ],
+                ],
+
+                /**
+                 * Fires immediately after all the user capabilities have been removed
+                 * 
+                 * @since 1.0.0
+                 */
+                'alm_remove_all_user_cap_event' => [
+                    'title'    => 'All user capabilities removed',
+                    'action'   => 'user_capability_modified',
+                    'event_id' => 5070,
+                    'severity' => 'critical',
+
+                    /**
+                     * Ignore the user capability meta field
+                     */
+                    'ignore_meta_fields' => [
+                        $this->getBlogPrefix() . 'capabilities',
+                    ],
+
+                    /**
+                     * Translation arguments
+                     */
+                    '_translate' => [
+                        'all_capability_previous' => [
+                            'plural'   => 'all_previous_capabilities',
+                            'singular' => 'previous_capability',
+                        ],
+                    ],
+
+                    'message'  => [
+                        '_main'                    => 'Removed all capabilities from the user',
+
+                        '_space_start'             => '',
+                        'all_previous_capability'  => ['capability_previous'],
+                        'new_capability'           => ['capability_new'],
+                        '_space_end'               => '',
+
+                        'user_id'                  => ['object_id'],
+                        'user_login'               => ['user_login'],
+                        'display_name'             => ['display_name'],
+                        'first_name'               => ['first_name'],
+                        'last_name'                => ['last_name'],
+                        'user_email'               => ['user_email'],
+                        'custom_field_updated'     => ['custom_field_updated'],
+                        'is_user_owner_of_account' => ['is_user_owner_of_account'],
+                        'profile_url'              => ['profile_url'],
+                        'user_primary_site'        => ['primary_blog'],
+                        'primary_site_name'        => ['primary_blog_name'],
+                        'primary_site_url'         => ['primary_blog_url'],
+                        'source_domain'            => ['source_domain'],
+                    ],
+
+                    'event_handler' => [
+                        'hook'     => 'callback',
+                        'num_args' => 2,
+                    ],
+                ],
+
+
+                'user_sessions_management',
             ]
         ];
     }
@@ -2244,12 +2860,14 @@ trait UserEvents
                 'description' => alm__('Specifies whether to enable the rich-editor for the user.'),
             ],
             $user_capabilities => [
-                '_title'    => 'Capability',
-                '_event_id' => 5019,
+                '_title'          => 'Capabilities',
+                '_event_id'       => 5019,
+                '_title_singular' => 'Capability',
             ],
             $user_settings => [
-                '_title'    => 'User settings',
-                '_event_id' => 5020,
+                '_title'          => 'User settings',
+                '_event_id'       => 5020,
+                '_title_singular' => 'User setting',
             ],
             'comment_shortcuts' => [
                 '_event_id'   => 5021,
@@ -2408,7 +3026,8 @@ trait UserEvents
 
                 case $this->getBlogPrefix() . 'capabilities':
                     $caps      = (array) $this->getEventMsgArg( $event, $field );
-                    $added_cap = end( $caps );
+                    $main_caps = array_keys( $caps );
+                    $added_cap = end( $main_caps );
 
                     $info = "Capability: $added_cap";
                 break;
@@ -2428,6 +3047,7 @@ trait UserEvents
      */
     public function getIgnorableUserMetaFields()
     {
+        $blog_prefix = $this->getBlogPrefix();
         $list = [
             /**
              * The user session tokens (session_tokens) meta field is used for login operations.
@@ -2444,7 +3064,7 @@ trait UserEvents
              * It is being ignored because the 'user_settings' meta field 
              * event always shows the time the settings was updated.
              */
-            $this->getBlogPrefix() . 'user-settings-time',
+            $blog_prefix . 'user-settings-time',
 
             /**
              * Default password nag
@@ -2460,6 +3080,13 @@ trait UserEvents
              * field gets updated.
              */
             'default_password_nag',
+
+            /**
+             * User level has been replaced with and Role and Capability.
+             * All changes to a user role or caps are recoded in the "roles" 
+             * and "{$wpdb->blog_prefix}_capabilities" user meta
+             */
+            $blog_prefix . 'user_level',
         ];
         
         /**
@@ -2503,8 +3130,6 @@ trait UserEvents
         if ( $this->isLogAggregatable() && isset( $user_custom_fields[ $meta_key ] ) ) 
             return true;
 
-        $ignorable_user_meta_fields = $this->getIgnorableUserMetaFields();
-
         return $this->canIgnoreUserMetaStrictly( $meta_key );
     }
 
@@ -2540,18 +3165,13 @@ trait UserEvents
         $action = $this->_getActiveEventData('action');
 
         // The untransformed event message arguments
-        $msg_args = $raw_msg_args;
-
-        $_user_target = ( 1 == $this->getEventMsgArg( $event, 'is_user_owner_of_account', 0 ) ) ? 
-            'user' : '';
+        $msg_args = $raw_msg_args;;
             
         $blog_prefix            = $this->getBlogPrefix();
         $user_settings_key      = $blog_prefix . 'user-settings';
-        $user_capabilities      = $blog_prefix . 'capabilities';
         $custom_field_list      = $this->getCustomizedUserCustomFields();
 
         $field_title            = $field;
-        $is_cap_field           = false;
         $is_user_settings_field = false;
 
         if ( isset( $custom_field_list[ $field ] ) )
@@ -2564,16 +3184,8 @@ trait UserEvents
                 $custom_field_list['_title'] : $this->makeFieldReadable( $field );
 
             $context                = []; // Context of the event message
-            $event_arg              = $this->getEventMsgArg( $event, $field );
-            $is_cap_field           = $user_capabilities === $field;
             $field_target           = '---'.  $field_title .'---';
             $is_user_settings_field = $user_settings_key === $field;
-
-            if ( $is_cap_field )
-            {
-                $caps           = (array) $event_arg;
-                $is_cap_granted = (bool) end( $caps );
-            }
 
             if ( $is_user_settings_field )
             {
@@ -2585,7 +3197,7 @@ trait UserEvents
                 $_new_user_settings  = [];
                 $user_settings_state = '';
 
-                if ( ! empty( $new_user_settings ) && is_string( $new_user_settings ) )
+                if ( !empty( $new_user_settings ) && is_string( $new_user_settings ) )
                 {
                     parse_str( $old_user_settings, $_old_user_settings );
                     parse_str( $new_user_settings, $_new_user_settings );
@@ -2650,68 +3262,23 @@ trait UserEvents
         if ( 'create' == $action )
         {
             $msg = "Tried to add the $field_target field to a user, but the request was unsuccessful.";
-
-            // Customize the capability field message
-            if ( $is_cap_field ) {
-                $msg = "Tried to grant a ---Capability--- to a user but the request was unsuccessful.";
-
-                if ( true != $is_cap_granted ) {
-                    $msg = "Tried to add a ---Capability--- without granting access to a user, but the request was unsuccessful.";
-                }
-            }
         }
         elseif ( 'created' == $action )
         {
             $msg = "Added the $field_target field to a user.";
-
-            if ( $is_cap_field ) {
-                $msg = "Granted a ---Capability--- to a user.";
-
-                if ( true != $is_cap_granted ) {
-                    $msg  = "Added a ---Capability--- without grant access to a user.";
-
-                    $msg .= $this->explainEventMsg(
-                        ' (This means that the capability exists on the user account but the user cannot used it just yet because grant access was denied).'
-                    );
-                }
-            }
         }
         elseif ( 'modify' == $action )
         {
             $msg   = "Tried to update a user $field_target field value, but the request was unsuccessful.";
             $context = [ 'intended', 'current' ];
-
-            if ( $is_cap_field ) {
-                $msg = "Tried to grant a ---Capability--- to a user but the request was unsuccessful.";
-
-                if ( true != $is_cap_granted ) {
-                    $msg  = "Tried to add a ---Capability--- without granting access to a user, but the request was unsuccessful.";
-
-                    $msg .= $this->explainEventMsg(
-                        ' (This means that the capability exists on the user account but the user cannot used it just yet because grant access was denied).'
-                    );
-                }
-            }
         }
         elseif ( 'modified' == $action )
         {
             $msg     = "Changed the user $field_target.";
             $context = [ 'previous', 'new' ];
 
-            if ( $is_cap_field ) {
-                $msg = "Granted a ---Capability--- to a user.";
-
-                if ( true != $is_cap_granted ) {
-                    $msg  = "Added a ---Capability--- without grant access to a user.";
-
-                    $msg .= $this->explainEventMsg(
-                        ' (This means that the capability exists on the user account but the user cannot used it just yet because grant access was denied).'
-                    );
-                }
-            }
-
             if ( $is_user_settings_field && '' === $user_settings_state  ) {
-                $msg  = 'Updated the user ---User settings--- without making any change to it.';
+                $msg  = 'Updated the user ---User settings--- without making any changes to it.';
 
                 $msg .= $this->explainEventMsg(
                     ' (The update was triggered without modifying the previous User settings value).'
@@ -2725,35 +3292,10 @@ trait UserEvents
         elseif ( 'delete' == $action )
         {
             $msg = "Tried to delete the $field_target field from a user, but the request was unsuccessful.";
-
-            if ( $is_cap_field ) {
-                $msg = "Tried to remove a ---Capability--- from a user but the request was unsuccessful.";
-
-                if ( true != $is_cap_granted )
-                {
-                    $msg = "Tried to remove a ---Capability--- without granting access from a user, but the request was unsuccessful.";
-
-                    $msg .= $this->explainEventMsg(
-                        ' (A capability without grant access that exists on a user account is unusable, it\'s almost the same thing as being removed. So removing it actually has no side effect).'
-                    );
-                }
-            }
         }
         elseif ( 'deleted' == $action )
         {
             $msg = "Deleted the $field_target field from a user.";
-
-            if ( $is_cap_field ) {
-                $msg = "Removed a ---Capability--- from a user.";
-
-                if ( true != $is_cap_granted ) {
-                    $msg = "Removed a ---Capability--- without grant access from a user.";
-                    
-                    $msg .= $this->explainEventMsg(
-                        ' (A capability without grant access that exists on a user account is unusable, it\'s almost the same thing as being removed. So removing it actually has no side effect).'
-                    );
-                }
-            }
         }
         else {
             // Do nothing
@@ -2763,7 +3305,6 @@ trait UserEvents
          * This formatting should be applied only on super mode 
          */
         if ( $this->isSuperMode() ) {
-            // $msg_args['_meta_key'] = $this->makeFieldReadable( $field ) . ' field key: ' . $field;
             $msg_args['meta_key'] = $this->makeFieldReadable( $field ) . ' field key: ' . $field;
         } else {
             unset( $msg_args['meta_key'] );
@@ -2780,9 +3321,6 @@ trait UserEvents
                 $updated_user_data = empty( $updated_user_data ) ? '' : $updated_user_data;
 
                 $msg_args['meta_value'] = $updated_user_data;
-
-                // $meta_value_key = ( 'modify' == $action ) ? 'intended' : 'previous';
-                // $msg_args["meta_value_{$meta_value_key}"] = $old_user_data;
             }
 
             // Update the meta value context field
@@ -2795,9 +3333,6 @@ trait UserEvents
                 }
             }
         }
-        else {
-            // $msg_args['meta_key'] = $this->formatMsgField( $event, $field );
-        }
 
         if ( ! empty( $msg ) ) {
             $msg_args['_main']           = $msg;
@@ -2806,6 +3341,247 @@ trait UserEvents
 
         return $msg_args;
     }
+
+    /**
+     * Aggregate user meta fields (new created or updated)
+     * @return string Aggregated user meta fields
+     */
+    protected function __aggregateUserMetaFields()
+    {
+        $updated_str = '';
+        if ( $this->isUserProfileDataAggregationActive() )
+        {
+            $_new_val                    = '';
+            $line_break                  = $this->getEventMsgLineBreak();
+            $blog_prefix                 = $this->getBlogPrefix();
+            $update_type                 = $this->getConstant('ALM_IS_USER_PROFILE_UPDATE_AGGREGATION');
+            $cap_meta_field              = $blog_prefix . 'capabilities';
+            $customized_user_meta_fields = $this->getCustomizedUserCustomFields();
+
+            foreach ( $this->user_data_aggregation as $field => $value )
+            {
+                $is_cap_field    = $cap_meta_field == $field;
+                $use_field_title = $this->getVar( $value, 'title' );
+
+                /**
+                 * If the requested field value is set, then it means this is 
+                 * a pre-update request that requires confirmation before the 
+                 * changes will be committed
+                 */
+                $field_has_confirmation = isset( $value['requested'] );
+                if ( $field_has_confirmation )
+                {
+                    $new_val      = $value['current'];
+                    $previous_val = $value['requested'];
+                }
+                else {
+                    $new_val      = $value['new'];
+                    $previous_val = $value['previous'];
+                }
+
+                // Maybe previous user metadata is set but empty, so we have to retrieve it
+                if ( '' === $previous_val 
+                && isset( $this->_user_profile_metadata[ $field ] ) 
+                && is_array( $this->_user_profile_metadata[ $field ] ) )
+                {
+                    // Just incase there's more than one value in the array
+                    $previous_val = $this->_user_profile_metadata[ $field ];
+                }
+
+                $previous_val = $this->parseValueForDb($previous_val, 5, $is_cap_field);
+
+                // Add the user meta field name when on super mode
+                $is_customized_user_meta_field = isset($customized_user_meta_fields[ $field ]);
+                if ( $is_customized_user_meta_field && $this->isSuperMode() )
+                {
+                    $updated_str .= sprintf( 'Custom field key: %s', $field );
+
+                    // Line break;
+                    $updated_str .= $line_break;
+                }
+
+                /**
+                 * Don't customize any user meta fields that is not part of the 
+                 * default customized user meta field list
+                 */
+                if ( $is_customized_user_meta_field )
+                {
+                    if (isset( $customized_user_meta_fields[ $field ]['_title'] ))
+                    {
+                        $field_label = $customized_user_meta_fields[ $field ]['_title'];
+
+                        if ( is_array( $value ) 
+                        && count( $value ) 
+                        && isset( $customized_user_meta_fields[ $field ]['_title_singular']) )
+                        {
+                            $field_label = $customized_user_meta_fields[ $field ]['_title_singular'];
+                        }
+                    }
+                    else {
+                        $field_label = str_replace(
+                            [ '_', $this->getBlogPrefix() ],
+                            [ ' ', '' ], 
+                            $field
+                        );
+                    }
+                }
+                else {
+                    $field_label = $field;
+                }
+
+                if ( ! empty( $use_field_title ) ) {
+                    $field_label = $use_field_title;
+                }
+
+                if ( 'update' == $update_type )
+                {
+                    $previous_field_label = $field_has_confirmation ? 'Requested' : 'Previous';
+                    
+                    if ( ! $is_customized_user_meta_field ) {
+                        $previous_field_label .= ' value';
+                    } else {
+                        $previous_field_label = ucfirst($previous_field_label);
+                    }
+
+                    $updated_str .= "{$previous_field_label} {$field_label}: $previous_val";
+
+                    // Line break;
+                    $updated_str .= $line_break;
+                }
+
+                // New val may be an array/object
+                $_new_val = $this->parseValueForDb($new_val, 5, $is_cap_field);
+
+                $new_field_label = ( 'create' == $update_type ) ? 
+                    $field_label 
+                    : 
+                    ( $field_has_confirmation ? 'Current ' : 'New ' ) . $field_label;
+
+                if ( ! $is_customized_user_meta_field ) {
+                    $new_field_label .= ' value';
+                } else {
+                    $new_field_label = ucfirst($new_field_label);
+                }
+
+                $updated_str .= $new_field_label . ': ' . $_new_val;
+
+                // Line break;
+                $updated_str .= $line_break;
+            }
+        }
+        return $updated_str;
+    }
+
+    /**
+     * Determines whether the current updated user profile fields requires confirmation 
+     * before the changes are committed.
+     * 
+     * @since 1.0.0
+     * 
+     * @param string  $user_field Specifies the updated user field
+     * @param WP_User $new_user_data Specifies the updated user data
+     * @param WP_User $new_user_data Specifies the old user data before the update
+     * 
+     * @return bool True if the updated user field requires confirmation. Otherwise false.
+     */
+    protected function userProfileFieldUpdateRequiresConfirmation( $user_field, $new_user_data, $old_user_data )
+    {
+        /**
+         * Ignore if user is not editing their own profile, since this is 
+         * applicable only when the current user is editing their own profile.
+         */
+        if ( ! $this->isUserPersonalProfileActive() ) 
+            return false;
+
+        // Bail out all fields by default
+        $is_confirmation_required = false;
+
+        /**
+         * @todo
+         * Updating the [user_login] field is not allowed by default,
+         * but some plugins may enable such a feature, so we may have to 
+         * check for this in third party user-related plugins we support.
+         */
+
+        /**
+         * Check user email field
+         */
+        if ( 'user_email' == $user_field )
+        {
+            $current_user_email   = $this->getVar( $old_user_data, $user_field );
+            $requested_user_email = $this->getVar(
+                get_user_meta( $new_user_data->ID, '_new_email', true ), 'newemail', ''
+            );
+            
+            $is_confirmation_required = ( 0 !== strcasecmp( $requested_user_email, $current_user_email ) );
+        }
+
+        /**
+         * Filters whether the a user field requires confirmation.
+         * 
+         * @since 1.0.0
+         * 
+         * Accepts 4 parameters:
+         * 
+         * @param bool    $confirm       Whether confirmation is required before updating 
+         *                               user profile field
+         * 
+         * @param string  $user_field    Specifies the updated user field
+         * 
+         * @param WP_User $new_user_data Specifies the updated user data
+         * 
+         * @param WP_User $new_user_data Specifies the old user data before the update
+         */
+        $is_confirmation_required = apply_filters(
+            'alm/user/profile/field/update/has_confirmation',
+            $is_confirmation_required,
+            $user_field,
+            $new_user_data,
+            $old_user_data
+        );
+
+        return $is_confirmation_required;
+    }
+
+    /**
+     * Enable the user active event log aggregation
+     * 
+     * @since 1.0.0
+     * 
+     * @param mixed $flag_value Specifies the value to use to setup the aggregation flag.
+     *                          Default: true
+     */
+    public function setupUserLogAggregationFlag( $flag_value = true )
+    {
+        $this->setConstant('ALM_ALLOW_LOG_AGGREGATION', $flag_value);
+    }
+
+    /**
+     * Check whether the add new user admin screen is active.
+     * Works on multisite and non-multisite installation
+     * 
+     * @since 1.0.0
+     * 
+     * @param bool $bail_ajax Determine whether to bail the check if doing ajax request
+     * 
+     * @return bool
+     */
+    public function isAddNewUserAdminScreen( $bail_ajax = true )
+    {
+        if ( wp_doing_ajax() && $bail_ajax )  return true;
+        if ( !$this->is_admin ) return false;
+
+        $screen = $this->getCurrentPageScriptName();
+        return ('user-new.php' == $screen);
+    }
+
+
+
+
+
+
+
+
 
 
 
@@ -2816,7 +3592,7 @@ trait UserEvents
     /**
      * @todo
      * Todo events
-    */
+     */
     protected function __setupUserEvents()
     {
         $this->event_list[] = [
@@ -3077,227 +3853,5 @@ trait UserEvents
                 'install',
             ]
         ];
-    }
-
-    /**
-     * Aggregate user meta fields (new created or updated)
-     * @return string Aggregated user meta fields
-     */
-    protected function __aggregateUserMetaFields()
-    {
-        $updated_str = '';
-        if ( $this->isUserProfileDataAggregationActive() )
-        {
-            $_new_val                    = '';
-            $line_break                  = $this->getEventMsgLineBreak();
-            $update_type                 = $this->getConstant('ALM_IS_USER_PROFILE_UPDATE_AGGREGATION');
-            $customized_user_meta_fields = $this->getCustomizedUserCustomFields();
-
-            foreach ( $this->user_data_aggregation as $field => $value )
-            {
-                $use_field_title = $this->getVar( $value, 'title' );
-
-                /**
-                 * If the requested field value is set, then it means this is 
-                 * a pre-update request that requires confirmation before the 
-                 * changes will be committed
-                 */
-                $field_has_confirmation = isset( $value['requested'] );
-                if ( $field_has_confirmation )
-                {
-                    $new_val      = $value['current'];
-                    $previous_val = $value['requested'];
-                }
-                else {
-                    $new_val      = $value['new'];
-                    $previous_val = $value['previous'];
-                }
-
-                // Maybe previous user metadata is set but empty, so we have to retrieve it
-                if ( '' === $previous_val 
-                && isset( $this->_user_profile_metadata[ $field ] ) 
-                && is_array( $this->_user_profile_metadata[ $field ] ) )
-                {
-                    // Just incase there's more than one values in the array
-                    $prev_val     = $this->_user_profile_metadata[ $field ];
-                    $previous_val = $this->parseValueForDb( $prev_val );
-                }
-
-                // Add the user meta field name when on super mode
-                $is_customized_user_meta_field = isset($customized_user_meta_fields[ $field ]);
-                if ( $is_customized_user_meta_field && $this->isSuperMode() )
-                {
-                    $updated_str .= sprintf( 'Custom field key: %s', $field );
-
-                    // Line break;
-                    $updated_str .= $line_break;
-                }
-
-                /**
-                 * Don't customize any user meta fields that is not part of the 
-                 * default customized user meta field list
-                 */
-                if ( $is_customized_user_meta_field )
-                {
-                    if (isset( $customized_user_meta_fields[ $field ]['_title'] ))
-                    {
-                        $field_label = $customized_user_meta_fields[ $field ]['_title'];
-                    }
-                    else {
-                        $field_label = str_replace(
-                            [ '_', $this->getBlogPrefix() ],
-                            [ ' ', '' ],
-                            $field
-                        );
-                    }
-                }
-                else {
-                    $field_label = $field;
-                }
-
-                if ( ! empty( $use_field_title ) ) {
-                    $field_label = $use_field_title;
-                }
-
-                if ( 'update' == $update_type )
-                {
-                    $previous_field_label = $field_has_confirmation ? 'Requested' : 'Previous';
-                    
-                    if ( ! $is_customized_user_meta_field ) {
-                        $previous_field_label .= ' value';
-                    } else {
-                        $previous_field_label = ucfirst($previous_field_label);
-                    }
-
-                    $updated_str .= "{$previous_field_label} {$field_label}: $previous_val";
-
-                    // Line break;
-                    $updated_str .= $line_break;
-                }
-
-                // New val may be an array/object
-                $_new_val = $this->parseValueForDb( $new_val );
-
-                $new_field_label = ( 'create' == $update_type ) ? 
-                    $field_label 
-                    : 
-                    ( $field_has_confirmation ? 'Current ' : 'New ' ) . $field_label;
-
-                if ( ! $is_customized_user_meta_field ) {
-                    $new_field_label .= ' value';
-                } else {
-                    $new_field_label = ucfirst($new_field_label);
-                }
-
-                $updated_str .= $new_field_label . ': ' . $_new_val;
-
-                // Line break;
-                $updated_str .= $line_break;
-            }
-        }
-        return $updated_str;
-    }
-
-    /**
-     * Determines whether the current updated user profile fields requires confirmation 
-     * before the changes are committed.
-     * 
-     * @since 1.0.0
-     * 
-     * @param string  $user_field Specifies the updated user field
-     * @param WP_User $new_user_data Specifies the updated user data
-     * @param WP_User $new_user_data Specifies the old user data before the update
-     * 
-     * @return bool True if the updated user field requires confirmation. Otherwise false.
-     */
-    protected function userProfileFieldUpdateRequiresConfirmation( $user_field, $new_user_data, $old_user_data )
-    {
-        /**
-         * Ignore if user is not editing their own profile, since this is 
-         * applicable only when the current user is editing their own profile.
-         */
-        if ( ! $this->isUserPersonalProfileActive() ) 
-            return false;
-
-        // Bail out all fields by default
-        $is_confirmation_required = false;
-
-        /**
-         * @todo
-         * Updating the [user_login] field is not allowed by default,
-         * but some plugins may enable such a feature, so we may have to 
-         * check for this in third party user-related plugins we support.
-         */
-
-        /**
-         * Check user email field
-         */
-        if ( 'user_email' == $user_field )
-        {
-            $current_user_email   = $this->getVar( $old_user_data, $user_field );
-            $requested_user_email = $this->getVar(
-                get_user_meta( $new_user_data->ID, '_new_email', true ), 'newemail', ''
-            );
-            
-            $is_confirmation_required = ( 0 !== strcasecmp( $requested_user_email, $current_user_email ) );
-        }
-
-        /**
-         * Filters whether the a user field requires confirmation.
-         * 
-         * @since 1.0.0
-         * 
-         * Accepts 4 parameters:
-         * 
-         * @param bool    $confirm       Whether confirmation is required before updating 
-         *                               user profile field
-         * 
-         * @param string  $user_field    Specifies the updated user field
-         * 
-         * @param WP_User $new_user_data Specifies the updated user data
-         * 
-         * @param WP_User $new_user_data Specifies the old user data before the update
-         */
-        $is_confirmation_required = apply_filters(
-            'alm/user/profile/field/update/has_confirmation',
-            $is_confirmation_required,
-            $user_field,
-            $new_user_data,
-            $old_user_data
-        );
-
-        return $is_confirmation_required;
-    }
-
-    /**
-     * Activate the user active event log aggregation
-     * 
-     * @since 1.0.0
-     * 
-     * @param mixed $flag_value Specifies the value to use to setup the aggregation flag.
-     *                          Default: true
-     */
-    public function setupUserLogAggregationFlag( $flag_value = true )
-    {
-        $this->setConstant( 'ALM_ALLOW_LOG_AGGREGATION', $flag_value );
-    }
-
-    /**
-     * Check whether the add new user admin screen is active.
-     * Works on multisite and non-multisite installation
-     * 
-     * @since 1.0.0
-     * 
-     * @param bool $bail_ajax Determine whether to bail the check if doing ajax request
-     * 
-     * @return bool
-     */
-    public function isAddNewUserAdminScreen( $bail_ajax = true )
-    {
-        if ( wp_doing_ajax() && $bail_ajax )  return true;
-        if ( !$this->is_admin ) return false;
-
-        $screen = $this->getCurrentPageScriptName();
-        return ('user-new.php' == $screen);
     }
 }

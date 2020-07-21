@@ -109,27 +109,21 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         // Setup the Audit Observer
         $this->AuditObserver->init($this);
 
-        // echo '<pre>';
-        add_action('after_signup_user', function (){
-            (var_dump('after_signup_user'));
-            // wp_die();
-        }, 10, 4);
-        
-        add_action('wpmu_new_user', function (){
-            (var_dump('wpmu_new_user'));
-            // wp_die();
-        }, 10, 4);
-        
-        add_action('add_user_to_blog', function (){
-            (var_dump('add_user_to_blog') );
-            // wp_die();
-        }, 10, 4);
-        // echo '</pre>';
-
-        add_action('wpmu_activate_user', function () {
-            (var_dump('wpmu_activate_user'));
-            // wp_die();
-        }, 10, 3);
+        echo '<pre>';
+        // $caps = get_user_meta(1, $this->wpdb->prefix . 'capabilities', true);
+        $user_data = get_userdata(4);
+        $user_data->add_cap('minner');
+        $user_data->add_role('minner');
+        // $user_data->set_role('');
+        // print_r( $caps);
+        print_r( $user_data->get_role_caps());
+        echo '<hr>';
+        print_r( $user_data->roles );
+        echo '<hr>';
+        print_r( $user_data->caps );
+        echo '<hr>';
+        var_dump( $user_data->role );
+        wp_die();
     }
 
     /**

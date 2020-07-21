@@ -1115,20 +1115,34 @@ abstract class PluginFactory
     /**
      * Check whether an array is a large array.
      * 
+     * @since 1.0.0
+     * 
      * Large array criteria: 
      *  - array keys is not numeric
      *  - array keys is numeric and values count exceeds 3
      *  - is a multi-dimensional array 
      *  - is an object
+     * 
+     *  - Optionally, if the $deep_level is greater than 0 and array length
+     *    is less than or equal to the $deep_level, then true is returned;
+     * 
+     * @param  array $data Specifies the array data
+     * @param  $
+     * @return bool        True if array meets the large criteria. Otherwise false.
      */
-    public function isLargeArray( $data )
+    public function isLargeArray( $data, $deep_level = 0 )
     {
         $is_obj = is_object( $data );
         if ( ! is_array ( $data ) && ! $is_obj ) 
             return false;
-            
-        if ( $is_obj ) 
-            return true;        
+        
+        if ( $is_obj ) return true;
+
+        if ( empty( $data ) ) return true;
+
+        $deep_level = absint($deep_level);
+        if ( $deep_level > 0 && count($data) <= $deep_level )
+            return true;
             
         foreach ( $data as $k => $d )
         {
@@ -1156,15 +1170,46 @@ abstract class PluginFactory
      * 
      * @see PluginFactory::isLargeArray()
      * 
-     * @return mixed 
+     * @return mixed
      */
-    public function parseValueForDb( $value )
+    public function parseValueForDb( $value, $deep_level = 0, $flip_array = false )
     {
-        if ( ! is_array( $value ) ) 
+        if ( !is_array($value) && !is_object($value))
             return $value;
 
-        return $this->isLargeArray( $value ) ? 
-            $this->serialize( $value ) : implode( ', ', $value  );
+        $deep_level = absint($deep_level);
+
+        if ( $deep_level <= 0 ) {
+            if ( $this->isLargeArray($value, $deep_level) ) {
+                /**
+                 * Create a show more button for walking through the serialized string
+                 */
+                $data = $this->getEventMsgViewMoreBtnIdentifier(true) . $this->serialize($value);
+            } else {
+                $data = implode(', ', $value);
+            }
+        }
+        else {
+            if ( $flip_array ) {
+               $_value  = array_slice($value, 0, $deep_level);
+               $new_val = [];
+               foreach ( $_value as $k => $v ) {
+                   $new_val[] = $this->sanitizeOption($k);
+               }
+            } else {
+                $new_val = &$value;
+            }
+
+            // Add a view more button if we have elements in the array
+            $view_more = '';
+            if ( count($value) > $deep_level ) {
+                $view_more = $this->getEventMsgViewMoreBtnIdentifier();
+            }
+            
+            $data = $view_more . implode( ', ', $new_val );
+        }
+
+        return $data;
     }
 
     /**
@@ -1175,5 +1220,60 @@ abstract class PluginFactory
     public function getVowelLetters()
     {
         return ['a', 'e', 'i', 'o', 'u'];
+    }
+
+    /**
+     * Get the event message character separator
+     * @return string
+     */
+    protected function getEventMsgSeparatorChar()
+    {
+        return '|||';
+    }
+
+    /**
+     * Get the event message error character
+     * @return string
+     */
+    protected function getEventMsgErrorChar()
+    {
+        return '___error___';
+    }
+
+    /**
+     * Get the event message line break character
+     * @return string
+     */
+    public function getEventMsgLineBreak()
+    {
+        return '___break___';
+    }
+
+    /**
+     * Get the event log data update identifier
+     * @return string
+     */
+    public function getEventLogUpdateIdentifier()
+    {
+        $updated_at = $this->getDate();
+        return "----------[{$updated_at}]----------";
+    }
+
+    /**
+     * Get event message view more button
+     * 
+     * @param bool $is_serialized_string Specifies whether the view more button is 
+     *                                   for a serialized string or not
+     * 
+     * @return string
+     */
+    public function getEventMsgViewMoreBtnIdentifier($is_serialized_string = false)
+    {
+        if ($is_serialized_string) {
+            $btn_str = '[alm_show_more_btn_serialized]';
+        } else {
+            $btn_str = '[alm_show_more_btn]';
+        }
+        return $btn_str;
     }
 }

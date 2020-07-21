@@ -752,6 +752,10 @@ trait EventConditionalParser
                 case 'multisite':
                     $found[] = (int) $this->is_multisite;
 
+                case 'not-multisite':
+                case 'not_multisite':
+                    $found[] = (int) !$this->is_multisite;
+
                 case 'public':
                         $found[] = (int) ( !$this->is_admin && !$this->is_network_admin );
                 

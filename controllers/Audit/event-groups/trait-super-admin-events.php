@@ -64,6 +64,9 @@ trait SuperAdminEvents
                         'log_counter'              => '',
                         'is_user_owner_of_account' => ['is_user_owner_of_account'],
                         'profile_url'              => ['profile_url'],
+                        'user_primary_blog'        => ['primary_blog'],
+                        'primary_blog_name'        => ['primary_blog_name'],
+                        'source_domain'            => ['source_domain'],
                     ],
 
                     'event_handler' => [
@@ -103,14 +106,10 @@ trait SuperAdminEvents
                         'log_counter'              => '',
                         'is_user_owner_of_account' => ['is_user_owner_of_account'],
                         'profile_url'              => ['profile_url'],
-                    ],
-
-                    'event_handler' => [
-                        'hook'     => 'action',
-                        'num_args' => 1,
-                        'priority' => 10,
-                        'callback' => null,
-                    ],
+                        'user_primary_blog'        => ['primary_blog'],
+                        'primary_blog_name'        => ['primary_blog_name'],
+                        'source_domain'            => ['source_domain'],
+                    ]
                 ],
 
                 /**
@@ -142,14 +141,10 @@ trait SuperAdminEvents
                         'log_counter'              => '',
                         'is_user_owner_of_account' => ['is_user_owner_of_account'],
                         'profile_url'              => ['profile_url'],
-                    ],
-
-                    'event_handler' => [
-                        'hook'     => 'action',
-                        'num_args' => 1,
-                        'priority' => 10,
-                        'callback' => null,
-                    ],
+                        'user_primary_blog'        => ['primary_blog'],
+                        'primary_blog_name'        => ['primary_blog_name'],
+                        'source_domain'            => ['source_domain'],
+                    ]
                 ],
 
                 /**
@@ -182,14 +177,10 @@ trait SuperAdminEvents
                         'log_counter'              => '',
                         'is_user_owner_of_account' => ['is_user_owner_of_account'],
                         'profile_url'              => ['profile_url'],
-                    ],
-
-                    'event_handler' => [
-                        'hook'     => 'action',
-                        'num_args' => 1,
-                        'priority' => 10,
-                        'callback' => null,
-                    ],
+                        'user_primary_blog'        => ['primary_blog'],
+                        'primary_blog_name'        => ['primary_blog_name'],
+                        'source_domain'            => ['source_domain'],
+                    ]
                 ],
             ]
         ];

@@ -78,6 +78,14 @@ trait EventList
     protected $event_id_list = [];
 
     /**
+     * Specifies list of meta fields to ignore if a specific event is triggered 
+     * in other to prevent duplicated event log reference
+     * @var array
+     * @since 1.0.0
+     */
+    protected $ignorable_meta_field_event_list = [];
+
+    /**
      * Specifies whether the event is pre-disabled. This is done by checking whether the 
      * 'disabled' event data argument is set True upon registration.
      * @var bool
@@ -476,13 +484,13 @@ trait EventList
      */
     protected function eventMsgArgExists( $event, $arg = null )
     {
-        if ( ! isset( $this->customize_event_msg_args[ $event ] ) ) 
+        if ( ! isset( $this->customize_event_msg_args[ $event ] ) )
             return false;
 
-        if ( is_null( $arg ) || '' === $arg ) 
+        if ( is_null( $arg ) || '' === $arg )
             return true;
 
-        if ( ! isset( $this->customize_event_msg_args[ $event ][ $arg ] ) ) 
+        if ( ! isset( $this->customize_event_msg_args[ $event ][ $arg ] ) )
             return false;
 
         return true;
@@ -495,43 +503,8 @@ trait EventList
     protected function getTransformableSpecialMsgArgs()
     {
         return [
-            '_event_id', '_main', '_meta_key', '_meta_value', '_space_start', '_space_end', '_error_msg', '_user_avatar'
+            '_event_id', '_main', '_meta_key', '_meta_value', '_space_start', '_space_end', '_error_msg', '_user_avatar',
         ];
-    }
-
-    /**
-     * Get the event message character separator
-     * @return string
-     */
-    protected function getEventMsgSeparatorChar()
-    {
-        return '|||';
-    }
-
-    /**
-     * Get the event message error character
-     * @return string
-     */
-    protected function getEventMsgErrorChar()
-    {
-        return '___error___';
-    }
-
-    /**
-     * Get the event message line break character
-     */
-    public function getEventMsgLineBreak()
-    {
-        return '___break___';
-    }
-
-    /**
-     * Get the event log data update identifier
-     */
-    public function getEventLogUpdateIdentifier()
-    {
-        $updated_at = $this->getDate();
-        return "----------[{$updated_at}]----------";
     }
 
     /**
@@ -610,11 +583,11 @@ trait EventList
                     if ( ! in_array( $msg_name, $special_msg_args, true ) ) 
                         continue;
 
-                    if ( $this->strStartsWith( $msg_name, '_space_' ) ) {
+                    if ( $this->strStartsWith($msg_name, ['_space_', '_inspect_']) )
+                    {
                         $info = $msg_name;
                     }
-                    elseif ( '_error_msg' == $msg_name )
-                    {
+                    elseif ( '_error_msg' == $msg_name ) {
                         $info = $this->getEventMsgArg( $event_group, '_error_msg' );
 
                         if ( empty( $info ) ) continue;
@@ -656,8 +629,26 @@ trait EventList
 
             // Properly parse object and array values
             $info = $this->parseValueForDb( $info );
+
+            /**
+             * Pluralize the event message name if needed
+             */
+            $_msg_name = $msg_name;
+            if ( isset($event_data['_translate'][$msg_name]) )
+            {
+                $pluralize_str = $this->getVar($event_data['_translate'][$msg_name]['plural_char'], ', ');
+                
+                if ( false !== strpos($info, $pluralize_str) ) {
+                    $plural   = $this->getVar($event_data['_translate'][$msg_name]['plural'], $msg_name);
+                    $_msg_name = $plural;
+                } else {
+                    $singular = $this->getVar($event_data['_translate'][$msg_name]['singular'], '');
+                    if ( !empty($singular) )
+                        $_msg_name = $singular;
+                }
+            }
             
-            $list .= $msg_name . '=' . $info . $this->getEventMsgSeparatorChar();
+            $list .= $_msg_name . '=' . $info . $this->getEventMsgSeparatorChar();
         }
 
         return rtrim( $list, $this->getEventMsgSeparatorChar() );
@@ -1093,6 +1084,28 @@ trait EventList
                 $_event['disable'] = true;
 
             /**
+             * If the event specifies any meta field to be ignored, add it to the 
+             * ignorable meta field list, but only when the event has not been disabled
+             */
+            if ( !$_event['disable'] ) {
+                $ignore_meta_fields = $this->getVar($_event, 'ignore_meta_fields');
+                if ( is_array($ignore_meta_fields) && !empty($ignore_meta_fields) ) {
+                    /**
+                     * Simplify the array list to one dimensional array
+                     */
+                    $counter = 0;
+                    foreach ($ignore_meta_fields as $meta_field )
+                    {
+                        $meta_field_target = "{$event_id}_{$meta_field}";
+                        if ( !isset($this->ignorable_meta_field_event_list[ $meta_field_target ]) ) {
+                            ++$counter;
+                            $this->ignorable_meta_field_event_list[ $meta_field_target ] = $meta_field;
+                        }
+                    }
+                }
+            }
+
+            /**
              * Set the event notification state
              */
             $_event['notification'] = $this->getEventNotificationState( $event_id, $hook, $_event );
@@ -1110,7 +1123,7 @@ trait EventList
              * Namespace the event slug list with the event group name
              * Since event hook name may appear more than once given the event ID
              * For example: there's the comment and user meta fields, having the
-             * First name, last name hooks.
+             * First name (first_name) and Last name (last_name) hooks.
              */
             $event_hook_namespace = "{$group}_{$hook}";
             if ( ! isset( $this->event_slug_list[ $event_hook_namespace ] ) ) 
@@ -1196,6 +1209,19 @@ trait EventList
     protected function overrideActiveEventData( $field, $value )
     {
         $this->active_event_alt[ $field ] = $value;
+    }
+
+    /**
+     * Check whether we should ignore a specific meta field if an event is active
+     * 
+     * @since 1.0.0
+     * 
+     * @param string $meta_field Specifies the meta field to check for
+     * @return bool              Returns true if meta field should be ignored. Otherwise false.
+     */
+    public function isActiveMetaFieldEventIgnorable( $meta_field = '' )
+    {
+        return isset($this->ignorable_meta_field_event_list[ $meta_field ]);
     }
 
     /**
