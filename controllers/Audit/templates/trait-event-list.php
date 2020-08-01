@@ -129,6 +129,21 @@ trait EventList
     protected $is_active_event_loggable = false;
 
     /**
+     * Specifies list of events that was not executed successfully.
+     * This is used to make sure we have a reference to any failed that never 
+     * reached its successful state.
+     * 
+     * A good example would be the {@see update_user_meta} and {@see updated_user_meta}
+     * 
+     * If the 'updated_user_meta' was not fired, then it certainly means that the event 
+     * was not successful. 
+     * 
+     * @var array
+     * @since 1.0.0
+     */
+    protected $maybe_trigger_failed_events = [];
+
+    /**
      * Setup the Event List
      */
     protected function __setupEventList()
@@ -551,6 +566,10 @@ trait EventList
 
         foreach ( $_message_args as $msg_name => $message_arg )
         {
+            // Ignored the message if $message_arg is set to '_ignore_'
+            if ( is_string($message_arg) && '_ignore_' == $message_arg )
+                continue;
+            
             $is_metadata    = $this->strStartsWith( $msg_name, 'meta_' );
             $is_traversable = is_array( $message_arg );
 
@@ -636,13 +655,13 @@ trait EventList
             $_msg_name = $msg_name;
             if ( isset($event_data['_translate'][$msg_name]) )
             {
-                $pluralize_str = $this->getVar($event_data['_translate'][$msg_name]['plural_char'], ', ');
+                $pluralize_str = $this->getVar($event_data['_translate'][$msg_name], 'plural_char', ', ');
                 
                 if ( false !== strpos($info, $pluralize_str) ) {
-                    $plural   = $this->getVar($event_data['_translate'][$msg_name]['plural'], $msg_name);
+                    $plural   = $this->getVar($event_data['_translate'][$msg_name], 'plural', $msg_name);
                     $_msg_name = $plural;
                 } else {
-                    $singular = $this->getVar($event_data['_translate'][$msg_name]['singular'], '');
+                    $singular = $this->getVar($event_data['_translate'][$msg_name], 'singular', '');
                     if ( !empty($singular) )
                         $_msg_name = $singular;
                 }
@@ -893,7 +912,7 @@ trait EventList
      * @see EventList::getEventMsgInfo()
      * @see EventList::generateEventMessageForDb()
      */
-    public function formatMsgField( $event, $field, $context = '' )
+    public function formatMsgField( $event, $field, $context = '', $raw = false )
     {
         $label            = $this->makeFieldReadable( $field );
         $info             = empty( $context ) ? $label : ucfirst( $context ) . ' ' . strtolower( $label );
@@ -1156,10 +1175,10 @@ trait EventList
         $_id            = $this->sanitizeOption( $event_id, 'int' );
         $flip_slug_list = array_flip( $this->event_slug_list );
 
-        if ( ! isset( $flip_slug_list[ $event_id ] ) ) 
+        if ( ! isset( $flip_slug_list[ $_id ] ) ) 
             return is_string( $default_slug ) ? $default_slug : '';
 
-        return $flip_slug_list[ $event_id ];
+        return $flip_slug_list[ $_id ];
     }
 
     /**
@@ -1180,10 +1199,10 @@ trait EventList
     {
         $event_hook_namespace = ltrim( "{$event_group}_{$event_hook}", '_' );
 
-        if ( ! isset( $this->event_slug_list[ $event_hook_namespace ] ) ) 
+        if (!isset($this->event_slug_list[$event_hook_namespace]))
             return 0;
 
-        return $this->event_slug_list[ $event_hook_namespace ];
+        return $this->event_slug_list[$event_hook_namespace];
     }
 
     /**
@@ -1325,6 +1344,12 @@ trait EventList
             $object_id
         );
 
+        /**
+         * @todo
+         * For failed login attempts, create a button to allow admins to reset the log 
+         * counter. If the attempted login request is made on a non-existing user account, 
+         * specify it and let the admin user take an action.
+         */
         $this->active_event_error_log_data = $this->DB
             ->reset()
             ->select( $selected_active_event_error_fields )
@@ -1389,6 +1414,95 @@ trait EventList
     }
 
     /**
+     * Get the event ID and Slug from the registered method name
+     * 
+     * @since 1.0.0
+     * 
+     * @see EventList::LogActiveEvent()
+     * 
+     * @return array|false Returns an associative array containing the event slug and ID 
+     *                     on success. Otherwise false.
+     */
+    protected function getEventHookInfo($event_group = '', $method_name = '')
+    {
+        // The method/function must be callable
+        if (!is_callable($method_name) || empty($event_group) || empty($method_name))
+            return false;
+
+        $split_method_name = explode('::', $method_name);
+        if (empty($split_method_name))
+            return false;
+
+        $_method_name = end($split_method_name);
+
+        $event_hook           = preg_replace('/_event$/', '', $_method_name);
+        $event_hook_namespace = "{$event_group}_{$event_hook}";
+
+        if (!isset($this->event_slug_list[$event_hook_namespace]))
+            return false;
+
+        $event_id = $this->event_slug_list[$event_hook_namespace];
+
+        if (!isset($this->main_event_list[$event_id]))
+            return false;
+
+        // We have to prefix the event with the event group name
+        $event_slug = $this->getEventSlugById(
+            $this->active_event_ID,
+            $event_hook
+        );
+
+        return [
+            'ID'   => $event_id,
+            'slug' => $event_slug,
+        ];
+    }
+
+    /**
+     * Clear the failed event data if the event successor was triggered
+     * 
+     * @since 1.0.0
+     * 
+     * @param string $event_group Specifies which group the even belongs to.
+     * 
+     * @param string $event_slug Specifies the event slug whose failed event 
+     *                           should be cleared.
+     */
+    protected function clearFailedEventData($event_group, $event_slug)
+    {
+        $event_namespace = $event_group . '_' . $event_slug;
+        if ( !isset($this->maybe_trigger_failed_events[$event_namespace]) )
+            return;
+
+        unset($this->maybe_trigger_failed_events[$event_namespace]);
+    }
+
+    /**
+     * Log all failed events
+     * 
+     * @see EventList::clearFailedEventData()
+     */
+    public function triggerFailedEvents()
+    {
+        if ( empty($this->maybe_trigger_failed_events) )
+            return;
+
+        foreach ( $this->maybe_trigger_failed_events as $event )
+        {
+            if ( !is_array($event) ) continue;
+
+            $event_group = $this->getVar($event, 'event_group');
+
+            // Setup the event data
+            $setup_handler = sprintf('setup%sEventArgs', ucfirst($event_group));
+            if ( !method_exists($this, $setup_handler) ) continue;
+
+            $this->$setup_handler($this->getVar($event, 'event_args'));
+            $this->LogActiveEvent($event_group, $this->getVar($event, 'method'));
+        }
+    }
+
+    /**
      * Setup and log the active triggered event data
      * 
      * @since 1.0.0
@@ -1402,32 +1516,14 @@ trait EventList
      */
     protected function LogActiveEvent( $event_group, $method_name = __METHOD__ )
     {
-        $split_method_name = explode( '::', $method_name );
-        if ( empty( $split_method_name ) )
-            return;
+        $event_hook_info = $this->getEventHookInfo($event_group, $method_name);
+        if (!$event_hook_info) return;
 
-        $_method_name = end( $split_method_name );
-
-        $event_hook           = preg_replace( '/_event$/', '', $_method_name );
-        $event_hook_namespace = "{$event_group}_{$event_hook}";
-
-        if ( ! isset( $this->event_slug_list[ $event_hook_namespace ] ) )
-            return;
-
-        $event_id = $this->event_slug_list[ $event_hook_namespace ];
-
-        if ( ! isset( $this->main_event_list[ $event_id ] ) )
-            return;
+        $this->active_event_ID   = $event_hook_info['ID'];
+        $this->active_event_slug = $event_hook_info['slug'];
 
         // Setup the active event
-        $this->active_event      = $this->main_event_list[ $event_id ];
-
-        $this->active_event_ID   = $event_id;
-
-        // We have to prefix the event with the event group name
-        $this->active_event_slug = $this->getEventSlugById(
-            $this->active_event_ID, $event_hook 
-        );
+        $this->active_event = $this->main_event_list[ $this->active_event_ID ];
 
         /**
          * Lookup metadata event ID/Slug

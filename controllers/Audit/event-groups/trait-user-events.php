@@ -5,7 +5,7 @@ namespace ALM\Controllers\Audit\Events\Groups;
 defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your own.' );
 
 /**
-                 * @package User Events
+ * @package User Events
  * @since   1.0.0
  */
 trait UserEvents
@@ -237,7 +237,7 @@ trait UserEvents
         if ( isset($user->role) ) {
             $user_role = $user->role;
         } else {
-            $user_role = $this->User->getUserRoles( $object_id );
+            $user_role = $this->User->getUserRoles( $object_id, true );
         }
 
         if ( $current_user_id > 0 ) {
@@ -301,20 +301,28 @@ trait UserEvents
             // Don't setup the user primary blog data if the ignore flag is set
             if ( !isset( $user_msg_args['_ignore_auto_setup'] ) )
             {
-                if ( ! isset( $user_msg_args['primary_blog'] ) ) {
-                    $user_msg_args['primary_blog'] = $this->sanitizeOption( get_user_meta( $object_id, 'primary_blog', true ) );
-                }
+                if ( $object_id > 0 )
+                {
+                    if ( ! isset( $user_msg_args['primary_blog'] ) ) {
+                        $user_msg_args['primary_blog'] = $this->sanitizeOption( get_user_meta( $object_id, 'primary_blog', true ) );
+                    }
 
-                if ( ! isset( $user_msg_args['source_domain'] ) ) {
-                    $user_msg_args['source_domain'] = $this->sanitizeOption( get_user_meta( $object_id, 'source_domain', true ) );
-                }
-                
-                if ( ! isset( $user_msg_args['primary_blog_url'] ) ) {
-                    $user_msg_args['primary_blog_url'] = $this->sanitizeOption( get_blog_option($user_msg_args['primary_blog'], 'siteurl', '' ) );
-                }
+                    if ( ! isset( $user_msg_args['source_domain'] ) ) {
+                        $user_msg_args['source_domain'] = $this->sanitizeOption( get_user_meta( $object_id, 'source_domain', true ) );
+                    }
+                    
+                    if ( ! isset( $user_msg_args['primary_blog_url'] ) ) {
+                        $user_msg_args['primary_blog_url'] = $this->sanitizeOption( get_blog_option($user_msg_args['primary_blog'], 'siteurl', '' ) );
+                    }
 
-                if ( ! isset( $user_msg_args['primary_blog_name'] ) ) {
-                    $user_msg_args['primary_blog_name'] = $this->sanitizeOption( get_blog_option( $user_msg_args['primary_blog'], 'blogname', '' ) );
+                    if ( ! isset( $user_msg_args['primary_blog_name'] ) ) {
+                        $user_msg_args['primary_blog_name'] = $this->sanitizeOption( get_blog_option( $user_msg_args['primary_blog'], 'blogname', '' ) );
+                    }
+                } else {
+                    $user_msg_args['primary_blog']      = 0;
+                    $user_msg_args['source_domain']     = '';
+                    $user_msg_args['primary_blog_url']  = '';
+                    $user_msg_args['primary_blog_name'] = '';
                 }
             }
         }
@@ -645,7 +653,7 @@ trait UserEvents
                     'severity' => 'notice',
 
                     'message' => [
-                        '_main'                    => 'Added a new custom field to a user profile:',
+                        '_main'                    => 'Added a new custom field to a user profile.',
 
                         '_space_start'             => '',
                         'meta_key'                 => ['meta_key'],
@@ -952,7 +960,7 @@ trait UserEvents
                     'logged_in_user_caps' => [ 'edit_users' ],
 
                     'message'  => [
-                        '_main' => 'Created a new a user.',
+                        '_main' => 'Created a new user.',
                         
                         '_space_start'             => '',
 
@@ -1259,7 +1267,7 @@ trait UserEvents
                  * @since 1.0.0
                  */
                 'alm_profile_update_user_nicename' => [
-                    'title'    => 'User nicename updated',
+                    'title'    => 'User nice name updated',
                     'action'   => 'modified',
                     'event_id' => 5037,
                     'severity' => 'notice',
@@ -1270,8 +1278,8 @@ trait UserEvents
                         '_main' => 'Changed the user ---Nice name---',
 
                         '_space_start'             => '',
-                        'user_nicename_previous'   => ['user_nicename', 'previous'],
-                        'user_nicename_new'        => ['user_nicename', 'new'],
+                        'user_nice_name_previous'  => ['user_nicename', 'previous'],
+                        'user_nice_name_new'       => ['user_nicename', 'new'],
                         '_space_end'               => '',
 
                         'user_id'                  => ['object_id'],
@@ -1667,7 +1675,7 @@ trait UserEvents
                     'event_id'        => 5046,
                     'severity'        => 'critical',
                     'error_flag'      => true,
-                    'event_successor' => [ 'user', 'wp_login'],
+                    'event_successor' => ['user', 'wp_login'],
 
                     'message'  => [
                         '_main'                    => 'User login failed.',
@@ -1686,6 +1694,7 @@ trait UserEvents
                         'last_name'                => ['last_name'],
                         'user_email'               => ['user_email'],
                         'profile_url'              => ['profile_url'],
+                        'user_account_exists'      => ['user_account_exists'],
                         'user_primary_site'        => ['primary_blog'],
                         'primary_site_name'        => ['primary_blog_name'],
                         'primary_site_url'         => ['primary_blog_url'],
@@ -2383,7 +2392,7 @@ trait UserEvents
                     '_translate' => [
                         'all_previous_role' => [
                             'plural'      => 'all_previous_roles',
-                            'singular'    => 'all_previous_role',
+                            'singular'    => 'previous_role',
 
                             // Specifies the character to check for before pluralizing 
                             // the string. Basically, this is the character used to join the 
@@ -2452,7 +2461,7 @@ trait UserEvents
                         ],
                         'all_new_role' => [
                             'plural'   => 'all_new_roles',
-                            'singular' => 'all_new_role',
+                            'singular' => 'new_role',
                         ]
                     ],
 
@@ -2463,6 +2472,7 @@ trait UserEvents
                         'added_role'               => ['added_role'],
                         'all_previous_role'        => ['role_previous'],
                         'all_new_role'             => ['role_new'],
+                        'role_info'                => ['role_info'],
                         '_inspect_user_role'       => '',
                         '_space_end'               => '',
 
@@ -2513,7 +2523,7 @@ trait UserEvents
                         ],
                         'all_new_role' => [
                             'plural'   => 'all_new_roles',
-                            'singular' => 'all_new_role',
+                            'singular' => 'new_role',
                         ]
                     ],
 
@@ -2568,11 +2578,11 @@ trait UserEvents
                      * Translation arguments
                      */
                     '_translate' => [
-                        'all_capability_previous' => [
+                        'all_previous_capability' => [
                             'plural'   => 'all_previous_capabilities',
                             'singular' => 'previous_capability',
                         ],
-                        'all_capability_new' => [
+                        'all_new_capability' => [
                             'plural'   => 'all_new_capabilities',
                             'singular' => 'new_capability',
                         ],
@@ -2635,11 +2645,11 @@ trait UserEvents
                      * Translation arguments
                      */
                     '_translate' => [
-                        'all_capability_previous' => [
+                        'all_previous_capability' => [
                             'plural'   => 'all_previous_capabilities',
                             'singular' => 'previous_capability',
                         ],
-                        'all_capability_new' => [
+                        'all_new_capability' => [
                             'plural'   => 'all_new_capabilities',
                             'singular' => 'new_capability',
                         ],
@@ -2703,7 +2713,7 @@ trait UserEvents
                      * Translation arguments
                      */
                     '_translate' => [
-                        'all_capability_previous' => [
+                        'all_previous_capability' => [
                             'plural'   => 'all_previous_capabilities',
                             'singular' => 'previous_capability',
                         ],
@@ -2733,7 +2743,6 @@ trait UserEvents
                         'first_name'               => ['first_name'],
                         'last_name'                => ['last_name'],
                         'user_email'               => ['user_email'],
-                        'custom_field_updated'     => ['custom_field_updated'],
                         'is_user_owner_of_account' => ['is_user_owner_of_account'],
                         'profile_url'              => ['profile_url'],
                         'user_primary_site'        => ['primary_blog'],
@@ -2770,7 +2779,7 @@ trait UserEvents
                      * Translation arguments
                      */
                     '_translate' => [
-                        'all_capability_previous' => [
+                        'all_previous_capability' => [
                             'plural'   => 'all_previous_capabilities',
                             'singular' => 'previous_capability',
                         ],
@@ -2790,7 +2799,6 @@ trait UserEvents
                         'first_name'               => ['first_name'],
                         'last_name'                => ['last_name'],
                         'user_email'               => ['user_email'],
-                        'custom_field_updated'     => ['custom_field_updated'],
                         'is_user_owner_of_account' => ['is_user_owner_of_account'],
                         'profile_url'              => ['profile_url'],
                         'user_primary_site'        => ['primary_blog'],
@@ -2805,8 +2813,7 @@ trait UserEvents
                     ],
                 ],
 
-
-                'user_sessions_management',
+                
             ]
         ];
     }
@@ -2923,6 +2930,7 @@ trait UserEvents
      */
     public function customizeUserEventMsgFieldInfo( $info, $event, $field, $context )
     {
+        $info = '';
         /**
          * Format the user table fields
          */
@@ -3004,23 +3012,25 @@ trait UserEvents
                     $field      = rtrim( 'roles_' . $context, '_' );
                     $user_roles = (array) $this->getEventMsgArg( 'user', 'roles', [] );
 
+
                     $roles = empty( $context ) ? 
                         $user_roles : (array) $this->getEventMsgArg( $event, $field );
 
                     if ( empty( $roles ) ) {
-                        $info = sprintf( "$info: %s", 'No role' );
+                        $info = sprintf( "$info: %s", 'None' );
                     }
                     else {
+                        // Pluralize the 'role' placeholder text
                         $user_roles_label = count( $roles ) > 1 ? $info . 's' : $info;
 
                         /**
                          * @todo
-                         * Run translation on the user roles, but probably when 
+                         * Remember to run translation on the user roles, but probably when 
                          * displaying the logs
                          */
                         // $roles = array_map( 'alm_translate_user_role', $roles );
 
-                        $info = "$user_roles_label: " . implode( ', ', $roles );
+                        $info = "$user_roles_label: " . $this->parseValueForDb($roles, 5);
                     }
                 break;
 
@@ -3167,14 +3177,15 @@ trait UserEvents
         // The untransformed event message arguments
         $msg_args = $raw_msg_args;;
             
-        $blog_prefix            = $this->getBlogPrefix();
-        $user_settings_key      = $blog_prefix . 'user-settings';
-        $custom_field_list      = $this->getCustomizedUserCustomFields();
+        $blog_prefix                 = $this->getBlogPrefix();
+        $user_settings_key           = $blog_prefix . 'user-settings';
+        $custom_field_list           = $this->getCustomizedUserCustomFields();
+        $has_custom_field_customizer = isset($custom_field_list[$field]);
 
         $field_title            = $field;
         $is_user_settings_field = false;
 
-        if ( isset( $custom_field_list[ $field ] ) )
+        if ($has_custom_field_customizer)
         { 
             // Skip the first name or last name event message fields when they are active
             if ( in_array( $field, ['first_name', 'last_name'], true ) ) 
@@ -3257,7 +3268,7 @@ trait UserEvents
         }
 
         // Append 'custom' to the field target
-        $field_target .= ' custom';
+        $field_target .= $has_custom_field_customizer ? '' : 'custom';
 
         if ( 'create' == $action )
         {
@@ -3274,11 +3285,11 @@ trait UserEvents
         }
         elseif ( 'modified' == $action )
         {
-            $msg     = "Changed the user $field_target.";
+            $msg     = "Changed the user $field_target field.";
             $context = [ 'previous', 'new' ];
 
             if ( $is_user_settings_field && '' === $user_settings_state  ) {
-                $msg  = 'Updated the user ---User settings--- without making any changes to it.';
+                $msg  = 'Updated the user ---User settings--- custom field without making any changes.';
 
                 $msg .= $this->explainEventMsg(
                     ' (The update was triggered without modifying the previous User settings value).'
@@ -3286,7 +3297,7 @@ trait UserEvents
             }
 
             if ( $is_user_settings_field && 'deleted' == $user_settings_state ) {
-                $msg = 'Deleted the ---User settings--- field from a user.';
+                $msg = 'Deleted the ---User settings--- custom field from the user.';
             }
         }
         elseif ( 'delete' == $action )
@@ -3304,8 +3315,9 @@ trait UserEvents
         /**
          * This formatting should be applied only on super mode 
          */
-        if ( $this->isSuperMode() ) {
-            $msg_args['meta_key'] = $this->makeFieldReadable( $field ) . ' field key: ' . $field;
+        if ( !$has_custom_field_customizer && $this->isSuperMode() ) {
+            // $msg_args['meta_key'] = $this->makeFieldReadable( $field ) . ' field key: ' . $field;
+            $msg_args['meta_key'] = 'User custom field key: ' . $field;
         } else {
             unset( $msg_args['meta_key'] );
         }
@@ -3349,126 +3361,126 @@ trait UserEvents
     protected function __aggregateUserMetaFields()
     {
         $updated_str = '';
-        if ( $this->isUserProfileDataAggregationActive() )
+        if ( !$this->isUserProfileDataAggregationActive() )
+            return $updated_str;
+
+        $_new_val                    = '';
+        $line_break                  = $this->getEventMsgLineBreak();
+        $blog_prefix                 = $this->getBlogPrefix();
+        $update_type                 = $this->getConstant('ALM_IS_USER_PROFILE_UPDATE_AGGREGATION');
+        $cap_meta_field              = $blog_prefix . 'capabilities';
+        $customized_user_meta_fields = $this->getCustomizedUserCustomFields();
+
+        foreach ( $this->user_data_aggregation as $field => $value )
         {
-            $_new_val                    = '';
-            $line_break                  = $this->getEventMsgLineBreak();
-            $blog_prefix                 = $this->getBlogPrefix();
-            $update_type                 = $this->getConstant('ALM_IS_USER_PROFILE_UPDATE_AGGREGATION');
-            $cap_meta_field              = $blog_prefix . 'capabilities';
-            $customized_user_meta_fields = $this->getCustomizedUserCustomFields();
+            $is_cap_field    = $cap_meta_field == $field;
+            $use_field_title = $this->getVar( $value, 'title' );
 
-            foreach ( $this->user_data_aggregation as $field => $value )
+            /**
+             * If the requested field value is set, then it means this is 
+             * a pre-update request that requires confirmation before the 
+             * changes will be committed
+             */
+            $field_has_confirmation = isset( $value['requested'] );
+            if ( $field_has_confirmation )
             {
-                $is_cap_field    = $cap_meta_field == $field;
-                $use_field_title = $this->getVar( $value, 'title' );
+                $new_val      = $value['current'];
+                $previous_val = $value['requested'];
+            }
+            else {
+                $new_val      = $value['new'];
+                $previous_val = $value['previous'];
+            }
 
-                /**
-                 * If the requested field value is set, then it means this is 
-                 * a pre-update request that requires confirmation before the 
-                 * changes will be committed
-                 */
-                $field_has_confirmation = isset( $value['requested'] );
-                if ( $field_has_confirmation )
-                {
-                    $new_val      = $value['current'];
-                    $previous_val = $value['requested'];
-                }
-                else {
-                    $new_val      = $value['new'];
-                    $previous_val = $value['previous'];
-                }
+            // Maybe previous user metadata is set but empty, so we have to retrieve it
+            if ( '' === $previous_val 
+            && isset( $this->_user_profile_metadata[ $field ] ) 
+            && is_array( $this->_user_profile_metadata[ $field ] ) )
+            {
+                // Just incase there's more than one value in the array
+                $previous_val = $this->_user_profile_metadata[ $field ];
+            }
 
-                // Maybe previous user metadata is set but empty, so we have to retrieve it
-                if ( '' === $previous_val 
-                && isset( $this->_user_profile_metadata[ $field ] ) 
-                && is_array( $this->_user_profile_metadata[ $field ] ) )
-                {
-                    // Just incase there's more than one value in the array
-                    $previous_val = $this->_user_profile_metadata[ $field ];
-                }
+            $previous_val = $this->parseValueForDb($previous_val, 5, $is_cap_field);
 
-                $previous_val = $this->parseValueForDb($previous_val, 5, $is_cap_field);
-
-                // Add the user meta field name when on super mode
-                $is_customized_user_meta_field = isset($customized_user_meta_fields[ $field ]);
-                if ( $is_customized_user_meta_field && $this->isSuperMode() )
-                {
-                    $updated_str .= sprintf( 'Custom field key: %s', $field );
-
-                    // Line break;
-                    $updated_str .= $line_break;
-                }
-
-                /**
-                 * Don't customize any user meta fields that is not part of the 
-                 * default customized user meta field list
-                 */
-                if ( $is_customized_user_meta_field )
-                {
-                    if (isset( $customized_user_meta_fields[ $field ]['_title'] ))
-                    {
-                        $field_label = $customized_user_meta_fields[ $field ]['_title'];
-
-                        if ( is_array( $value ) 
-                        && count( $value ) 
-                        && isset( $customized_user_meta_fields[ $field ]['_title_singular']) )
-                        {
-                            $field_label = $customized_user_meta_fields[ $field ]['_title_singular'];
-                        }
-                    }
-                    else {
-                        $field_label = str_replace(
-                            [ '_', $this->getBlogPrefix() ],
-                            [ ' ', '' ], 
-                            $field
-                        );
-                    }
-                }
-                else {
-                    $field_label = $field;
-                }
-
-                if ( ! empty( $use_field_title ) ) {
-                    $field_label = $use_field_title;
-                }
-
-                if ( 'update' == $update_type )
-                {
-                    $previous_field_label = $field_has_confirmation ? 'Requested' : 'Previous';
-                    
-                    if ( ! $is_customized_user_meta_field ) {
-                        $previous_field_label .= ' value';
-                    } else {
-                        $previous_field_label = ucfirst($previous_field_label);
-                    }
-
-                    $updated_str .= "{$previous_field_label} {$field_label}: $previous_val";
-
-                    // Line break;
-                    $updated_str .= $line_break;
-                }
-
-                // New val may be an array/object
-                $_new_val = $this->parseValueForDb($new_val, 5, $is_cap_field);
-
-                $new_field_label = ( 'create' == $update_type ) ? 
-                    $field_label 
-                    : 
-                    ( $field_has_confirmation ? 'Current ' : 'New ' ) . $field_label;
-
-                if ( ! $is_customized_user_meta_field ) {
-                    $new_field_label .= ' value';
-                } else {
-                    $new_field_label = ucfirst($new_field_label);
-                }
-
-                $updated_str .= $new_field_label . ': ' . $_new_val;
+            // Add the user meta field name when on super mode
+            $is_customized_user_meta_field = isset($customized_user_meta_fields[ $field ]);
+            if ( $this->isSuperMode() ) {
+                $updated_str .= sprintf( 'Custom field key: %s', $field );
 
                 // Line break;
                 $updated_str .= $line_break;
             }
+
+            /**
+             * Don't customize any user meta fields that is not part of the 
+             * default customized user meta field list
+             */
+            if ( $is_customized_user_meta_field )
+            {
+                if (isset( $customized_user_meta_fields[ $field ]['_title'] ))
+                {
+                    $field_label = $customized_user_meta_fields[ $field ]['_title'];
+
+                    if ( is_array( $value ) 
+                    && count( $value ) 
+                    && isset( $customized_user_meta_fields[ $field ]['_title_singular']) )
+                    {
+                        $field_label = $customized_user_meta_fields[ $field ]['_title_singular'];
+                    }
+                }
+                else {
+                    $field_label = str_replace(
+                        [ '_', $this->getBlogPrefix() ],
+                        [ ' ', '' ], 
+                        $field
+                    );
+                }
+            }
+            else {
+                $field_label = $field;
+            }
+
+            if ( ! empty( $use_field_title ) ) {
+                $field_label = $use_field_title;
+            }
+
+            if ( 'update' == $update_type )
+            {
+                $previous_field_label = $field_has_confirmation ? 'Requested' : 'Previous';
+                
+                if ( ! $is_customized_user_meta_field ) {
+                    $previous_field_label .= ' value';
+                } else {
+                    $previous_field_label = ucfirst($previous_field_label);
+                }
+
+                $updated_str .= "{$previous_field_label} {$field_label}: $previous_val";
+
+                // Line break;
+                $updated_str .= $line_break;
+            }
+
+            // New val may be an array/object
+            $_new_val = $this->parseValueForDb($new_val, 5, $is_cap_field);
+
+            $new_field_label = ( 'create' == $update_type ) ? 
+                $field_label 
+                : 
+                ( $field_has_confirmation ? 'Current ' : 'New ' ) . $field_label;
+
+            if ( ! $is_customized_user_meta_field ) {
+                $new_field_label .= ' value';
+            } else {
+                $new_field_label = ucfirst($new_field_label);
+            }
+
+            $updated_str .= $new_field_label . ': ' . $_new_val;
+
+            // Line break;
+            $updated_str .= $line_break;
         }
+
         return $updated_str;
     }
 

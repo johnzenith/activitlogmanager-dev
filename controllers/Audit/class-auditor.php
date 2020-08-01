@@ -103,27 +103,46 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
 
         // Setup the event list
         $this->__setupEventList();
-
         $this->auditable_event_list = $this->getEventsList();
 
         // Setup the Audit Observer
         $this->AuditObserver->init($this);
 
-        echo '<pre>';
-        // $caps = get_user_meta(1, $this->wpdb->prefix . 'capabilities', true);
-        $user_data = get_userdata(4);
-        $user_data->add_cap('minner');
-        $user_data->add_role('minner');
-        // $user_data->set_role('');
-        // print_r( $caps);
-        print_r( $user_data->get_role_caps());
-        echo '<hr>';
-        print_r( $user_data->roles );
-        echo '<hr>';
-        print_r( $user_data->caps );
-        echo '<hr>';
-        var_dump( $user_data->role );
-        wp_die();
+        // Log all failed events
+        add_action('wp_footer',    [$this, 'triggerFailedEvents'], 99);
+        add_action('admin_footer', [$this, 'triggerFailedEvents'], 99);
+
+        add_action('init', function()
+        {
+        // echo '<pre>';
+        // $caps = get_user_meta(8, $this->wpdb->prefix . 'capabilities', true);
+        // $user_data = get_userdata(4);
+        // $user_data->add_cap('edit_posts');
+        // $user_data->add_role('blogger');
+        // $user_data->remove_role('author');
+        // $user_data->set_role('editor'); 
+        // // print_r( $caps);
+        // print_r( $user_data->get_role_caps());
+        // echo '<hr>';
+        // print_r( $user_data->roles );
+        // echo '<hr>';
+        // print_r( $user_data->caps );
+        // echo '<hr>';
+        // var_dump( $user_data->role );
+
+        // $this->appendUpdatedUserProfileData('test_field1', [
+        //     'new' => 'first term',
+        //     'previous' => 'last term',
+            
+        // ]);
+        // var_dump( $this->__aggregateUserMetaFields() );
+
+        
+        //     update_user_meta($this->User->current_user_ID, 'alm_ms_dashboard_quick_press_last_post_id', 4);
+        // wp_die();
+        });
+
+
     }
 
     /**

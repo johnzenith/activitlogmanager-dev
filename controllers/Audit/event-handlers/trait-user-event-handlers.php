@@ -1122,11 +1122,15 @@ trait UserEvents
      */
     public function wp_login_failed_event( $username, $errors )
     {
-        $user            = get_user_by( 'slug', $username );
-        $object_id       = $this->getVar( $user, 'ID' );
-        $login_url       = $this->sanitizeOption( wp_login_url(), 'url' );
-        $_error_msg      = '';
-        $failed_attempts = 1;
+        $user = get_user_by('slug', $username);
+        if ( !$user && false !== strpos($username, '@') )
+            $user = get_user_by('email', $username);
+
+        $object_id           = (int) $this->getVar($user, 'ID');
+        $login_url           = $this->sanitizeOption(wp_login_url(), 'url');
+        $_error_msg          = '';
+        $failed_attempts     = 1;
+        $user_account_exists = $object_id > 0 ? 'Yes' : 'No';
 
         if ( is_wp_error( $errors ) )
         {
@@ -1138,7 +1142,9 @@ trait UserEvents
             }
         }
 
-        $this->setupUserEventArgs( compact( 'object_id', 'failed_attempts', 'login_url', '_error_msg' ) );
+        $this->setupUserEventArgs( compact(
+            'object_id', 'failed_attempts', 'login_url', '_error_msg', 'user_account_exists'
+        ) );
         $this->LogActiveEvent( 'user', __METHOD__ );
     }
 
@@ -1277,10 +1283,10 @@ trait UserEvents
         $user->get_role_caps();
         
         $user_roles    = $user->roles;
-        $role_new      = $this->parseValueForDb($user_roles, 5, true);
-        $role_previous = $this->parseValueForDb($old_roles, 5, true);
+        $role_new      = $this->parseValueForDb($user_roles, 5);
+        $role_previous = $this->parseValueForDb($old_roles, 5);
 
-        $no_role_found = 'No role found';
+        $no_role_found = 'None';
         if ('' === $role_new) {
             $role_new = $no_role_found;
         }
@@ -1309,15 +1315,22 @@ trait UserEvents
         // Setup the user's roles properties correctly
         $user->get_role_caps();
 
-        $user_roles    = $user->roles;
+        $user_roles = $user->roles;
 
-        $role_new      = $this->parseValueForDb($user_roles, 5, true);
+        // Set the role info if the added role is not what WordPress recognized
+        $role_info = '_ignore_';
+        if ( !in_array($role, $user_roles, true) ) {
+            // $user_roles[] = $role;
+            $role_info = sprintf('(%s) is a custom role (behaving like a capability) and may not be listed with the actual roles of the user. Please use the inspect user role button to see a full overview of all the roles given to the user.', $role);
+        }
+
+        $role_new      = $this->parseValueForDb($user_roles, 5);
         $added_role    = $role;
 
-        $prev_roles    = empty($user_roles) ? '' : array_diff_key($user_roles, [$role]);
-        $role_previous = $this->parseValueForDb($prev_roles, 5, true);
+        $prev_roles    = empty($user_roles) ? '' : array_diff($user_roles, [$role]);
+        $role_previous = $this->parseValueForDb($prev_roles, 5);
 
-        $no_role_found = 'No role found';
+        $no_role_found = 'None';
         if ('' === $role_previous) {
             $role_previous = $no_role_found;
         }
@@ -1325,8 +1338,9 @@ trait UserEvents
         $this->setupUserEventArgs(compact(
             'role_new',
             'object_id',
+            'role_info',
             'added_role',
-            'role_previous'
+            'role_previous' 
         ));
 
         $this->LogActiveEvent('user', __METHOD__);
@@ -1335,7 +1349,7 @@ trait UserEvents
     /**
      * Fires immediately after a role as been removed from a user.
      * 
-     * @see WP_User::add_role()
+     * @see WP_User::remove_role()
      */
     public function remove_user_role_event($object_id, $role)
     {
@@ -1344,15 +1358,23 @@ trait UserEvents
         // Setup the user's roles properties correctly
         $user->get_role_caps();
 
-        $user_roles    = $user->roles;
+        $user_roles = $user->roles;
 
-        $role_new      = $this->parseValueForDb($user_roles, 5, true);
+        // Make sure the removed role is not in the new user roles array
+        if (in_array($role, $user_roles, true)) {
+            $all_roles = array_flip($user_roles);
+            unset($all_roles[$role]);
+
+            $user_roles = $all_roles;
+        }
+
+        $role_new      = $this->parseValueForDb($user_roles, 5);
         $removed_role  = $role;
 
         $prev_roles    = array_merge($user_roles, [$role]);
-        $role_previous = $this->parseValueForDb($prev_roles, 5, true);
+        $role_previous = $this->parseValueForDb($prev_roles, 5);
 
-        $no_role_found = 'No role found';
+        $no_role_found = 'None';
         if ('' === $role_new) {
             $role_new = $no_role_found;
         }
@@ -1395,7 +1417,7 @@ trait UserEvents
         $prev_caps           = array_diff_key($new_user_caps, $old_user_caps);
         $capability_previous = $this->parseValueForDb($prev_caps, 5, true);
 
-        $no_cap_found = 'No capability found';
+        $no_cap_found = 'None';
         if ('' === $capability_new) {
             $capability_new = $no_cap_found;
         }
@@ -1436,7 +1458,7 @@ trait UserEvents
         $prev_caps           = array_diff_key($new_user_caps, $old_user_caps);
         $capability_previous = $this->parseValueForDb($prev_caps, 5, true);
 
-        $no_cap_found = 'No capability found';
+        $no_cap_found = 'None';
         if ('' === $capability_new) {
             $capability_new = $no_cap_found;
         }
@@ -1461,10 +1483,10 @@ trait UserEvents
      */
     public function alm_remove_all_user_cap_event($object_id, $new_caps)
     {
-        $capability_new      = 'No capability found';
+        $capability_new      = 'None';
         $capability_previous = $this->getVar($this->old_user_caps, 'caps', []);
 
-        $no_cap_found = 'No capability found';
+        $no_cap_found = 'None';
         if ('' === $capability_previous) {
             $capability_previous = $no_cap_found;
         }

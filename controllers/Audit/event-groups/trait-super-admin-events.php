@@ -35,21 +35,31 @@ trait SuperAdminEvents
             'events' => [
                 /**
                  * @see /wp-includes/capabilities.php
-                 * @see action( 'grant_super_admin', int $user_id )
+                 * @see do_action( 'grant_super_admin', int $user_id )
                  */
                 'grant_super_admin' => [
                     'title'      => 'Grant Super Admin Privilege',
-                    'action'     => 'modify',
+                    'action'     => 'user_role_modify',
                     'event_id'   => 5001,
-                    'severity'   => 'alert',
+                    'severity'   => 'critical',
 
                     'screen'     => [ 'admin', 'network', ],
                     'user_state' => 'logged_in',
 
                     'description' => 'Responsible for logging the initial request to <strong>Grant Super Admin Privilege</strong> to a user. This event is used to check whether the <em>Super Admin Privilege</em> will be granted to the user. If the request is successful, then it will be replaced with the <em>Granted Super Admin</em> event. This event is very important so that even when the request failed and Super Admin Privilege was not granted, you will still be notified.',
 
+                    /**
+                     * Translation arguments
+                     */
+                    '_translate' => [
+                        'roles' => [
+                            'plural'   => 'roles',
+                            'singular' => 'role',
+                        ]
+                    ],
+
                     'message' => [
-                        '_main' => 'Tried to grant the <em>Super Admin Privilege</em> to a user, but the request was unsuccessful.',
+                        '_main' => 'Tried to grant the Super Admin Privilege to a user, but the request was unsuccessful.',
 
                         '_space_start'             => '',
                         'roles'                    => ['roles'],
@@ -79,22 +89,36 @@ trait SuperAdminEvents
 
                 /**
                  * @see /wp-includes/capabilities.php
-                 * @see action( 'granted_super_admin', int $user_id )
+                 * @see do_action( 'granted_super_admin', int $user_id )
                  */
                 'granted_super_admin' => [
                     'title'    => 'Granted Super Admin Privilege',
-                    'action'   => 'modified',
+                    'action'   => 'user_role_modified',
                     'event_id' => 5002,
-                    'severity' => 'alert',
+                    'severity' => 'critical',
 
                     'description' => 'Responsible for checking whether the Super Admin Privilege was granted successfully to a user. If the Super Admin Privilege was granted successfully, then it will replace the initial <em>Grant Super Admin</em> event.',
 
+                    /**
+                     * Translation arguments
+                     */
+                    '_translate' => [
+                        'previous_role' => [
+                            'plural'   => 'all_previous_roles',
+                            'singular' => 'previous_role',
+                        ],
+                        'new_role' => [
+                            'plural'   => 'all_new_roles',
+                            'singular' => 'new_role',
+                        ],
+                    ],
+
                     'message' => [
-                        '_main'                    => 'Granted the <em>Super Admin Privilege</em> to a user.',
+                        '_main'                    => 'Granted the Super Admin Privilege to a user.',
 
                         '_space_start'             => '',
-                        'role_previous'            => ['roles', 'previous'],
-                        'roles'                    => ['roles', 'new'],
+                        'previous_role'            => ['role_previous'],
+                        'new_role'                 => ['role_new'],
                         '_space_end'               => '',
 
                         'user_id'                  => ['id'],
@@ -114,19 +138,29 @@ trait SuperAdminEvents
 
                 /**
                  * @see /wp-includes/capabilities.php
-                 * @see action( 'revoke_super_admin', int $user_id )
+                 * @see do_action( 'revoke_super_admin', int $user_id )
                  */
                 'revoke_super_admin' => [
                     'title'    => 'Revoked Super Admin Privilege',
-                    'action'   => 'modify',
+                    'action'   => 'user_role_modify',
                     'event_id' => 5003,
-                    'severity' => 'alert',
+                    'severity' => 'critical',
 
                     'description' =>
                     'Responsible for logging the initial request to <strong>Revoke Super Admin Privilege</strong> from a user. This event is used to check whether the <em>Super Admin Privilege</em> will be revoked from the user. If the request is successful, then it will be replaced with the <em>Revoked Super Admin</em> event. This event is very important so that even when the request failed and Super Admin Privilege was not revoked, you will still be notified.',
 
+                    /**
+                     * Translation arguments
+                     */
+                    '_translate' => [
+                        'roles' => [
+                            'plural'   => 'roles',
+                            'singular' => 'role',
+                        ]
+                    ],
+
                     'message' => [
-                        '_main' => 'Tried to revoke the <em>Super Admin Privilege</em> from a user, but the request was unsuccessful.',
+                        '_main' => 'Tried to revoke the Super Admin Privilege from a user, but the request was unsuccessful.',
 
                         '_space_start'             => '',
                         'roles'                    => ['roles'],
@@ -149,23 +183,37 @@ trait SuperAdminEvents
 
                 /**
                  * @see /wp-includes/capabilities.php
-                 * @see action( 'revoked_super_admin', int $user_id )
+                 * @see do_action( 'revoked_super_admin', int $user_id )
                  */
                 'revoked_super_admin' => [
                     'title'    => 'Revoked Super Admin Privilege',
-                    'action'   => 'modified',
+                    'action'   => 'user_role_modified',
                     'event_id' => 5004,
-                    'severity' => 'alert',
+                    'severity' => 'critical',
 
                     'description' =>
                     'Responsible for checking whether the Super Admin Privilege was revoked successfully from a user. If the Super Admin Privilege was revoked successfully, then this event will replace the initial <em>Revoke Super Admin Privilege</em> event.',
 
+                    /**
+                     * Translation arguments
+                     */
+                    '_translate' => [
+                        'previous_role' => [
+                            'plural'   => 'all_previous_roles',
+                            'singular' => 'previous_role',
+                        ],
+                        'new_role' => [
+                            'plural'   => 'all_new_roles',
+                            'singular' => 'new_role',
+                        ],
+                    ],
+
                     'message' => [
-                        '_main'                    => 'Revoked the <em>Super Admin Privilege</em> from a user.',
+                        '_main'                    => 'Revoked the Super Admin Privilege from a user.',
 
                         '_space_start'             => '',
-                        'role_previous'            => ['roles', 'previous'],
-                        'roles'                    => ['roles', 'current'],
+                        'previous_role'            => ['role_previous'],
+                        'new_role'                 => ['role_new'],
                         '_space_end'               => '',
 
                         'user_id'                  => ['id'],

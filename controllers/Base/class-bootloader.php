@@ -100,7 +100,7 @@ class BootLoader
          */
         $this->igniteInstaller();
 
-        add_action( 'plugin_loaded', '\ALM\Controllers\Base\BootLoader::loadRunningProcessEarly', 10, 1 );
+        add_action( 'plugin_loaded', '\ALM\Controllers\Base\BootLoader::loadRunningProcessEarly' );
         add_action( 'plugins_loaded', '\ALM\Controllers\Base\BootLoader::prepareRunningModeProcess' );
     }
 
@@ -170,7 +170,7 @@ class BootLoader
          * @param object $BootLoader  Specifies the bootloader object class which provide 
          *                            access to the entire plugin.
          */
-        do_action( 'alm/init', $this );
+        do_action_ref_array( 'alm/init', [&$this] );
     }
 
     /**
@@ -313,8 +313,7 @@ class BootLoader
      */
     protected function Load()
     {
-        foreach ( $this->file_sequences as $file_sequence )
-        {
+        foreach ( $this->file_sequences as $file_sequence ) {
             $this->_require( $file_sequence );
         }
     }
@@ -342,7 +341,7 @@ class BootLoader
         // Bail out the bootloader if any file could not be loaded
         if ( ! WP_DEBUG && $this->halt_loader ) return;
 
-        // Parse the file arguments correctly when an array of file list is used
+        // Parse the file arguments correctly when using an array of file list
         $file_sequence_list = $this->parseFileArgs( $file_sequence_list );
         
         foreach ( $file_sequence_list as $file_args )
@@ -375,7 +374,8 @@ class BootLoader
                      * Inform the administrator about the error
                      * 
                      * @todo
-                     * Maybe send email to admin
+                     * Maybe send email to admin or maybe WordPress has already 
+                     * sent a critical error to the site admin
                      */
                 }
             }
@@ -385,7 +385,7 @@ class BootLoader
     /**
      * Check whether or not a specific file sequence exists for loading
      * @param  string $file_sequence Specify the file sequence to check for
-     * @return bool Returns true if the file sequence exists. Otherwise false.
+     * @return bool                  Returns true if the file sequence exists. Otherwise false.
      */
     protected function fileSequenceExists( $file_sequence )
     {

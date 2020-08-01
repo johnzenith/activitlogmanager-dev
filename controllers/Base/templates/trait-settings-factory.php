@@ -828,8 +828,11 @@ trait SettingsFactory
      */
     public function sanitizeOption( $value, $data_type = 'string', $strict = true )
     {
-        // Don't do anything if the $value is not scalar
+        // Do nothing if the $value is not scalar
         if ( ! is_scalar( $value ) ) return $value;
+
+        // Do nothing if the value is string and is empty
+        if ( '' === $value ) return $value;
 
         switch ( $data_type )
         {

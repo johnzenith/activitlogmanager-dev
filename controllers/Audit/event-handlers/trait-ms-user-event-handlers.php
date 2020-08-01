@@ -358,7 +358,7 @@ trait MS_UserEvents
                 break;
             }
         } else {
-            $source_domain    = $this->sanitizeOption(get_user_meta($object_id, 'source_domain', true));
+            $source_domain = $this->sanitizeOption(get_user_meta($object_id, 'source_domain', true));
         }
 
         // Make sure the user primary blog ID url are not set to 
@@ -381,7 +381,7 @@ trait MS_UserEvents
             if ($post_ids > 0) {
                 $reassign_user       = get_userdata($reassign);
                 $reassign_user_login = $this->sanitizeOption($reassign_user->user_login);
-                $reassign_post       = "{$reassign}_{$reassign_user_login}";
+                $reassign_post       = "{$reassign_user_login} (User ID: {$reassign})";
             } else {
                 $reassign_post = 'No post found';
             }

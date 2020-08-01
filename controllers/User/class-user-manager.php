@@ -326,9 +326,10 @@ class UserManager extends \ALM\Controllers\Base\PluginFactory
 	/**
 	 * Get a user roles
 	 * @param int|WP_User Specifies the user whose roles should be retrieved
+	 * @param bool        Specifies whether to refresh the user's data
 	 * @return array      List of user roles
 	 */
-	public function getUserRoles( $user = 0 )
+	public function getUserRoles( $user = 0, $refresh = false )
 	{
 		if ( ! is_int( $user ) && ! is_object( $user ) ) 
 			return [];
@@ -340,7 +341,7 @@ class UserManager extends \ALM\Controllers\Base\PluginFactory
 		else {
 			$user = (int) $user;
 
-			if ( $user === $this->current_user_ID )
+			if ( $user === $this->current_user_ID && !$refresh )
 				return $this->getCurrentUserRoles();
 
 			$_roles = get_userdata( $user );
