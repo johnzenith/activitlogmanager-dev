@@ -261,9 +261,6 @@ trait UserEvents
             return;
 
         $this->setupUserEventArgs( compact( 'meta_id', 'object_id', 'meta_key', 'meta_value' ) );
-
-        // var_dump( $meta_ids, $object_id, $meta_key, $meta_value );
-        // wp_die();
     }
     
     /**

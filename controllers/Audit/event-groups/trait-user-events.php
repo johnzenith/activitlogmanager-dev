@@ -2937,7 +2937,7 @@ trait UserEvents
         /**
          * Format the user table fields
          */
-        if ( 'email' == $field ) 
+        if ('email' == $field) 
             $field = 'user_email';
 
         // Properly parse the context
@@ -2959,8 +2959,8 @@ trait UserEvents
         else {
             switch ( $field )
             {
-                case 'user_id':
                 case 'object_id':
+                case 'user_id':
                     $info = 'User ID: ' . $this->getEventMsgArg( $event, 'object_id' );
                 break;
                 

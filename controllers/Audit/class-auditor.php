@@ -109,8 +109,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         $this->AuditObserver->init($this);
 
         // Log all failed events
-        add_action('wp_footer',    [$this, 'triggerFailedEvents'], 99);
-        add_action('admin_footer', [$this, 'triggerFailedEvents'], 99);
+        $this->_logFailedEvents();
 
         add_action('init', function()
         {
@@ -139,10 +138,10 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
 
         
         //     update_user_meta($this->User->current_user_ID, 'alm_ms_dashboard_quick_press_last_post_id', 4);
+
+        // var_dump($this->maybe_trigger_failed_events);
         // wp_die();
         });
-
-
     }
 
     /**
@@ -613,7 +612,16 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
          * let's keep a reference
          */
         if ($this->is_active_log_updatable) {
-            $this->log_data['metadata']['referer_url'] = $referer_url;
+            $ref_data = array(
+                'referer_url' => $referer_url,
+            );
+
+            // This sometimes throw an illegal string offset 'referer_url'
+            // So we have to use the array_merge_recursive function
+            // $this->log_data['metadata']['referer_url'] = $referer_url;
+            $this->log_data['metadata'] = array_merge_recursive(
+                $this->log_data['metadata'], $ref_data
+            );
         }
 
         $this->log_data['metadata'] = $event_metadata;

@@ -65,7 +65,7 @@ trait SuperAdminEvents
                         'roles'                    => ['roles'],
                         '_space_end'               => '',
 
-                        'user_id'                  => ['id'],
+                        'user_id'                  => ['object_id'],
                         'user_login'               => ['user_login'],
                         'display_name'             => ['display_name'],
                         'first_name'               => ['first_name'],
@@ -121,7 +121,7 @@ trait SuperAdminEvents
                         'new_role'                 => ['role_new'],
                         '_space_end'               => '',
 
-                        'user_id'                  => ['id'],
+                        'user_id'                  => ['object_id'],
                         'user_login'               => ['user_login'],
                         'display_name'             => ['display_name'],
                         'first_name'               => ['first_name'],
@@ -166,7 +166,7 @@ trait SuperAdminEvents
                         'roles'                    => ['roles'],
                         '_space_end'               => '',
 
-                        'user_id'                  => ['id'],
+                        'user_id'                  => ['object_id'],
                         'user_login'               => ['user_login'],
                         'display_name'             => ['display_name'],
                         'first_name'               => ['first_name'],
@@ -216,7 +216,7 @@ trait SuperAdminEvents
                         'new_role'                 => ['role_new'],
                         '_space_end'               => '',
 
-                        'user_id'                  => ['id'],
+                        'user_id'                  => ['object_id'],
                         'user_login'               => ['user_login'],
                         'display_name'             => ['display_name'],
                         'first_name'               => ['first_name'],

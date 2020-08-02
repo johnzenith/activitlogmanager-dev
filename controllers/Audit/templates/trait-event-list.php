@@ -574,7 +574,7 @@ trait EventList
             $is_traversable = is_array( $message_arg );
 
             // Ignore special fields which always starts with an underscore '_' character
-            if ( $this->strStartsWith( $msg_name, '_' ) )
+            if ( $this->strStartsWith($msg_name, '_') )
             {
                 // First thing first, let's retrieve the main message
                 if ( '_main' == $msg_name )
@@ -599,7 +599,7 @@ trait EventList
                     );
                 }
                 else {
-                    if ( ! in_array( $msg_name, $special_msg_args, true ) ) 
+                    if (!in_array($msg_name, $special_msg_args, true)) 
                         continue;
 
                     if ( $this->strStartsWith($msg_name, ['_space_', '_inspect_']) )
@@ -609,12 +609,12 @@ trait EventList
                     elseif ( '_error_msg' == $msg_name ) {
                         $info = $this->getEventMsgArg( $event_group, '_error_msg' );
 
-                        if ( empty( $info ) ) continue;
+                        if (empty($info)) continue;
                     }
                     else {
-                        if ( ! $is_traversable )
+                        if (!$is_traversable)
                         {
-                            if ( $is_metadata ) {
+                            if ($is_metadata) {
                                 $info = $message_arg;
                             } else {
                                 continue;
@@ -627,9 +627,9 @@ trait EventList
                 }
             }
             else {
-                if ( ! $is_traversable )
+                if (!$is_traversable)
                 {
-                    if ( $is_metadata ) {
+                    if ($is_metadata) {
                         $info = $message_arg;
                     }
                     else {
@@ -866,7 +866,7 @@ trait EventList
         /**
          * Bail out the event info if the event message arguments is not ready yet
          */
-        if ( ! $this->eventMsgArgExists( $event, $field ) ) 
+        if (!$this->eventMsgArgExists($event, $field)) 
             return $info;
 
         /**
@@ -1574,5 +1574,25 @@ trait EventList
 
         if ( $is_active_event_loggable )
             $this->Log();
+    }
+
+    /**
+     * Log all failed events
+     * 
+     * This uses the {@see 'wp_redirect' filter} to check whether failed events 
+     * are available before page reload
+     */
+    protected function _logFailedEvents()
+    {
+        if ( !$this->is_admin ) {
+            add_action('template_redirect', [$this, 'triggerFailedEvents']);
+        } else {
+            $_self = &$this;
+            add_filter('wp_redirect', function($location) use (&$_self)
+            {
+                $_self->triggerFailedEvents();
+                return $location;
+            }, 10, 2);
+        }
     }
 }

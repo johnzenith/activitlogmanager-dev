@@ -24,7 +24,7 @@ trait SuperAdminEvents
 
         $user->get_role_caps();
 
-        $roles = $user->roles;
+        $roles = $this->parseValueForDb($user->roles, 5);
 
         $this->maybe_trigger_failed_events[$event_slug] = [
             'method'      => __METHOD__,
@@ -38,10 +38,8 @@ trait SuperAdminEvents
      */
     public function granted_super_admin_event( $object_id )
     {
-        /**
-         * Clear the 'grant_super_admin' event
-         */
-        // $this->clearFailedEventData('user', 'grant_super_admin');
+        // Clear the 'grant_super_admin' event
+        $this->clearFailedEventData('user', 'grant_super_admin');
 
         $role = 'super_admin';
         $user = $this->User->getUserData($object_id, true);
@@ -80,7 +78,7 @@ trait SuperAdminEvents
 
         $user->get_role_caps();
 
-        $roles = $user->roles;
+        $roles = $this->parseValueForDb($user->roles, 5);
 
         $this->maybe_trigger_failed_events[$event_slug] = [
             'method'      => __METHOD__,
@@ -94,10 +92,8 @@ trait SuperAdminEvents
      */
     public function revoked_super_admin_event( $object_id )
     {
-        /**
-         * Clear the 'revoke_super_admin_event' event
-         */
-        // $this->clearFailedEventData('user', 'revoke_super_admin');
+        // Clear the 'grant_super_admin' event
+        $this->clearFailedEventData('user', 'revoke_super_admin');
 
         $role = 'super_admin';
         $user = $this->User->getUserData($object_id, true);
