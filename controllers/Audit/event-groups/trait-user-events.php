@@ -1388,7 +1388,10 @@ trait UserEvents
                 ],
 
                 /**
-                 * Profile update alias for user_pass (user password)
+                 * Profile update alias for user_pass (user password).
+                 * 
+                 * Fired when a user with the 'edit_users' capability is changing 
+                 * the password of another user.
                  * 
                  * @since 1.0.0
                  */
@@ -3404,37 +3407,37 @@ trait UserEvents
             $previous_val = $this->parseValueForDb($previous_val, 5, $is_cap_field);
 
             // Add the user meta field name when on super mode
-            $is_customized_user_meta_field = isset($customized_user_meta_fields[ $field ]);
             if ( $this->isSuperMode() ) {
                 $updated_str .= sprintf( 'Custom field key: %s', $field );
-
+                
                 // Line break;
                 $updated_str .= $line_break;
             }
-
+            
             /**
              * Don't customize any user meta fields that is not part of the 
              * default customized user meta field list
              */
-            if ( $is_customized_user_meta_field )
+            $is_user_field                 = array_key_exists($field, $this->getUserTableFields());
+            $is_customized_user_meta_field = isset($customized_user_meta_fields[$field]);
+
+            if ($is_user_field || $is_customized_user_meta_field)
             {
-                if (isset( $customized_user_meta_fields[ $field ]['_title'] ))
+                if (!$is_user_field 
+                && isset( $customized_user_meta_fields[ $field ]['_title'] ))
                 {
                     $field_label = $customized_user_meta_fields[ $field ]['_title'];
 
                     if ( is_array( $value ) 
-                    && count( $value ) 
+                    && count( $value ) < 2 
                     && isset( $customized_user_meta_fields[ $field ]['_title_singular']) )
                     {
                         $field_label = $customized_user_meta_fields[ $field ]['_title_singular'];
                     }
                 }
                 else {
-                    $field_label = str_replace(
-                        [ '_', $this->getBlogPrefix() ],
-                        [ ' ', '' ], 
-                        $field
-                    );
+                    $field_label = str_replace($this->getBlogPrefix(), '', $field);
+                    $field_label = strtolower($this->makeFieldReadable($field_label));
                 }
             }
             else {
@@ -3445,20 +3448,10 @@ trait UserEvents
                 $field_label = $use_field_title;
             }
 
-            if ( 'update' == $update_type )
-            {
+            if ( 'update' == $update_type ) {
                 $previous_field_label = $field_has_confirmation ? 'Requested' : 'Previous';
-                
-                if ( ! $is_customized_user_meta_field ) {
-                    $previous_field_label .= ' value';
-                } else {
-                    $previous_field_label = ucfirst($previous_field_label);
-                }
-
-                $updated_str .= "{$previous_field_label} {$field_label}: $previous_val";
-
-                // Line break;
-                $updated_str .= $line_break;
+                $updated_str         .= "{$previous_field_label} {$field_label}: $previous_val";
+                $updated_str         .= $line_break; // Line break;
             }
 
             // New val may be an array/object
@@ -3469,16 +3462,8 @@ trait UserEvents
                 : 
                 ( $field_has_confirmation ? 'Current ' : 'New ' ) . $field_label;
 
-            if ( ! $is_customized_user_meta_field ) {
-                $new_field_label .= ' value';
-            } else {
-                $new_field_label = ucfirst($new_field_label);
-            }
-
             $updated_str .= $new_field_label . ': ' . $_new_val;
-
-            // Line break;
-            $updated_str .= $line_break;
+            $updated_str .= $line_break; // Line break;
         }
 
         return $updated_str;

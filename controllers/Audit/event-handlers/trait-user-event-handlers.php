@@ -423,13 +423,11 @@ trait UserEvents
         /**
          * Don't do anything if error is not available
          */
-        if ( ! is_wp_error( $errors ) ) 
-            return;
+        if (!is_wp_error($errors)) return;
 
         $error_list = $errors->get_error_messages();
 
-        if ( empty( $error_list ) ) 
-            return;
+        if (empty($error_list)) return;
         
         $user_obj   = $_user;
         $object_id  = $update ? $_user->ID : 0;
@@ -790,7 +788,7 @@ trait UserEvents
             ]);
             
             // Trying to modify the user email should be a critical event
-            $this->active_event_alt['severity'] = 'critical';
+            $this->overrideActiveEventData('severity', 'critical');
 
             if ( $this->isUserProfileDataAggregationActive() ) 
                 return;
@@ -798,7 +796,7 @@ trait UserEvents
 
         $this->setupUserEventArgs( compact( 'object_id', 'user_email_current', 'user_email_requested' ) );
         $this->LogActiveEvent( 'user', __METHOD__ );
-    }
+    }  
 
     /**
      * User email update confirmed handler
@@ -820,17 +818,25 @@ trait UserEvents
         /**
          * Append the current user custom field data if user profile data 
          * aggregation is active
+         * 
+         * For now, the user email event aggregation is disabled because the 
+         * event is too sensitive and should be standing alone.
          */
-        $this->appendUpdatedUserProfileData( 'user_email', [
-            'new'      => $user_email_new,
-            'previous' => $user_email_previous,
-        ]);
+        $allow_profile_update_aggregation = false;
+        if ($allow_profile_update_aggregation) {
+            $this->appendUpdatedUserProfileData('user_email', [
+                'new'      => $user_email_new,
+                'previous' => $user_email_previous,
+            ]);
 
-        // Modifying the user email should be a critical event
-        $this->active_event_alt['severity'] = 'critical';
+            // Modifying the user email should be a critical event
+            $this->overrideActiveEventData('severity', 'critical');
 
-        if ( $this->isUserProfileDataAggregationActive() ) 
+            if (
+                $this->isUserProfileDataAggregationActive()
+            )
             return;
+        }
 
         $this->setupUserEventArgs( compact( 'object_id', 'user_email_new', 'user_email_previous' ) );
         $this->LogActiveEvent( 'user', __METHOD__ );
@@ -980,6 +986,9 @@ trait UserEvents
                 'new'      => '',
                 'previous' => '',
             ]);
+
+            // Modifying the user email should be a critical event
+            $this->overrideActiveEventData('severity', 'critical');
 
             if ( $this->isUserProfileDataAggregationActive() ) 
                 return;

@@ -888,7 +888,7 @@ trait EventList
      */
     public function formatMainMsgTarget( $msg )
     {
-        if ( ! is_string( $msg ) ) return $msg;
+        if (!is_string($msg)) return $msg;
 
         return preg_replace(
             '/\-{3}([\w ]+)\-{3}/', // trip out the 3 dashes from the event message target
@@ -912,7 +912,7 @@ trait EventList
      * @see EventList::getEventMsgInfo()
      * @see EventList::generateEventMessageForDb()
      */
-    public function formatMsgField( $event, $field, $context = '', $raw = false )
+    public function formatMsgField( $event, $field, $context = '' )
     {
         $label            = $this->makeFieldReadable( $field );
         $info             = empty( $context ) ? $label : ucfirst( $context ) . ' ' . strtolower( $label );
@@ -1167,18 +1167,18 @@ trait EventList
      * @return string              Returns the event hook name (slug) if found.
      *                             Otherwise an empty string.
      */
-    public function getEventSlugById( $event_id, $default_slug = '' )
+    public function getEventSlugById($event_id, $default_slug = '')
     {
-        if ( ! is_scalar( $event_id ) ) 
+        if (!is_scalar($event_id))
             return '';
 
-        $_id            = $this->sanitizeOption( $event_id, 'int' );
-        $flip_slug_list = array_flip( $this->event_slug_list );
+        $_id            = $this->sanitizeOption($event_id, 'int');
+        $flip_slug_list = array_flip($this->event_slug_list);
+        
+        if (!isset($flip_slug_list[$_id]))
+            return is_string($default_slug) ? $default_slug : '';
 
-        if ( ! isset( $flip_slug_list[ $_id ] ) ) 
-            return is_string( $default_slug ) ? $default_slug : '';
-
-        return $flip_slug_list[ $_id ];
+        return $flip_slug_list[$_id];
     }
 
     /**
@@ -1447,10 +1447,7 @@ trait EventList
             return false;
 
         // We have to prefix the event with the event group name
-        $event_slug = $this->getEventSlugById(
-            $this->active_event_ID,
-            $event_hook
-        );
+        $event_slug = $this->getEventSlugById( $event_id, $event_hook_namespace );
 
         return [
             'ID'   => $event_id,
@@ -1495,7 +1492,7 @@ trait EventList
 
             // Setup the event data
             $setup_handler = sprintf('setup%sEventArgs', ucfirst($event_group));
-            if ( !method_exists($this, $setup_handler) ) continue;
+            if (!method_exists($this, $setup_handler)) continue;
 
             $this->$setup_handler($this->getVar($event, 'event_args'));
             $this->LogActiveEvent($event_group, $this->getVar($event, 'method'));
@@ -1524,6 +1521,9 @@ trait EventList
 
         // Setup the active event
         $this->active_event = $this->main_event_list[ $this->active_event_ID ];
+
+        // Override the active event data
+        $this->active_event = array_merge_recursive( $this->active_event, $this->active_event_alt );
 
         /**
          * Lookup metadata event ID/Slug

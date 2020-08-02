@@ -41,7 +41,7 @@ trait SuperAdminEvents
         /**
          * Clear the 'grant_super_admin' event
          */
-        $this->clearFailedEventData('user', 'grant_super_admin');
+        // $this->clearFailedEventData('user', 'grant_super_admin');
 
         $role = 'super_admin';
         $user = $this->User->getUserData($object_id, true);
@@ -97,7 +97,7 @@ trait SuperAdminEvents
         /**
          * Clear the 'revoke_super_admin_event' event
          */
-        $this->clearFailedEventData('user', 'revoke_super_admin');
+        // $this->clearFailedEventData('user', 'revoke_super_admin');
 
         $role = 'super_admin';
         $user = $this->User->getUserData($object_id, true);
