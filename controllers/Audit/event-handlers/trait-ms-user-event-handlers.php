@@ -12,7 +12,7 @@ defined('ALM_PLUGIN_FILE') || exit('You are not allowed to do this on your own.'
 trait MS_UserEvents
 {
     /**
-     *Fires after the user is marked as a SPAM user.
+     * Fires after the user is marked as a SPAM user.
      * 
      * @since 1.0.0
      */

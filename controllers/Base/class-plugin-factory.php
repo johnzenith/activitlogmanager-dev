@@ -126,7 +126,7 @@ abstract class PluginFactory
             return $this->$name;
 
         if ( WP_DEBUG ) 
-            throw new \Exception( sprintf( "Undefined property name: %s", $name ) );
+            throw new \Exception( sprintf( alm__('Undefined property name: %s'), $name ) );
         
         return null;
     }
@@ -175,13 +175,13 @@ abstract class PluginFactory
      */
     public function getVar( $data, $key, $default = null )
     {
-        if ( empty( $data ) || empty( $key ) )
+        if (empty($data) || empty($key))
             return null;
 
-        if ( is_array( $data ) ) {
+        if (is_array($data)) {
             $value = isset( $data[ $key ] ) ? $data[ $key ] : $default;
-        }
-        elseif ( is_object( $data ) ) {
+        } 
+        elseif (is_object($data)) {
             $value = isset( $data->$key ) ? $data->$key : $default;
         }
         else {
@@ -280,9 +280,9 @@ abstract class PluginFactory
     private function __isPageActive( $page = 0, $parent = false )
     {
         $page = sanitize_text_field( $page );
-        if ( empty( $page ) ) return false;
-        
-        if ( !is_string( $page ) && !is_int( $page ) && !is_array( $page ) )
+        if ( empty($page) ) return false;
+
+        if (!is_string($page) && !is_int($page) && !is_array($page))
         {
             if ( WP_DEBUG ) {
                 throw new \Exception( sprintf(
@@ -1182,9 +1182,9 @@ abstract class PluginFactory
         if ( $deep_level <= 0 ) {
             if ( $this->isLargeArray($value, $deep_level) ) {
                 /**
-                 * Create a show more button for walking through the serialized string
+                 * Create a view more button for walking through the serialized string
                  */
-                $data = $this->getEventMsgViewMoreBtnIdentifier(true) . $this->serialize($value);
+                $data = $this->getEventMsgViewMoreBtnIdentifier(true) . ' ' . $this->serialize($value);
             } else {
                 $data = implode(', ', $value);
             }
@@ -1197,16 +1197,19 @@ abstract class PluginFactory
                    $new_val[] = $this->sanitizeOption($k);
                }
             } else {
-                $new_val = &$value;
+                $new_val = array_slice($value, 0, $deep_level);
             }
 
-            // Add a view more button if we have elements in the array
+            // Add a view more button if we have more elements in the array
             $view_more = '';
             if ( count($value) > $deep_level ) {
                 $view_more = $this->getEventMsgViewMoreBtnIdentifier();
+
+                // Append the rest elements in the array
+                $view_more .= ' ' . implode( ', ', array_slice($value, $deep_level) );
             }
             
-            $data = $view_more . implode( ', ', $new_val );
+            $data = implode( ', ', $new_val ) . ' ' . $view_more;
         }
 
         return $data;

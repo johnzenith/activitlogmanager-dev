@@ -11,8 +11,8 @@ defined('ALM_PLUGIN_FILE') || exit('You are not allowed to do this on your own.'
 
 use \ALM\Controllers\Audit\Events\Handlers as ALM_EventHandlers;
 
-trait EventHandlers  
+trait EventHandlers
 {
-    use ALM_EventHandlers\SuperAdminEvents,
-        ALM_EventHandlers\UserEvents;
+    use ALM_EventHandlers\UserEvents,
+        ALM_EventHandlers\PluginEvents;
 }

@@ -43,6 +43,13 @@ class BootLoader
     protected $controllers_engine = null;
 
     /**
+     * Specifies whether the plugin fiels has been loaded and ready to run
+     * @var bool
+     * @since 1.0.0
+     */
+    protected $ready_to_run = false;
+
+    /**
      * Set the plugin mode. This can either be:
      *  'activation', 'deactivation', 'running', 'uninstalling', 'inactive'
      * 
@@ -100,7 +107,29 @@ class BootLoader
          */
         $this->igniteInstaller();
 
-        add_action( 'plugin_loaded', '\ALM\Controllers\Base\BootLoader::loadRunningProcessEarly' );
+        /**
+         * This action will only fire if the plugin is activated across the network
+         */
+        add_action('network_plugin_loaded', function($plugin_full_path)
+        {
+            if (ALM_PLUGIN_BASENAME == plugin_basename($plugin_full_path)) {
+                define('ALM_IS_NETWORK_ACTIVATION', true);
+                \ALM\Controllers\Base\BootLoader::loadRunningProcessEarly($plugin_full_path);
+            }
+        });
+
+        /**
+         * This will only run when the plugin is not activated acreoss the network
+         */
+        add_action( 'plugin_loaded', function($plugin_full_path)
+        {
+            if (defined('ALM_IS_NETWORK_ACTIVATION')) return;
+            \ALM\Controllers\Base\BootLoader::loadRunningProcessEarly($plugin_full_path);
+        });
+        
+        /**
+         * At this point, the pluigin is ready to run
+         */
         add_action( 'plugins_loaded', '\ALM\Controllers\Base\BootLoader::prepareRunningModeProcess' );
     }
 
@@ -121,8 +150,9 @@ class BootLoader
          * Only load the plugin files when the Activity Log Manager plugin base file 
          * 'activitylogmanager.php' is loaded.
          */
-        if ( ALM_PLUGIN_BASENAME === $plugin_basename )
+        if (ALM_PLUGIN_BASENAME === $plugin_basename)
         {
+            self::$state->ready_to_run = true;
             self::$state->createBootSequence();
             self::$state->Load();
 
@@ -136,8 +166,10 @@ class BootLoader
      */
     public static function prepareRunningModeProcess()
     {
-        self::$state->__AutoRunControllers();
-        self::$state->startPluginMode();
+        if (self::$state->ready_to_run) {
+            self::$state->__AutoRunControllers();
+            self::$state->startPluginMode();
+        }
     }
 
     /**
@@ -296,7 +328,7 @@ class BootLoader
         /**
          * File sequence signatures:
          * - Array keys are the signature ID
-         * - Array values are the methods to load necessary files
+         * - Array values are the methods used to load necessary files
          */
         $file_sequences = [
             'config'          => 'Config',

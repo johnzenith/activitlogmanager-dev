@@ -34,7 +34,7 @@ class Installer
 	 * The current user ID
 	 * @var int
 	 */
-	var $current_user_ID = 0;
+	private $current_user_ID = 0;
 
 	/**
 	 * Constructor.
@@ -308,22 +308,25 @@ class Installer
 	public function registerNewBlogInsertionHook()
 	{
 		// Run the activation process when a new blog is created on network
-        add_action(
-			'wp_insert_site',
-			[ '\ALM\Controllers\Installer\Installer', 'RunOnNewBlogInsertion' ]
-		);
+        add_action('wp_insert_site', [$this, 'RunOnNewBlogInsertion']);
 	}
 
 	/**
      * Create a wrapper around the 'Activate' method and run it when a new blog is created
      * @see \ALM\Controllers\Installer\Installer::Activation()
+	 * 
+	 * @param object $site_args
+	 * 	- $id
+	 *  - $user_id,
+	 * 	- $domain,
+	 * 	- $path,
+	 * 	- $network_id
+	 * 	- $meta
      */
     public function RunOnNewBlogInsertion( $site_args )
     {
         // Run it only when the plugin is active on network
-        if ( ! $this->is_network_activation ) return false;
-
-        // array( $new_site->id, $user_id, $new_site->domain, $new_site->path, $new_site->network_id, $meta )
+		if ( ! $this->is_network_activation ) return;
 
         define( 'ALM_NEW_BLOG_INSERTED', true );
 

@@ -111,9 +111,13 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         // Log all failed events
         $this->_logFailedEvents();
 
+        // var_dump($this->wpdb->prefix);exit;
+
         add_action('init', function()
         {
         // echo '<pre>';
+        // global $wp_roles;
+        // print_r($wp_roles->role_names);
         // $caps = get_user_meta(8, $this->wpdb->prefix . 'capabilities', true);
         // $user_data = get_userdata(4);
         // $user_data->add_cap('edit_posts');
@@ -135,7 +139,6 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
             
         // ]);
         // var_dump( $this->__aggregateUserMetaFields() );
-
         
         //     update_user_meta($this->User->current_user_ID, 'alm_ms_dashboard_quick_press_last_post_id', 4);
 
@@ -154,7 +157,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
 
         /**
          * Run the Audit Object Storage.
-         * Start Auditing - save activities and send notifications
+         * Start Auditing - log activities and send notifications
          */
         $this->notify();
     }
@@ -273,11 +276,8 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
      */
     public function addEvent()
     {
-        // WordPress Action or Filter Hook
-        if (
-            in_array($this->event_hook, $this->getEventHooks(), true)
-            && is_callable($this->event_callback, true)
-        ) // Avoid plugin undefined index
+        // WordPress Action or Filter Hook, or any customized callback
+        if ( is_callable($this->event_callback, true) )
         {
             /**
              * If the event callback is a normal PHP function or class method,
@@ -371,11 +371,15 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         $_user_id = (int) $user_id;
         if ( 0 === $_user_id )
             $_user_id = $this->User->current_user_ID;
+
+        $role_labels = $this->User->getUserRoleLabels($this->User->getUserRoles($_user_id));
+        $user_roles  = $this->parseValueForDb($role_labels, 1);
             
         $user_data = [
             'user_url'      => $this->User->getUserInfo(0, 'user_url', 'url'),
             'last_name'     => $this->User->getUserInfo(0, 'last_name', false),
             'avatar_url'    => get_avatar_url( $_user_id ),
+            'user_roles'    => $user_roles,
             'first_name'    => $this->User->getUserInfo(0, 'first_name', false),
             'user_status'   => $this->User->getUserInfo(0, 'user_status', 'int'),
             'user_login'    => $this->User->getUserInfo(0, 'user_login', 'username'),
@@ -474,7 +478,6 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
             $this->log_data['severity']      = $this->_getActiveEventData('severity');
             $this->log_data['source_ip']     = $client_ip;
             $this->log_data['object_id']     = $object_id;
-            $this->log_data['user_role']     = implode(', ', (array) $this->User->getUserInfo(0, 'roles'));
             $this->log_data['user_login']    = $this->User->getUserInfo(0, 'user_login', 'username');
             $this->log_data['event_group']   = $event_group;
             $this->log_data['event_title']   = $this->_getActiveEventData('title');
@@ -535,10 +538,11 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
          */
         $object_data = [];
 
-        if ($object_id != $current_user_id)
-            $this->User->refreshCurrentUserData($object_id);
+        if ('user' == $event_object)
+        {
+            if ($object_id != $current_user_id)
+                $this->User->refreshCurrentUserData($object_id);
 
-        if ('user' == $event_object) {
             if ($object_id > 0) {
                 $object_data = $this->_getActiveEventUserData();
             }

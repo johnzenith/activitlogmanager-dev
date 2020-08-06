@@ -3,7 +3,6 @@ namespace ALM\Controllers\Audit\Events\Groups;
 
 // Prevent direct file access
 defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your own.' );
-
 /**
  * @package User Events
  * @since   1.0.0
@@ -685,7 +684,7 @@ trait UserEvents
                  */
                 'update_user_meta' => [
                     'title'    => 'User profile update triggered',
-                    'action'   => 'modify',
+                    'action'   => 'failed',
                     'event_id' => 5007, // Specific meta fields (keys) can override this
                     'disable'  => false,
                     'severity' => 'notice',
@@ -837,18 +836,18 @@ trait UserEvents
                  * @since 1.0.0
                  */
                 'edit_user_profile_update' => [
-                    'title'    => 'Opened the edit user screen',
-                    'action'   => 'opened',
-                    'event_id' => 5025,
-                    'severity' => 'notice',
+                    'title'              => 'Opened the edit user screen',
+                    'action'             => 'opened',
+                    'event_id'           => 5025,
+                    'severity'           => 'notice',
 
-                    'screen'     => [ 'admin', 'network', ],
-                    'user_state' => 'logged_in',
-                    // 'user_caps__in' => ['read'],
+                    'screen'              => [ 'admin', 'network', ],
+                    'user_state'          => 'logged_in',
+                    'logged_in_user_caps' => ['edit_user', 'edit_users'],
 
                     'message'  => [
-                        '_main' => 'Opened the Edit User screen of a user and triggered the user profile update.' . $this->explainEventMsg(
-                            ' (The Edit User screen is accessible and used by a user who has the <strong>edit_users</strong> capability to be able to edit other users on the site. This event occurs when a user is editing the profile of another user.)'
+                        '_main' => 'Opened the Edit User screen of the user and triggered the user profile update.' . $this->explainEventMsg(
+                            ' (The Edit User screen is accessible and used by a user who has the <strong>edit_users or edit_user</strong> capability to be able to edit other users on the site. This event occurs when a user is editing the profile of another user.)'
                         ),
                         
                         'user_id'                  => ['object_id'],
@@ -883,7 +882,7 @@ trait UserEvents
                     'user_state' => 'logged_in',
 
                     'message'  => [
-                        '_main' => 'Tried to update a user profile but it was unsuccessful due to errors that occurred while processing the request.',
+                        '_main' => 'Tried to update the user profile but it was unsuccessful due to errors that occurred while processing the request.',
                         
                         '_space_start'             => '',
                         '_error_msg'               => '',
@@ -920,13 +919,14 @@ trait UserEvents
                  * @since 1.0.0
                  */
                 'alm_user_profile_update_errors' => [
-                    'title'           => 'New user creation error',
-                    'action'          => 'user_creation',
-                    'event_id'        => 5027,
-                    'severity'        => 'notice',
-                    'error_flag'      => true,
-                    'event_successor' => ['user', 'edit_user_created_user'],
+                    'title'               => 'New user creation error',
+                    'action'              => 'user_creation',
+                    'event_id'            => 5027,
+                    'severity'            => 'notice',
+                    'error_flag'          => true,
+                    'event_successor'     => ['user', 'edit_user_created_user'],
 
+                    'user_state'          => 'logged_in',
                     'logged_in_user_caps' => [ 'edit_users' ],
 
                     'message'  => [
@@ -949,14 +949,13 @@ trait UserEvents
                  * @since 1.0.0
                  */
                 'edit_user_created_user' => [
-                    'title'    => 'Created a new user',
-                    'action'   => 'user_created',
-                    'event_id' => 5028,
-                    'severity' => 'critical',
+                    'title'               => 'Created a new user',
+                    'action'              => 'user_created',
+                    'event_id'            => 5028,
+                    'severity'            => 'critical',
 
-                    'screen'     => [ 'admin', 'network', ],
-                    'user_state' => 'logged_in',
-
+                    'screen'              => [ 'admin', 'network', ],
+                    'user_state'          => 'logged_in',
                     'logged_in_user_caps' => [ 'edit_users' ],
 
                     'message'  => [
@@ -986,7 +985,7 @@ trait UserEvents
                 ],
 
                 /**
-                 * Fires immediately after a new user is registered.
+                 * Fires immediately after a new user registered successfully.
                  * 
                  * @since 1.0.0
                  */
@@ -1061,7 +1060,7 @@ trait UserEvents
                     'user_state' => 'logged_in',
 
                     'message'  => [
-                        '_main' => 'Updated a user profile. See the changes below:',
+                        '_main' => 'Updated the user profile. See the changes below:',
                         
                         '_space_start'             => '',
 
@@ -1105,7 +1104,7 @@ trait UserEvents
                     'user_state' => 'logged_in',
 
                     'message'  => [
-                        '_main' => 'Changed the user ---Display name---',
+                        '_main' => 'Changed the user ---display name---',
                         
                         '_space_start'             => '',
                         'display_name_previous'    => ['display_name', 'previous'],
@@ -1142,14 +1141,14 @@ trait UserEvents
                  */
                 'alm_profile_update_pre_user_email' => [
                     'title'    => 'User email address update requested',
-                    'action'   => 'modify',
+                    'action'   => 'requested',
                     'event_id' => 5034,
                     'severity' => 'critical',
 
                     'user_state' => 'logged_in',
 
                     'message'  => [
-                        '_main' => 'User requested a change of ---Email address---',
+                        '_main' => 'Requested a change of ---email address---',
 
                         '_space_start'             => '',
                         'user_email_requested'     => ['user_email', 'requested'],
@@ -1190,7 +1189,7 @@ trait UserEvents
                     'user_state' => 'logged_in',
 
                     'message'  => [
-                        '_main' => 'Changed the user ---Email address---',
+                        '_main' => 'Changed the user ---email address---',
 
                         '_space_start'             => '',
                         'user_email_previous'      => ['user_email', 'previous'],
@@ -1233,7 +1232,7 @@ trait UserEvents
                     'user_state' => 'logged_in',
 
                     'message'  => [
-                        '_main' => 'Cancelled the request to change the user ---Email address---',
+                        '_main' => 'Cancelled the request to change the user ---email address---',
 
                         '_space_start'             => '',
                         'user_email_requested'     => ['user_email', 'requested'],
@@ -1275,7 +1274,7 @@ trait UserEvents
                     'user_state' => 'logged_in',
 
                     'message'  => [
-                        '_main' => 'Changed the user ---Nice name---',
+                        '_main' => 'Changed the user ---nice name---',
 
                         '_space_start'             => '',
                         'user_nice_name_previous'  => ['user_nicename', 'previous'],
@@ -1359,7 +1358,7 @@ trait UserEvents
                     'user_state' => 'logged_in',
 
                     'message'  => [
-                        '_main' => 'Changed the user ---Status---',
+                        '_main' => 'Changed the user ---status---',
 
                         '_space_start'             => '',
                         'user_status_previous'     => ['user_status', 'previous'],
@@ -1404,7 +1403,7 @@ trait UserEvents
                     'logged_in_user_caps' => [ 'edit_users' ],
 
                     'message'  => [
-                        '_main' => 'Changed the user ---Password---',
+                        '_main' => 'Changed the user ---password---',
 
                         'user_id'                  => ['object_id'],
                         'user_login'               => ['user_login'],
@@ -1546,7 +1545,7 @@ trait UserEvents
                     'severity' => 'critical',
 
                     'message'  => [
-                        '_main' => 'User initiated a ---Password reset--- request successfully',
+                        '_main' => 'Initiated a ---password reset--- request successfully',
 
                         '_space_start'             => '',
 
@@ -1594,14 +1593,12 @@ trait UserEvents
                     'event_successor' => ['user', 'alm_retrieve_password_successfully'],
 
                     'message'  => [
-                        '_main' => 'User initiated a ---Password reset--- request which could not be completed because the system was unable to save the generated password reset key.',
+                        '_main' => 'Initiated a ---password reset--- request which could not be completed because the system was unable to save the generated password reset key.',
 
                         '_space_start'                 => '',
-
                         // Holds the user_activation_key
                         'generated_password_reset_key' => ['password_reset_key'],
                         'password_reset_url'           => ['password_reset_url'],
-
                         '_space_end'                   => '',
 
                         'user_id'                      => ['object_id'],
@@ -1640,7 +1637,7 @@ trait UserEvents
 
                     
                     'message'  => [
-                        '_main' => '---User password--- has been reset successfully.',
+                        '_main' => 'Reset the ---user password--- successfully.',
                         
                         '_space_start'             => '',
                         'password_reset_url'       => ['password_reset_url'],
@@ -1681,7 +1678,7 @@ trait UserEvents
                     'event_successor' => ['user', 'wp_login'],
 
                     'message'  => [
-                        '_main'                    => 'User login failed.',
+                        '_main'                    => 'Login attempt failed.',
 
                         '_space_start'             => '',
                         'failed_attempts'          => ['failed_attempts'],
@@ -1757,10 +1754,12 @@ trait UserEvents
                  * @see wp_authenticate()
                  */
                 'wp_logout' => [
-                    'title'    => 'User logged out',
-                    'action'   => 'logged_out',
-                    'event_id' => 5048,
-                    'severity' => 'notice',
+                    'title'      => 'User logged out',
+                    'action'     => 'logged_out',
+                    'event_id'   => 5048,
+                    'severity'   => 'notice',
+
+                    'user_state' => 'logged_in',
 
                     'message'  => [
                         '_main'                    => 'User logged out successfully.',
@@ -1790,16 +1789,15 @@ trait UserEvents
                  * @see wp_insert_user()
                  */
                 'make_spam_user' => [
-                    'title'      => 'User marked as Spam',
-                    'action'     => 'modified',
-                    'event_id'   => 5049,
-                    'severity'   => 'critical',
+                    'title'     => 'User marked as Spam',
+                    'action'    => 'user_modified',
+                    'event_id'  => 5049,
+                    'severity'  => 'critical',
 
                     'screen'     => [ 'multisite' ],
-                    'user_state' => 'logged_in',
 
                     'message'  => [
-                        '_main'                    => 'User is marked as Spam.',
+                        '_main'                    => 'Marked the user as Spam.',
 
                         'user_id'                  => ['object_id'],
                         'user_login'               => ['user_login'],
@@ -1826,16 +1824,15 @@ trait UserEvents
                  * @see wp_insert_user()
                  */
                 'make_ham_user' => [
-                    'title'      => 'User marked as Ham',
-                    'action'     => 'modified',
-                    'event_id'   => 5050,
-                    'severity'   => 'critical',
+                    'title'     => 'User marked as Ham',
+                    'action'    => 'user_modified',
+                    'event_id'  => 5050,
+                    'severity'  => 'critical',
 
-                    'screen'     => [ 'multisite' ],
-                    'user_state' => 'logged_in',
+                    'screen'    => [ 'multisite' ],
 
                     'message'  => [
-                        '_main'                    => 'User is marked as Ham.',
+                        '_main'                    => 'Marked the user as Ham.',
 
                         'user_id'                  => ['object_id'],
                         'user_login'               => ['user_login'],
@@ -1855,24 +1852,24 @@ trait UserEvents
                 /**
                  * Multisite Only
                  * 
-                 * Filters whether a user should be added to a site.
+                 * Checks and log whether the user should be added to the site.
                  * 
                  * @since 1.0.0
                  * 
                  * @see add_user_to_blog()
                  */
                 'can_add_user_to_blog' => [
-                    'title'           => 'User cannot be added to site',
-                    'action'          => 'add',
-                    'event_id'        => 5051,
-                    'severity'        => 'critical',
-                    'screen'          => [ 'multisite' ],
-                    'user_state'      => 'logged_in',
-                    'error_flag'      => true,
-                    'event_successor' => ['user', 'add_user_to_blog'],
+                    'title'               => 'User cannot be added to the site',
+                    'action'              => 'add',
+                    'event_id'            => 5051,
+                    'severity'            => 'critical',
+                    'error_flag'          => true,
+                    'event_successor'     => ['user', 'add_user_to_blog'],
+
+                    'screen'              => [ 'multisite' ],
 
                     'message'  => [
-                        '_main'                    => 'Tried to add a user to a site but the operation was unsuccessful.',
+                        '_main'                    => 'Tried to add the user to the site but the operation was unsuccessful.',
 
                         '_space_start'             => '',
                         'failed_attempts'          => ['failed_attempts'],
@@ -1914,7 +1911,7 @@ trait UserEvents
                  * @see add_user_to_blog()
                  */
                 'add_user_to_blog' => [
-                    'title'    => 'User added to a site',
+                    'title'    => 'User added to the site',
                     'action'   => 'existing_user_added',
                     'event_id' => 5052,
                     'severity' => 'critical',
@@ -1922,7 +1919,7 @@ trait UserEvents
                     'screen'   => ['multisite'],
 
                     'message'  => [
-                        '_main'                    => 'Added a user to a site without email confirmation',
+                        '_main'                    => 'Added the user to the site without email confirmation',
 
                         '_space_start'             => '',
                         'site_id'                  => ['blog_id'],
@@ -1961,16 +1958,17 @@ trait UserEvents
                  * @see wpmu_signup_user()
                  */
                 'invite_user' => [
-                    'title'               => 'Invited a user to a site',
+                    'title'               => 'Invited the user to the site',
                     'action'              => 'user_invited',
                     'event_id'            => 5053,
                     'severity'            => 'notice',
                     
                     'screen'              => ['multisite'],
+                    'user_state'          => 'logged_in',
                     'logged_in_user_caps' => ['promote_users'],
 
                     'message'  => [
-                        '_main' => 'Invited a user to join a site with email confirmation',
+                        '_main' => 'Invited the user to join the site with email confirmation',
 
                         '_space_start'              => '',
                         'site_id'                   => ['blog_id'],
@@ -2018,7 +2016,7 @@ trait UserEvents
                     'severity'            => 'critical',
                     
                     'screen'              => ['multisite'],
-                    'logged_in_user_caps' => ['create_users'],
+                    'logged_in_user_caps' => ['create_users', 'manage_network_users'],
 
                     'message'             => [
                         '_main' => 'Created a new user without sending an email confirmation to the user. The user has been activated and added to the site automatically.',
@@ -3295,7 +3293,7 @@ trait UserEvents
                 $msg  = 'Updated the user ---User settings--- custom field without making any changes.';
 
                 $msg .= $this->explainEventMsg(
-                    ' (The update was triggered without modifying the previous User settings value).'
+                    ' (The update was triggered without modifying the previous user settings value).'
                 );
             }
 

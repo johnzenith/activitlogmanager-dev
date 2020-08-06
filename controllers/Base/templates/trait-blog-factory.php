@@ -3,7 +3,6 @@ namespace ALM\Controllers\Base\Templates;
 
 // Prevent direct file access
 defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your own.' );
-
 /**
  * Blog Factory Template for the Plugin Factory Controller
  * @see \ALM\Controllers\Base\PluginFactory
@@ -62,11 +61,26 @@ trait BlogFactory
     protected $is_main_site = false;
 
     /**
+     * Determines the current page 
+     * @see $pagenow 
+     * @var string
+     * @since 1.0.0
+     */
+    protected $pagenow = '';
+
+    /**
      * The current blog ID
      * @var int
      * @since 1.0.0
      */
     protected $current_blog_ID = 0;
+
+    /**
+     * The current network ID
+     * @var int
+     * @since 1.0.0
+     */
+    protected $current_network_ID = 0;
 
     /**
      * Get the blog data
@@ -92,6 +106,7 @@ trait BlogFactory
      */
     protected function  __setupBlogData( $cache = null )
     {
+        $this->pagenow               = $this->pageNow();
         $this->is_admin              = is_admin();
         $this->blog_data             = is_null( $cache ) ? $this->getBlogData() : $cache->blog_data;
         $this->is_multisite          = is_multisite();
@@ -101,6 +116,7 @@ trait BlogFactory
         $this->is_user_admin         = is_user_admin();
         $this->current_blog_ID       = $this->blog_data->ID;
         $this->is_network_admin      = is_network_admin();
+        $this->current_network_ID    = $this->is_multisite ? get_current_network_id() : $this->current_blog_ID;
         $this->is_network_activation = $this->isNetworkActivation();
     }
 
@@ -137,10 +153,17 @@ trait BlogFactory
      */
     public function isNetworkActivation()
     {
-        if ( ! $this->is_multisite || ! function_exists( 'is_plugin_active_for_network' ) )
-            return false;
+        return defined('ALM_IS_NETWORK_ACTIVATION') && ALM_IS_NETWORK_ACTIVATION;
+    }
 
-        return  is_plugin_active_for_network( ALM_PLUGIN_BASENAME );
+    /**
+     * Page now {@see $pagenow}
+     * @return string
+     */
+    public function pageNow()
+    {
+        global $pagenow;
+        return $pagenow;
     }
 
     /**

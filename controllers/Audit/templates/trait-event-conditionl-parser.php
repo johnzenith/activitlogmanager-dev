@@ -45,6 +45,15 @@ trait EventConditionalParser
             'screen' => [],
 
             /**
+             * Specifies the page to load and watch the event on.
+             * This is equivalent to the {@see $pagenow} global var
+             * @since 1.0.0
+             * 
+             * Value can either be a string or an array
+             */
+            'pagenow' => [],
+
+            /**
              * Controls whether to watch only logged in users, visitors or both.
              * 
              * Accepted arguments: 'logged_in' | 'visitor' | 'both'
@@ -481,6 +490,7 @@ trait EventConditionalParser
     {
         $args = [
             'screen',
+            'pagenow',
             'user_state',
             'event_id__in',
             'event_id__not_in',
@@ -769,6 +779,26 @@ trait EventConditionalParser
             return true;
 
         return false;
+    }
+
+    /**
+     * Check whether the event can be loaded on the current page
+     * 
+     * @see EventConditionalParser::preValidateEvent()
+     * 
+     * @since 1.0.0
+     */
+    protected function is_event_pagenow_valid($event_id, $event_name, $event)
+    {
+        /**
+         * Bail for ajax request
+         */
+        if (wp_doing_ajax() || wp_doing_cron())
+            return true;
+
+        $pages = (array) $this->getEventConditionalData(__METHOD__, $event);
+
+        return in_array($this->pagenow, $pages, true);
     }
 
     /**

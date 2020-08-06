@@ -38,13 +38,16 @@ trait SuperAdminEvents
                  * @see do_action( 'grant_super_admin', int $user_id )
                  */
                 'grant_super_admin' => [
-                    'title'      => 'Grant Super Admin Privilege',
-                    'action'     => 'user_role_modify',
-                    'event_id'   => 5001,
-                    'severity'   => 'critical',
+                    'title'               => 'Grant Super Admin Privilege',
+                    'action'              => 'user_role_failed',
+                    'event_id'            => 5001,
+                    'severity'            => 'critical',
+                    'error_flag'          => true,
+                    'event_successor'     => ['user', 'granted_super_admin'],
 
-                    'screen'     => [ 'admin', 'network', ],
-                    'user_state' => 'logged_in',
+                    'screen'              => [ 'admin', 'network', ],
+                    'user_state'          => 'logged_in',
+                    'logged_in_user_caps' => ['manage_network_options'],
 
                     'description' => 'Responsible for logging the initial request to <strong>Grant Super Admin Privilege</strong> to a user. This event is used to check whether the <em>Super Admin Privilege</em> will be granted to the user. If the request is successful, then it will be replaced with the <em>Granted Super Admin</em> event. This event is very important so that even when the request failed and Super Admin Privilege was not granted, you will still be notified.',
 
@@ -92,10 +95,14 @@ trait SuperAdminEvents
                  * @see do_action( 'granted_super_admin', int $user_id )
                  */
                 'granted_super_admin' => [
-                    'title'    => 'Granted Super Admin Privilege',
-                    'action'   => 'user_role_modified',
-                    'event_id' => 5002,
-                    'severity' => 'critical',
+                    'title'               => 'Granted Super Admin Privilege',
+                    'action'              => 'user_role_modified',
+                    'event_id'            => 5002,
+                    'severity'            => 'critical',
+
+                    'screen'              => [ 'admin', 'network', ],
+                    'user_state'          => 'logged_in',
+                    'logged_in_user_caps' => ['manage_network_options'],
 
                     'description' => 'Responsible for checking whether the Super Admin Privilege was granted successfully to a user. If the Super Admin Privilege was granted successfully, then it will replace the initial <em>Grant Super Admin</em> event.',
 
@@ -141,10 +148,16 @@ trait SuperAdminEvents
                  * @see do_action( 'revoke_super_admin', int $user_id )
                  */
                 'revoke_super_admin' => [
-                    'title'    => 'Revoked Super Admin Privilege',
-                    'action'   => 'user_role_modify',
-                    'event_id' => 5003,
-                    'severity' => 'critical',
+                    'title'               => 'Revoked Super Admin Privilege',
+                    'action'              => 'user_role_failed',
+                    'event_id'            => 5003,
+                    'severity'            => 'critical',
+                    'error_flag'          => true,
+                    'event_successor'     => ['user', 'revoked_super_admin'],
+
+                    'screen'              => [ 'admin', 'network', ],
+                    'user_state'          => 'logged_in',
+                    'logged_in_user_caps' => ['manage_network_options'],
 
                     'description' =>
                     'Responsible for logging the initial request to <strong>Revoke Super Admin Privilege</strong> from a user. This event is used to check whether the <em>Super Admin Privilege</em> will be revoked from the user. If the request is successful, then it will be replaced with the <em>Revoked Super Admin</em> event. This event is very important so that even when the request failed and Super Admin Privilege was not revoked, you will still be notified.',
@@ -186,10 +199,14 @@ trait SuperAdminEvents
                  * @see do_action( 'revoked_super_admin', int $user_id )
                  */
                 'revoked_super_admin' => [
-                    'title'    => 'Revoked Super Admin Privilege',
-                    'action'   => 'user_role_modified',
-                    'event_id' => 5004,
-                    'severity' => 'critical',
+                    'title'               => 'Revoked Super Admin Privilege',
+                    'action'              => 'user_role_modified',
+                    'event_id'            => 5004,
+                    'severity'            => 'critical',
+
+                    'screen'              => [ 'admin', 'network', ],
+                    'user_state'          => 'logged_in',
+                    'logged_in_user_caps' => ['manage_network_options'],
 
                     'description' =>
                     'Responsible for checking whether the Super Admin Privilege was revoked successfully from a user. If the Super Admin Privilege was revoked successfully, then this event will replace the initial <em>Revoke Super Admin Privilege</em> event.',

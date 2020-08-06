@@ -176,9 +176,6 @@ function __wait()
 };
 //---------------------------------------------------------------------------------------------
 
-
-
-
 // Make sure this plugin file is not accessed directly
 if ( !defined('ABSPATH') || !function_exists('add_action') ) {
     exit( "Hi there, you just called me directly and am not allowed to run in such mode, hanging up!" );

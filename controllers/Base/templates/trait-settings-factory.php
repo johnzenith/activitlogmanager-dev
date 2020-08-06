@@ -356,7 +356,7 @@ trait SettingsFactory
      */
     public function updateSettingsCache()
     {
-        $this->settings = $this->getSettings( true );
+        $this->settings = $this->getSettings(true);
     }
 
     /**
@@ -369,8 +369,10 @@ trait SettingsFactory
      */
     protected function serialize( $value )
     {
-        if ( is_array( $value ) || is_object( $value ) ) 
-            return serialize( $value );
+        if (is_null($value)) return $value;
+        
+        if (is_array($value) || is_object($value))
+            return serialize($value);
         
         return $value;
     }
@@ -385,13 +387,16 @@ trait SettingsFactory
      */
     protected function unserialize( $value )
     {
-        if ( is_serialized( $value ) )
+        if (is_array($value) || is_object($value) || is_null($value))
+            return $value;
+
+        if (is_serialized($value))
         {
-            return ( WP_DEBUG ) ? 
-                unserialize( $value ) 
-                : 
+            return ( WP_DEBUG ) ?
+                unserialize($value) 
+                :
                 // This should be fine even without compressing the error, if any.
-                @unserialize( $value );
+                @unserialize($value);
         }
         return $value;
     }

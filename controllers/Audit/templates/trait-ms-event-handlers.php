@@ -15,5 +15,6 @@ trait EventHandlers
 {
     use ALM_EventHandlers\SuperAdminEvents,
         ALM_EventHandlers\UserEvents,
-        ALM_EventHandlers\MS_UserEvents;
+        ALM_EventHandlers\MS_UserEvents,
+        ALM_EventHandlers\PluginEvents;
 }

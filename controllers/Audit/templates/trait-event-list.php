@@ -15,6 +15,7 @@ trait EventList
 {
     use ALM_EventGroups\SuperAdminEvents,
         ALM_EventGroups\UserEvents,
+        ALM_EventGroups\PluginEvents,
         \ALM\Controllers\Audit\Templates\EventConditionalParser;
 
     /**
@@ -205,13 +206,7 @@ trait EventList
      */
     public function getEventsList()
     {
-        // var_dump( $this->main_event_list );
-
-        // echo '<pre>';
-        // print_r( wp_get_user_contact_methods( $this->User->current_user_data ) );
-
-        // wp_die();
-        
+        ksort($this->main_event_list, SORT_NUMERIC);
         return $this->main_event_list;
     }
 
@@ -245,7 +240,7 @@ trait EventList
         foreach ( $files as $file )
         {
             // Strip out 'trait-' and '.php' from the file name
-            $event_group = ucfirst( str_replace( [ 'trait-', '.php', ], '', basename( $file ) ) );
+            $event_group = ucfirst( str_replace( [ 'trait-', '.php', ], '', basename($file) ) );
 
             // Transform the event group into actual method
             $event_group_method = 'init' . str_replace( '-', '', ucwords( $event_group, '-' ) );
@@ -318,6 +313,12 @@ trait EventList
         $role_desc  = '';
         $user_roles = $this->User->getCurrentUserRoles();
 
+        // If the user roles is empty, let's refresh the user data
+        if (empty($user_roles)) {
+            $this->User->refreshCurrentUserData();
+            $user_roles = $this->User->getCurrentUserRoles();
+        }
+
         if ( in_array('super_admin', $user_roles, true) ) {
             $role_desc = 'A Super Admin';
         }
@@ -334,10 +335,9 @@ trait EventList
                     continue;
 
                 // Custom user role may include the underscore or dash character
-                $delimiter  = (false === strpos($user_role, '-' )) ? '_' : '-';
+                $delimiter = (false === strpos($user_role, '-' )) ? '_' : '-';
                 
                 // If the user role start with any vowels, then prefix it with 'An'
-                
                 if ( $this->strStartsWith($user_role, $this->getVowelLetters(), true) )
                     $role_prefix = 'An';
 
@@ -348,14 +348,15 @@ trait EventList
         // This should never happen, but we have to bail out if it does
         if ( empty($role_desc) ) return $msg;
 
-        // If the message starts with "A ", let's replace it with an empty string
-        if ( $this->strStartsWith($msg, 'A ', true) )
+        // If the message starts with 'A ' or 'An ' or 'User ',
+        // then let's replace it with an empty string
+        if ( $this->strStartsWith($msg, ['a ', 'an ', 'user '], true) )
             $msg = substr($msg, 2);
         
         // Transform the first message character to lowercase
         $first_char = strtolower( substr($msg, 0, 1) );
 
-        // Remove the first char from the message
+        // Remove the first character from the message
         $remove_first_char = substr($msg, 1);
 
         $_msg = $first_char . $remove_first_char;
@@ -395,6 +396,14 @@ trait EventList
             
             // Set to true to completely disable the event
             'disable' => false,
+
+            /**
+             * Specifies list of options to ignore.
+             * This is useful if custom events are being registered with a specific 
+             * option.
+             */
+            'wp_options'      => [],
+            'wp_site_options' => [], // multisite only
 
             /**
              * Specifies enabled/disabled notifications
@@ -523,6 +532,40 @@ trait EventList
     }
 
     /**
+     * Get the active event main message
+     * 
+     * @see Event::getEventMsgArg()
+     * @see ALM\Controllers\Audit\Auditor::_getActiveEventData()
+     */
+    protected function getActiveEventMsg($event_group = '')
+    {
+        $main_msg      = $this->_getActiveEventData('message', '_main');
+        $_count_object = $this->getEventMsgArg($event_group, '_count_object', 1);
+
+        if (!is_scalar($_count_object))
+            $_count_object = 1;
+
+        $translation_type = $_count_object > 1 ? 'plural' : 'singular';
+
+        $msg = $this->getVar(
+            $this->_getActiveEventData('_translate', '_main'),
+            $translation_type,
+            $main_msg
+        );
+
+        if ($this->is_network_admin) {
+            $translation_type .= '_network';
+            $msg = $this->getVar(
+                $this->_getActiveEventData('_translate', '_main'),
+                $translation_type,
+                $msg
+            );
+        }
+
+        return $msg;
+    }
+
+    /**
      * Generate event message before it is saved to the database
      * 
      * @see EventList::getEventMsgInfo()
@@ -574,18 +617,17 @@ trait EventList
             $is_traversable = is_array( $message_arg );
 
             // Ignore special fields which always starts with an underscore '_' character
-            if ( $this->strStartsWith($msg_name, '_') )
+            $is_special_field = $this->strStartsWith($msg_name, '_');
+            if ($is_special_field)
             {
                 // First thing first, let's retrieve the main message
-                if ( '_main' == $msg_name )
+                if ('_main' == $msg_name)
                 {
-                    $info = isset( $_message_args['_main_processed'] ) ? 
-                        $_message_args['_main'] 
-                        : 
-                        $this->_getActiveEventData( 'message', '_main' );
+                    $info = isset($_message_args['_main_processed']) ? 
+                        $_message_args['_main'] : $this->getActiveEventMsg($event_group);
 
                     /**
-                     * Filters the main event message before it is saved to database
+                     * Filters the main event message before saving to database
                      * 
                      * @since 1.0.0
                      * 
@@ -651,9 +693,12 @@ trait EventList
 
             /**
              * Pluralize the event message name if needed
+             * 
+             * Note: special fields starting with an underscore character are ignored
              */
             $_msg_name = $msg_name;
-            if ( isset($event_data['_translate'][$msg_name]) )
+            if ( !$is_special_field 
+            && isset($event_data['_translate'][$msg_name]) )
             {
                 $pluralize_str = $this->getVar($event_data['_translate'][$msg_name], 'plural_char', ', ');
                 
@@ -816,12 +861,15 @@ trait EventList
      */
     protected function getEventMsgArg( $event, $arg, $default = '', $to_scalar = false )
     {
-        if ( ! $this->isEventMsgArgReady( $event ) ) return $default;
-        if ( ! $this->eventMsgArgExists( $event, $arg ) ) return $default;
+        if (!$this->isEventMsgArgReady($event)) 
+            return $default;
+
+        if (!$this->eventMsgArgExists($event, $arg)) 
+            return $default;
 
         $data = $this->customize_event_msg_args[ $event ][ $arg ];
         if ( $to_scalar ) {
-            $data = $this->parseValueForDb( $data );
+            $data = $this->parseValueForDb($data);
         }
         return $data;
     }
@@ -1481,21 +1529,31 @@ trait EventList
      */
     public function triggerFailedEvents()
     {
-        if ( empty($this->maybe_trigger_failed_events) )
-            return;
+        try {
+            if ( empty($this->maybe_trigger_failed_events) )
+                return;
 
-        foreach ( $this->maybe_trigger_failed_events as $event )
-        {
-            if ( !is_array($event) ) continue;
+            foreach ( $this->maybe_trigger_failed_events as $event )
+            {
+                if ( !is_array($event) ) continue;
 
-            $event_group = $this->getVar($event, 'event_group');
+                $event_group = $this->getVar($event, 'event_group');
 
-            // Setup the event data
-            $setup_handler = sprintf('setup%sEventArgs', ucfirst($event_group));
-            if (!method_exists($this, $setup_handler)) continue;
+                // Setup the event data
+                $setup_handler = sprintf('setup%sEventArgs', ucfirst($event_group));
+                if (!method_exists($this, $setup_handler)) continue;
 
-            $this->$setup_handler($this->getVar($event, 'event_args'));
-            $this->LogActiveEvent($event_group, $this->getVar($event, 'method'));
+                $this->$setup_handler($this->getVar($event, 'event_args'));
+                $this->LogActiveEvent($event_group, $this->getVar($event, 'method'));
+            }
+        }
+        // This should never happen, but just in case
+        catch (\Exception $e) {
+            if (WP_DEBUG) {
+                throw new \Exception( sprintf(
+                    alm__('%s'), esc_html($e->getMessage())
+                ) );
+            }
         }
     }
 
@@ -1521,9 +1579,6 @@ trait EventList
 
         // Setup the active event
         $this->active_event = $this->main_event_list[ $this->active_event_ID ];
-
-        // Override the active event data
-        $this->active_event = array_merge_recursive( $this->active_event, $this->active_event_alt );
 
         /**
          * Lookup metadata event ID/Slug
