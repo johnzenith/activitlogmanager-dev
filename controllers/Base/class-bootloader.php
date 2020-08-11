@@ -29,6 +29,13 @@ class BootLoader
     protected $file_sequences;
 
     /**
+     * Specifies whether the boot loader has been created
+     * @var bool
+     * @since 1.0.0
+     */
+    protected $is_boot_sequence_created = false;
+
+    /**
      * Specify the BootLoader state, whether it has been started or not.
      * @var object
      * @since 1.0.0
@@ -95,7 +102,11 @@ class BootLoader
     }
 
     /**
-     * Initialize the BootLoader properties
+     * Initialize and run the BootLoader.
+     * 
+     * This uses the {@see 'plugins_loaded'} action hook as the BootLoader entry point,
+     * so we may need to setup a bailer instance for events that are fired before the 
+     * the 'plugins_loaded' action hook
      */
     private function init()
     {
@@ -108,10 +119,12 @@ class BootLoader
         $this->igniteInstaller();
 
         /**
-         * This action will only fire if the plugin is activated across the network
+         * This hook will fire only when the plugin is activated across the network
          */
         add_action('network_plugin_loaded', function($plugin_full_path)
         {
+            if (defined('ALM_IS_NETWORK_ACTIVATION')) return;
+
             if (ALM_PLUGIN_BASENAME == plugin_basename($plugin_full_path)) {
                 define('ALM_IS_NETWORK_ACTIVATION', true);
                 \ALM\Controllers\Base\BootLoader::loadRunningProcessEarly($plugin_full_path);
@@ -119,7 +132,7 @@ class BootLoader
         });
 
         /**
-         * This will only run when the plugin is not activated acreoss the network
+         * Run when the plugin is first loaded (only on non-multisite installation)
          */
         add_action( 'plugin_loaded', function($plugin_full_path)
         {
@@ -128,9 +141,36 @@ class BootLoader
         });
         
         /**
-         * At this point, the pluigin is ready to run
+         * At this point, the plugin is ready to run
          */
-        add_action( 'plugins_loaded', '\ALM\Controllers\Base\BootLoader::prepareRunningModeProcess' );
+        add_action('plugins_loaded', '\ALM\Controllers\Base\BootLoader::prepareRunningModeProcess');
+    }
+
+    /**
+     * Run the BootLoader whenever it is needed.
+     * 
+     * @see BootLoader::init()
+     */
+    public static function maybeRun()
+    {
+        $is_network_admin = is_network_admin();
+
+        if (!$is_network_admin || !defined('ALM_IS_NETWORK_ACTIVATION'))
+        {
+            if (null === self::$state)
+                self::$state = new self;
+
+            self::$state->loaded_sequences = [];
+            self::$state->requireConfigFiles();
+
+            $plugin_full_path = WP_PLUGIN_DIR . '/' . ALM_PLUGIN_BASENAME;
+            
+            if ($is_network_admin)
+                define('ALM_IS_NETWORK_ACTIVATION', true);
+
+            \ALM\Controllers\Base\BootLoader::loadRunningProcessEarly($plugin_full_path);
+        }
+        \ALM\Controllers\Base\BootLoader::prepareRunningModeProcess();
     }
 
     /**
@@ -147,8 +187,8 @@ class BootLoader
         $plugin_basename = plugin_basename( $plugin_full_path );
 
         /**
-         * Only load the plugin files when the Activity Log Manager plugin base file 
-         * 'activitylogmanager.php' is loaded.
+         * Only load the plugin files when the base file has been loaded
+         * {@see ./activitylogmanager/activitylogmanager.php}
          */
         if (ALM_PLUGIN_BASENAME === $plugin_basename)
         {
@@ -166,7 +206,10 @@ class BootLoader
      */
     public static function prepareRunningModeProcess()
     {
+        if (defined('ALM_IS_RUNNING_MODE_ACTIVE')) return;
+
         if (self::$state->ready_to_run) {
+            define('ALM_IS_RUNNING_MODE_ACTIVE', true);
             self::$state->__AutoRunControllers();
             self::$state->startPluginMode();
         }
@@ -325,6 +368,8 @@ class BootLoader
      */
     protected function createBootSequence()
     {
+        if ($this->is_boot_sequence_created) return;
+
         /**
          * File sequence signatures:
          * - Array keys are the signature ID
@@ -338,6 +383,8 @@ class BootLoader
         
         // Add the plugin packages to the file sequences
         $this->file_sequences = array_merge( $file_sequences, __alm_get_package_list() );
+
+        $this->is_boot_sequence_created = true;
     }
 
     /**

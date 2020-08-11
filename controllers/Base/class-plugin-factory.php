@@ -444,7 +444,7 @@ abstract class PluginFactory
         {
             if ( ! is_array( $p ) )
             {
-                $match = '/'. preg_quote( $p ) .'$/' . ($case_insensitive ? 'i' : '');;
+                $match = '/'. preg_quote($p, '/') .'$/' . ($case_insensitive ? 'i' : '');;
                 if ( preg_match( $match, $str ) ) 
                     return true;
             }
@@ -472,7 +472,7 @@ abstract class PluginFactory
         {
             if ( ! is_array( $p ) )
             {
-                $match = '/^'. preg_quote( $p ) .'/' . ($case_insensitive ? 'i' : '');
+                $match = '/^'. preg_quote($p, '/') .'/' . ($case_insensitive ? 'i' : '');
                 if ( preg_match( $match, $str ) ) 
                     return true;
             }
@@ -941,7 +941,7 @@ abstract class PluginFactory
      */
     public function getConstant( $name )
     {
-        if ( defined( $name ) )
+        if (defined($name))
             return constant( $name );
 
         return false;
@@ -1231,7 +1231,7 @@ abstract class PluginFactory
      */
     protected function getEventMsgSeparatorChar()
     {
-        return '|||';
+        return '!|||!';
     }
 
     /**
@@ -1240,7 +1240,7 @@ abstract class PluginFactory
      */
     protected function getEventMsgErrorChar()
     {
-        return '___error___';
+        return '!__error__!';
     }
 
     /**
@@ -1249,7 +1249,7 @@ abstract class PluginFactory
      */
     public function getEventMsgLineBreak()
     {
-        return '___break___';
+        return '!__break__!';
     }
 
     /**
@@ -1259,7 +1259,7 @@ abstract class PluginFactory
     public function getEventLogUpdateIdentifier()
     {
         $updated_at = $this->getDate();
-        return "----------[{$updated_at}]----------";
+        return "!-----[{$updated_at}]-----!";
     }
 
     /**
@@ -1278,5 +1278,33 @@ abstract class PluginFactory
             $btn_str = '[alm_show_more_btn]';
         }
         return $btn_str;
+    }
+
+    /**
+     * Trim characters from right side of a string
+     * @param  string $str  Specifies the string to trim the character from
+     * @param  string $char Specifies the character to trim from right side of the string
+     * @return string       The trimmed string
+     */
+    public function rtrim($str, $char = '')
+    {
+        if (empty($char)) return $str;
+
+        $char = '/' . preg_quote($char, '/') . '$/';
+        return preg_replace($char, '', $str);
+    }
+
+    /**
+     * Trim characters from left side of a string
+     * @param  string $str  Specifies the string to trim the character from
+     * @param  string $char Specifies the character to trim from the left side of the string
+     * @return string       The trimmed string
+     */
+    public function ltrim($str, $char = '')
+    {
+        if (empty($char)) return $str;
+
+        $char = '/^' . preg_quote($char, '/') . '/';
+        return preg_replace($char, '', $str);
     }
 }

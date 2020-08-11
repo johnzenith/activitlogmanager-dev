@@ -178,8 +178,8 @@ function alm_get_default_settings()
 	$settings     = [];
 	$is_multisite = function_exists( 'is_multisite' ) && is_multisite();
 
-	// Specifies whether or not to delete settings when uninstalling
-	$settings['can_delete_settings'] = 0;
+	// Specifies whether or not to delete all plugin data when uninstalling
+	$settings['can_delete_db_tables'] = 0;
 
 	// Specifies whether the settings is refreshed (reset)
 	$settings['is_settings_refreshed'] = 0;

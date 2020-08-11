@@ -797,7 +797,6 @@ trait EventConditionalParser
             return true;
 
         $pages = (array) $this->getEventConditionalData(__METHOD__, $event);
-
         return in_array($this->pagenow, $pages, true);
     }
 
@@ -828,7 +827,6 @@ trait EventConditionalParser
                 return true;
             }
         }
-
         return false;
     }
 
@@ -863,7 +861,6 @@ trait EventConditionalParser
                 return true;
             }
         }
-
         return false;
     }
 
@@ -889,7 +886,6 @@ trait EventConditionalParser
                 return false;
             }
         }
-
         return true;
     }
 }

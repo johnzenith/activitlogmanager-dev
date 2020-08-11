@@ -8,7 +8,6 @@ defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your ow
  * @see \ALM\Controllers\Base\PluginFactory
  * @since 1.0.0
  */
-
 trait BlogFactory
 {
     /**
@@ -118,6 +117,15 @@ trait BlogFactory
         $this->is_network_admin      = is_network_admin();
         $this->current_network_ID    = $this->is_multisite ? get_current_network_id() : $this->current_blog_ID;
         $this->is_network_activation = $this->isNetworkActivation();
+    }
+
+    /**
+     * Get the current network name
+     * @return string
+     */
+    public function getCurrentNetworkName()
+    {
+        return $this->sanitizeOption($this->getVar($this->network_data, 'site_name', 'Unknown'));
     }
 
     /**
@@ -235,7 +243,6 @@ trait BlogFactory
     protected function getNetworkData( $network = null )
     {
         if ( ! $this->is_multisite ) return false;
-
         return get_network( $network );
     }
     
@@ -396,15 +403,19 @@ trait BlogFactory
     {
         if ( $this->is_multisite ) {
             if ( ! $refresh ) {
-                $site_name = $current_blog ? $this->blog_data->name : $this->network_data->name;
+                $site_name = $current_blog ? 
+                    $this->getVar($this->blog_data, 'name') 
+                    : 
+                    $this->getVar($this->network_data, 'site_name');
             } else {
-                $site_name = get_bloginfo('name');
+                $site_name = $current_blog ? 
+                    get_bloginfo('name') : $this->getVar($this->getNetworkData(), 'site_name');
             }
         } else {
-            $site_name = wp_specialchars_decode( $this->blog_data->name, ENT_QUOTES );
+            $site_name = wp_specialchars_decode( $this->getVar($this->blog_data, 'name'), ENT_QUOTES );
         }
 
-        return esc_html( $site_name );
+        return esc_html($site_name);
     }
 
     /**

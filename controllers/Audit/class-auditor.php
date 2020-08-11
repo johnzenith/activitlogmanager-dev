@@ -143,6 +143,8 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         //     update_user_meta($this->User->current_user_ID, 'alm_ms_dashboard_quick_press_last_post_id', 4);
 
         // var_dump($this->maybe_trigger_failed_events);
+
+        // var_dump($this->network_data);
         // wp_die();
         });
     }
@@ -388,14 +390,8 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
             'user_nicename' => $this->User->getUserInfo(0, 'user_nicename', false),
         ];
 
-        if ($user_description) {
-            // We don't like the bar '|' character
-            $user_data['description'] = str_replace(
-                '|',
-                '',
-                $this->User->getUserInfo(0, 'description')
-            );
-        }
+        if ($user_description)
+            $user_data['description'] = $this->User->getUserInfo(0, 'description');
 
         return $user_data;
     }
@@ -434,7 +430,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
             $current_user_id = $this->User->getCurrentUserId();
         }
 
-        // Object ID: this can either be a user ID, post ID, comment ID, etc.
+        // Object ID: this can either be a user ID, post ID, comment ID, meta_id, etc.
         $object_id = $this->getEventMsgArg($event_group, 'object_id', 0);
 
         /**
@@ -554,14 +550,21 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
                     $object_data = (array) $user_obj;
                 }
             }
-        } elseif ('taxonomy' == $event_object) {
+        }
+        elseif ('taxonomy' == $event_object) {
             if (taxonomy_exists($event_object)) {
             }
-        } elseif ('term' == $event_object) {
-        } elseif ('widget' == $event_object) {
-        } elseif ('theme' == $event_object) {
-        } elseif ('plugin' == $event_object) {
-        } elseif ('custom_field' == $event_object) {
+        }
+        elseif ('term' == $event_object) {
+        }
+        elseif ('widget' == $event_object) {
+        }
+        elseif ('theme' == $event_object) {
+        }
+        elseif ('plugin' == $event_object) {
+            $object_data = $this->current_plugin_data;
+        }
+        elseif ('custom_field' == $event_object) {
         }
         // post, page, revision, wp_block, user_request, custom_css, etc.
         elseif (
@@ -575,7 +578,8 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
                 // Update the event object
                 $this->log_data['event_object'] = $post_type_name;
             }
-        } else {
+        }
+        else {
         }
 
         $this->log_data['object_data'] = $object_data;
@@ -620,8 +624,9 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
                 'referer_url' => $referer_url,
             );
 
-            // This sometimes throw an illegal string offset 'referer_url'
-            // So we have to use the array_merge_recursive function
+            // This sometimes throw an illegal string offset 'referer_url'.
+            // So we are using the array_merge_recursive function to prevent this
+            // from happening in the future
             // $this->log_data['metadata']['referer_url'] = $referer_url;
             $this->log_data['metadata'] = array_merge_recursive(
                 $this->log_data['metadata'], $ref_data

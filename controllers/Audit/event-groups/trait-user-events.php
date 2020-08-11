@@ -146,7 +146,7 @@ trait UserEvents
     }
 
     /**
-     * Setup the customizable event arguments list
+     * Setup the user event customizable arguments list
      * 
      * @since 1.0.0
      * 
@@ -157,9 +157,9 @@ trait UserEvents
      *                              If it's pre-fired, it will setup the context related data such as: 
      *                              previous value, intended value, etc.
      */
-    protected function setupUserEventArgs( array $user_args = [], $context_state = 'post' )
+    protected function setupUserEventArgs(array $user_args = [], $context_state = 'post')
     {
-        if ( empty( $user_args ) ) 
+        if (empty($user_args)) 
             return;
 
         $arg_list = [];
@@ -180,12 +180,12 @@ trait UserEvents
             'is_user_owner_of_account'  => 0,
         ];
 
-        $user_args = array_merge( $defaults, $user_args );
+        $user_args = array_merge($defaults, $user_args);
 
         /**
-         * Setup necessary user event arguments
+         * Setup necessary user event argument vars
          */
-        extract( $user_args );
+        extract($user_args);
 
         // Use the $_current_user_id variable if set
         if ( isset( $__current_user_id ) && $_current_user_id > 0 ) {
@@ -294,7 +294,7 @@ trait UserEvents
             }
             
             if ( ! isset( $user_msg_args['blog_url'] ) ) {
-                $user_msg_args['blog_url'] = $this->sanitizeOption( get_blog_option( $blog_id, 'siteurl', '' ) );
+                $user_msg_args['blog_url'] = $this->sanitizeOption( get_blog_option( $blog_id, 'siteurl', '' ), 'url' );
             }
 
             // Don't setup the user primary blog data if the ignore flag is set

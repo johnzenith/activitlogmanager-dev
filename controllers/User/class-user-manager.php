@@ -155,7 +155,7 @@ class UserManager extends \ALM\Controllers\Base\PluginFactory
      * 
      * @see user_can()
      * 
-     * @param  array    $caps       Specified capabilities to check for on single site and multi site.
+     * @param  array|string $caps   Specified capabilities to check for on single site and multi site.
      *                              If a single array element is set, it is used on both single and 
      * 								multi site.
      * 
@@ -188,8 +188,8 @@ class UserManager extends \ALM\Controllers\Base\PluginFactory
         ...$args
     )
     {
-        $user_id 			 = is_null( $user_id ) ? $this->current_user_ID : $user_id;
-        $is_caps_traversable = is_array( $caps );
+        $user_id 			 = empty($user_id) ? $this->current_user_ID : $user_id;
+        $is_caps_traversable = is_array($caps);
         
         if ( $is_caps_traversable )
         {

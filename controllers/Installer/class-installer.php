@@ -60,15 +60,14 @@ class Installer
 	 */
 	public function dispatchHooks()
 	{
-		register_activation_hook(
-			$this->plugin_file, [ $this, 'Activate' ]
-		);
-		register_deactivation_hook(
-			$this->plugin_file, [ $this, 'Deactivate' ]
-		);
-		add_action(
-			'plugins_loaded', [ $this, 'registerNewBlogInsertionHook' ]
-		);
+		register_activation_hook($this->plugin_file, [$this, 'Activate']);
+		register_deactivation_hook($this->plugin_file, [$this, 'Deactivate']);
+
+		// Log the plugin activation event
+		add_action('activated_plugin', [$this, 'logPluginActivation'], 10, 2);
+
+		// Run plugin installation on new blog
+		add_action('plugins_loaded', [$this, 'registerNewBlogInsertionHook']);
 	}
 
 	/**
@@ -255,28 +254,28 @@ class Installer
         define( 'ALM_UNINSTALLING', true );
 
         $this->options 		  = $this->getOption( $this->option_name );
-        $can_delete_settings  = 1 === (int) $this->options['can_delete_settings'];
+        // $can_delete_settings  = 1 === (int) $this->options['can_delete_settings'];
         $can_delete_db_tables = 1 === (int) $this->options['can_delete_db_tables'];
 
         /**
-         * Uninstall Hooks: 'alm/uninstall'. Fires before plugin is uninstalled.
+         * Uninstall Hook: 'alm/uninstall'. Fires before the plugin is uninstalled.
          *
          * @since 1.0.0 
          *
-         * @param bool $can_delete_settings  Whether or not plugin's settings should be deleted
+         * @param bool $can_delete_db_tables Specifies whether or not the plugin's database 
+		 * 									 tables should be deleted.
          */
-        do_action( 'alm/uninstall', $can_delete_settings, $can_delete_db_tables );
+        do_action( 'alm/uninstall', $can_delete_db_tables );
 
-		if ( $can_delete_settings ) $this->deleteOption( $this->option_name );
-		
+		// if ( $can_delete_settings )  $this->deleteOption( $this->option_name );
         if ( $can_delete_db_tables ) $this->__deleteDBTables();
 
+		flush_rewrite_rules();
+		
 		/**
-		 * Delete plugin custom tables
-		 * @todo Delete the plugin custom tables
+		 * Fires after the plugin has been uninstalled
 		 */
-
-        flush_rewrite_rules();
+		do_action('alm/uninstalled');
 	}
 
 	/**
@@ -333,5 +332,42 @@ class Installer
         switch_to_blog( $site_args->id );
         $this->Activation;
         restore_current_blog();
-    }
+	}
+
+	/**
+	 * Manually log the plugin activation event
+	 * @see 'activated_plugin' action hook
+	 */
+	public function logPluginActivation($plugin_basename, $network)
+	{
+		// We are good citizens, let's bail out if the action has been fired elsewhere.
+		// This is likely to occur if the plugin has been activated across the network
+		// and the activation is clicked on another site on the network
+		if (did_action('alm_plugin_activated')) return;
+
+		if ( ALM_PLUGIN_BASENAME != $plugin_basename ) return;
+		
+		if ( !defined('ALM_NEW_BLOG_INSERTED') && defined('ALM_ACTIVATING') )
+		{
+            $activated_plugins = $this->is_network_admin ? 
+				get_site_option('active_sitewide_plugins', []) : get_option('active_plugins', []);
+
+			$activated_plugins = (array) $activated_plugins;
+
+			if (isset($activated_plugins[ALM_PLUGIN_BASENAME]) 
+			|| in_array(ALM_PLUGIN_BASENAME, $activated_plugins, true))
+			{
+				if ($network) {
+					$_activated_plugins = [ALM_PLUGIN_BASENAME => $activated_plugins[ALM_PLUGIN_BASENAME]];
+				} else {
+					$_activated_plugins = [ALM_PLUGIN_BASENAME];
+				}
+
+				// The BootLoader doesn't exists yet, let's load it
+				\ALM\Controllers\Base\BootLoader::maybeRun();
+
+                do_action('alm_plugin_activated', $_activated_plugins, $activated_plugins);
+            }
+		}
+	}
 }

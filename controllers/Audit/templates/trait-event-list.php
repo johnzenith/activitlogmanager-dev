@@ -609,6 +609,47 @@ trait EventList
 
         foreach ( $_message_args as $msg_name => $message_arg )
         {
+            /**
+             * On multisite, we may not need to log the following message arguments:
+             * {@see blog_id, blog_name, blog_url}
+             * 
+             * This is we the on multisite, the blog_id, blog_name and blog_url have
+             * specific column in the  event log
+             */
+            if ($this->is_multisite) {
+                $site_details =['blog_id', 'site_id', 'site_url', 'blog_url', 'blog_name', 'site_name'];
+
+                if (in_array($msg_name, $site_details, true))
+                {
+                    /**
+                     * Filters whether to log the site details along with the message data.
+                     * 
+                     * @since 1.0.0
+                     * 
+                     * @param bool   $site_details  Specifies whether or not to log the site details 
+                     *                              along with the message data.
+                     *                              Note: The 'blog_id', 'blog_name', and 'blog_url' 
+                     *                              columns does exists in the event log table.
+                     *                              Default: false
+                     * 
+                     * @param array  $message_args  Specifies list of event message arguments to used in 
+                     *                              generating the message. 
+                     *                              This should contain the event info field and context,
+                     *                              if needed.
+                     *
+                     * @param string $event_group   Specifies the event group which the message belongs to.
+                     * 
+                     * @param array  $event_data    Specifies the event data which the message belongs to.
+                     */
+                    $log_site_details_with_msg = apply_filters(
+                        'alm_event/message/db/log/site_details',
+                        false, $message_args, $event_group, $event_data
+                    );
+                    if (!$log_site_details_with_msg)
+                        continue;
+                }
+            }
+
             // Ignored the message if $message_arg is set to '_ignore_'
             if ( is_string($message_arg) && '_ignore_' == $message_arg )
                 continue;
