@@ -898,21 +898,22 @@ abstract class PluginFactory
      * @param string $data      Specifies the array data to join
      * @param string $separator Specifies the character to use to separate the array values
      */
-    public function joinValues( array $data, $separator = '|' )
+    public function joinValues( array $data, $separator = '!|!' )
     {
-        if ( ! is_string( $separator ) ) 
-            $separator = '|';
-        
+        if (!is_string($separator)) 
+            $separator = '!|!';
+
         $join = '';
-        foreach ( $data as $k => $v )
+        foreach ($data as $k => $v)
         {
-            if ( is_array( $v ) ) {
-                $this->joinValues( $v, $separator );
+            if ( is_array($v) ) {
+                $join .= (empty($join) ? '' : str_repeat($separator, 2)) . "[{$k}]{$separator}";
+                $join .= $this->joinValues( $v, $separator );
             } else {
                 $join .= "{$k}={$v}{$separator}";
             }
         }
-        return rtrim( $join, $separator );
+        return rtrim($join, $separator);
     }
 
     /**
@@ -1223,6 +1224,15 @@ abstract class PluginFactory
     public function getVowelLetters()
     {
         return ['a', 'e', 'i', 'o', 'u'];
+    }
+
+    /**
+     * Get the event metadata separator character
+     * @return string
+     */
+    public function getEventMetadataSeparatorChar()
+    {
+        return '!|!';
     }
 
     /**

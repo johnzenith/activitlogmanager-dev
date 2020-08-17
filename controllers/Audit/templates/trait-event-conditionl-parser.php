@@ -696,7 +696,7 @@ trait EventConditionalParser
     protected function is_event_user_state_valid( $event_id, $event_name, $event )
     {
         $user_state = $this->getEventConditionalData( __METHOD__, $event );
-        if ( empty( $user_state ) || ! is_string( $user_state ) ) 
+        if (empty($user_state) || !is_string($user_state)) 
             return false;
 
         $user_logged_in = is_user_logged_in();
@@ -732,15 +732,14 @@ trait EventConditionalParser
         /**
          * Bail for ajax request
          */
-        if ( wp_doing_ajax() || wp_doing_cron() ) 
+        if (wp_doing_ajax() || wp_doing_cron()) 
             return true;
 
         $found   = [];
         $screens = $this->getEventConditionalData( __METHOD__, $event );
 
         // Bail out if screen is not defined
-        if ( empty( $screens ) ) 
-            return true;
+        if (empty($screens))  return true;
 
         foreach ( $screens as $screen )
         {
@@ -797,6 +796,8 @@ trait EventConditionalParser
             return true;
 
         $pages = (array) $this->getEventConditionalData(__METHOD__, $event);
+
+        if (empty($pages)) return true;
         return in_array($this->pagenow, $pages, true);
     }
 
@@ -811,8 +812,7 @@ trait EventConditionalParser
     protected function is_event_logged_in_user_caps_valid( $event_id, $event_name, $event, $log_data )
     {
         $caps = (array) $this->getEventConditionalData( __METHOD__, $event );
-        if ( empty( $caps ) ) 
-            return true;
+        if (empty($caps)) return true;
 
         $user_id = $this->User->current_user_ID;
         
@@ -845,8 +845,7 @@ trait EventConditionalParser
     protected function is_event_user_caps__in_valid( $event_id, $event_name, $event, $log_data )
     {
         $caps = (array) $this->getEventConditionalData( __METHOD__, $event );
-        if ( empty( $caps ) ) 
-            return true;
+        if (empty($caps)) return true;
 
         $user_id = $this->getEventObjectUserId( $log_data );
         
@@ -870,8 +869,7 @@ trait EventConditionalParser
     protected function is_event_user_caps__not_in_valid( $event_id, $event_name, $event, $log_data )
     {
         $caps = (array) $this->getEventConditionalData( __METHOD__, $event );
-        if ( empty( $caps ) ) 
-            return true;
+        if (empty($caps)) return true;
 
         $user_id = $this->getEventObjectUserId( $log_data );
         

@@ -92,7 +92,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
      */
     public function __runSetup()
     {
-        // Will create a \SplObjectStorage() object instance
+        // Create the \SplObjectStorage() object instance
         $this->_observers = new \SplObjectStorage();
 
         // Setup the plugin factory data
@@ -308,15 +308,6 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
     protected function addFilter()
     {
         add_filter($this->event_slug, $this->event_callback, $this->event_priority, $this->event_num_args);
-    }
-
-    /**
-     * Get the event metadata separator character
-     * @return string
-     */
-    public function getEventMetadataSeparatorChar()
-    {
-        return '|';
     }
 
     /**
@@ -619,19 +610,8 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
          * The referer url may not be the same as the first one,
          * let's keep a reference
          */
-        if ($this->is_active_log_updatable) {
-            $ref_data = array(
-                'referer_url' => $referer_url,
-            );
-
-            // This sometimes throw an illegal string offset 'referer_url'.
-            // So we are using the array_merge_recursive function to prevent this
-            // from happening in the future
-            // $this->log_data['metadata']['referer_url'] = $referer_url;
-            $this->log_data['metadata'] = array_merge_recursive(
-                $this->log_data['metadata'], $ref_data
-            );
-        }
+        if ($this->is_active_log_updatable && $this->canLogReferer())
+            $event_metadata['referer_url'] = $referer_url;
 
         $this->log_data['metadata'] = $event_metadata;
 

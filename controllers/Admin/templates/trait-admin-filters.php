@@ -3,12 +3,10 @@ namespace ALM\Controllers\Admin\Templates;
 
 // Prevent direct file access
 defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your own.' );
-
 /**
  * Admin Filters Handler
  * @since 1.0.0 
  */
-
 trait AdminFilters
 {
     /**
@@ -16,12 +14,13 @@ trait AdminFilters
      */
     public function registerAdminFilters()
     {
-        // Add action links in the plugin activation menu
-        add_filter( $this->getPluginActionLinkFilter(), [ $this, 'actionLinks' ], 10, 4 );
+        // Add action links and row metadata in the plugin list table
+        add_filter($this->getPluginActionLinkFilter(), [$this, 'actionLinks'], 10, 4);
+        add_filter('plugin_row_meta', [$this, 'rowMetaData'], 10, 4);
 
-        add_filter( 'set-screen-option', [ $this, 'setScreenOptions' ], 10, 3 );
-        add_filter( 'admin_footer_text', [ $this, 'rateUsFooterText' ] );
-        add_filter( 'screen_settings',   [ $this, 'addScreenOptions' ], 10, 2 );
+        add_filter('set-screen-option', [$this, 'setScreenOptions' ], 10, 3);
+        add_filter('admin_footer_text', [$this, 'rateUsFooterText' ]);
+        add_filter('screen_settings',   [$this, 'addScreenOptions' ], 10, 2);
     }
 
     /**
@@ -34,7 +33,7 @@ trait AdminFilters
     }
 
     /**
-     * Add action links in the WordPress plugin list
+     * Add the plugin action link
      */
     public function actionLinks( $links )
     {
@@ -47,19 +46,46 @@ trait AdminFilters
             'settings' => sprintf(
                 '<a href="%1$s">%2$s</a>',
                 $this->getAdminPageUrl( $this->top_menu_slug . '_settings', [], true, true ),
-                alm__( 'Settings' )
-            ),
-            'upgrade' => sprintf(
-                '<a href="%1$s">%2$s</a>',
-                '#',
-                alm__( 'Upgrade' )
-                
+                alm__('Settings')
             ),
         ];
 
         // Add the created links to existing ones 
         $links = wp_parse_args( $links, $created_links );
         return $links;
+    }
+
+    /**
+     * Add the plugin row meta data
+     */
+    public function rowMetaData($plugin_meta, $plugin_file)
+    {
+        if (ALM_PLUGIN_BASENAME === $plugin_file 
+        && is_array($plugin_meta) 
+        && !empty($plugin_meta))
+        {
+            $last_metadata     = end($plugin_meta);
+            $last_metadata_key = key($plugin_meta);
+
+            unset($plugin_meta[$last_metadata_key]);
+
+            if (!defined('ALM_PRO')) {
+                $plugin_meta[] = sprintf(
+                    '<a href="%1$s">%2$s</a>',
+                    '#',
+                    alm__('Upgrade')
+                );
+            }
+
+            $plugin_meta[] = sprintf(
+                '<a href="%1$s">%2$s</a>',
+                '#',
+                alm__('Documentation')
+            );
+
+            $plugin_meta[] = $last_metadata;
+        }
+        return $plugin_meta;
     }
 
     /**

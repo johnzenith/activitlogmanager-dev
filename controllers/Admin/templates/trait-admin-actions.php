@@ -8,18 +8,15 @@ defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your ow
  * Admin Actions Handler
  * @since 1.0.0 
  */
-
 trait AdminActions
 {
-
     /**
      * Register Admin Actions
      */
     public function registerAdminActions()
     {
-        add_action( 'current_screen', [ $this, 'customizeCurrentScreenOptions' ]);
+        add_action('current_screen', [$this, 'customizeCurrentScreenOptions']);
     }
-
     
     /**
      * Make it possible to add customized content to screen options
@@ -27,7 +24,7 @@ trait AdminActions
     public function customizeCurrentScreenOptions( $screen )
     {
         // Only add the 'Display Box' screen option on the plugin menu page
-        if ( ! $this->isPluginMenuPage() ) return false;
+        if (!$this->isPluginMenuPage()) return false;
 
         /**
          * Add plugin screen options

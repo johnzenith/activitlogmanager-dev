@@ -8,7 +8,6 @@ defined('ALM_PLUGIN_FILE') || exit('You are not allowed to do this on your own.'
  * @package User Event Handlers (for multisite installation)
  * @since   1.0.0
  */
-
 trait MS_UserEvents
 {
     /**

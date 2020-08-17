@@ -360,8 +360,10 @@ class UserManager extends \ALM\Controllers\Base\PluginFactory
      */
     public function getRoleNames( $add_super_admin_role_names = true )
     {
+        $wp_roles  = $this->getVar($this->wp_roles, 'role_names', []);
         $add_roles = $add_super_admin_role_names ? $this->getSuperAdminRoleNames() : [];
-        return array_merge( $add_roles, $this->getVar($this->wp_roles, 'role_names'));
+
+        return array_merge($add_roles, (is_null($wp_roles) ? [] : $wp_roles));
     }
 
     /**

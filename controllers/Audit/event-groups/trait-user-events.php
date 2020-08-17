@@ -1829,7 +1829,7 @@ trait UserEvents
                     'event_id'  => 5050,
                     'severity'  => 'critical',
 
-                    'screen'    => [ 'multisite' ],
+                    'screen'    => ['multisite'],
 
                     'message'  => [
                         '_main'                    => 'Marked the user as Ham.',
@@ -1869,7 +1869,7 @@ trait UserEvents
                     'screen'              => [ 'multisite' ],
 
                     'message'  => [
-                        '_main'                    => 'Tried to add the user to the site but the operation was unsuccessful.',
+                        '_main'                    => 'Tried to add the user to the site but the attempt was unsuccessful.',
 
                         '_space_start'             => '',
                         'failed_attempts'          => ['failed_attempts'],
@@ -2662,7 +2662,7 @@ trait UserEvents
 
                     'message'  => [
                         '_main' => 'Added a new capability to the user and denied the user access from using it.' . $this->explainEventMsg(
-                            ' (This means that the capability exists on the user account but the user cannot used it just yet because grant access was denied).'
+                            ' (This means that the capability exists on the user account but the user cannot use it just yet because grant access was denied).'
                         ),
 
                         '_space_start'             => '',
@@ -2764,7 +2764,7 @@ trait UserEvents
                  * @since 1.0.0
                  */
                 'alm_remove_all_user_cap_event' => [
-                    'title'    => 'All user capabilities removed',
+                    'title'    => 'All capabilities removed from user',
                     'action'   => 'user_capability_modified',
                     'event_id' => 5070,
                     'severity' => 'critical',

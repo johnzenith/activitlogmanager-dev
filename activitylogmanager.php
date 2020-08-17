@@ -176,10 +176,16 @@ function __wait()
 };
 //---------------------------------------------------------------------------------------------
 
+
+
 // Make sure this plugin file is not accessed directly
 if ( !defined('ABSPATH') || !function_exists('add_action') ) {
-    exit( "Hi there, you just called me directly and am not allowed to run in such mode, hanging up!" );
+    exit('!!!');
 }
 
-define( 'ALM_PLUGIN_FILE', __FILE__ );
-require_once plugin_dir_path( __FILE__ ) . 'core/bootstrap.php';
+/**
+ * @todo - use the 'ALM_PRO' constant to specify a pro version of the plugin 
+ */
+
+define( 'ALM_PLUGIN_FILE',__FILE__);
+require_once plugin_dir_path(__FILE__) . 'core/bootstrap.php';
