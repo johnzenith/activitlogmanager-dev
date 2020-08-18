@@ -891,19 +891,21 @@ trait PluginEvents
                     ],
 
                     'message' => [
-                        '_main'         => 'Installed a plugin, see details below',
+                        '_main'              => 'Installed a plugin, see details below',
 
-                        '_space_start'  => '',
-                        '_count_object' => ['_count_object'],
-                        'total_count'   => '_ignore_',
-                        'plugin_info'   => ['plugin_info'],
-                        '_space_end'    => '',
+                        '_space_start'       => '',
+                        '_count_object'      => ['_count_object'],
+                        'total_count'        => '_ignore_',
+                        'installation_type'  => ['installation_type'],
+                        'plugin_location'    => ['package_location'],
+                        'plugin_info'        => ['plugin_info'],
+                        '_space_end'         => '',
 
-                        'site_id'       => ['blog_id'],
-                        'site_name'     => ['blog_name'],
-                        'site_url'      => ['blog_url'],
-                        'network_ID'    => ['network_id'],
-                        'network_name'  => ['network_name'],
+                        'site_id'            => ['blog_id'],
+                        'site_name'          => ['blog_name'],
+                        'site_url'           => ['blog_url'],
+                        'network_ID'         => ['network_id'],
+                        'network_name'       => ['network_name'],
                     ],
                 ],
 
@@ -942,7 +944,7 @@ trait PluginEvents
                         '_space_start'             => '',
                         '_count_object'            => ['_count_object'],
                         'installation_type'        => ['installation_type'],
-                        'package_location'         => ['package_location'],
+                        'plugin_location'          => ['package_location'],
                         'installation_request_url' => ['installation_request_url'],
                         '_space_end'               => '',
 
@@ -955,50 +957,6 @@ trait PluginEvents
 
                     'event_handler' => [
                         'num_args' => 3,
-                    ],
-                ],
-
-                /**
-                 *  Fires after the plugin upload has completed
-                 * 
-                 * @since 1.0.0
-                 * 
-                 * @see /wp-admin/update.php
-                 * @see /wp-admin/wp-includes/class-plugin-upgrader.php
-                 */
-                'alm_plugin_uploaded' => [
-                    'title'               => 'Plugin Uploaded',
-                    'action'              => 'plugin_uploaded',
-                    'event_id'            => 5081,
-                    'severity'            => 'critical',
-                    
-                    'screen'              => ['admin', 'network'],
-                    'user_state'          => 'logged_in',
-                    'logged_in_user_caps' => ['upload_plugins'],
-
-                    'wp_transient'        => ['update_plugins'],
-                    'wp_site_transient'   => ['update_plugins'],
-
-                    '_translate' => [
-                        '_main' => [
-                            'plural' => 'Uploaded the following plugins, see details below',
-                        ],
-                    ],
-
-                    'message' => [
-                        '_main'         => 'Uploaded a plugin, see details below',
-
-                        '_space_start'  => '',
-                        '_count_object' => ['_count_object'],
-                        'total_count'   => '_ignore_',
-                        'plugin_info'   => ['plugin_info'],
-                        '_space_end'    => '',
-
-                        'site_id'       => ['blog_id'],
-                        'site_name'     => ['blog_name'],
-                        'site_url'      => ['blog_url'],
-                        'network_ID'    => ['network_id'],
-                        'network_name'  => ['network_name'],
                     ],
                 ],
             ],
@@ -1134,10 +1092,32 @@ trait PluginEvents
      * Get the plugin event info
      * 
      * @param  array   $plugins List of plugin's basename whose info should be retrieved
+     * 
+     * @param  string  $use_dir Specifies a plugin fallback file whose data should be 
+     *                          retrieved if the $plugins var is empty.
+     * 
      * @return string           The specified plugins info.
      */
-    protected function getPluginEventObjectInfo(array $plugins)
+    protected function getPluginEventObjectInfo(array $plugins, $use_file = null)
     {
+        if (empty($plugins) && !is_null($use_file) && file_exists($use_file)) {
+            $basename      = basename($use_file);
+            $plugin_dir    = rtrim($use_file, '/') . '/';
+            $expected_file = $plugin_dir . $basename;
+
+            if (!is_file($expected_file)) {
+                // Maybe we have to use the first occurrence of the underscore or dash character
+                $basename_path = (false !== strpos($basename, '_')) ?
+                    explode('_', $basename) : explode('-', $basename);
+
+                $basename      = current($basename_path);
+                $expected_file = $plugin_dir . $basename . '.php';
+            }
+
+            $_plugin_basename = plugin_basename($expected_file);
+            $plugins[$_plugin_basename] = $_plugin_basename;
+        }
+
         $repeater    = (count($plugins) > 1) ? 2 : 1;
         $line_break  = str_repeat($this->getEventMsgLineBreak(), $repeater);
         $plugin_info = '';

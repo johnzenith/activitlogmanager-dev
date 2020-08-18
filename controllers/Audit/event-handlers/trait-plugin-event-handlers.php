@@ -364,17 +364,26 @@ trait PluginEvents
      */
     public function upgrader_process_complete_event($plugin_upgrader, $hook_extra)
     {
-        $action  = $this->getVar($hook_extra, 'action');
-        $plugins = (array) $this->getVar($hook_extra, 'plugins', []);
+        $skin               = $this->getVar($plugin_upgrader, 'skin', '');
+        $type               = $this->getVar($plugin_upgrader, 'type', '');
+        $action             = $this->getVar($hook_extra, 'action');
+        $result             = $this->getVar($skin, 'result', '');
+        $options            = $this->getVar($skin, 'options', []);
+        $plugins            = (array) $this->getVar($hook_extra, 'plugins', []);
+        $remote_destination = $this->getVar($result, 'remote_destination', '');
 
-        if (empty($plugins)) return;
+        $hook_extra['_alm_vars'] = compact('type', 'options', 'remote_destination');
 
-        if (!$this->isPluginUpdateActionValid($action)) {
+        // Set the $skin data as the new content to save along the logged data
+        $this->overrideActiveEventData('_new_content', $this->serialize($skin));
+        
+        if (!$this->isPluginUpdateActionValid($action) 
+        && (is_array($result) && !empty($result))) {
             /**
              * Fire the plugin installation event if action equals 'install'
              */
             if ('install' === $action)
-                do_action('alm_plugin_installed', $plugins);
+                do_action('alm_plugin_installed', $hook_extra);
             
             return;
         }
@@ -420,6 +429,10 @@ trait PluginEvents
             return;
         }
 
+        // Bail out if not updating/upgrading
+        if (!in_array($type, ['update', 'upgrade'], true))
+            return;
+
         $this->alm_upgrader_process_wrapper($plugin_upgrader, $hook_extra, false);
         $this->LogActiveEvent('plugin', __METHOD__);
     }
@@ -443,8 +456,16 @@ trait PluginEvents
      * 
      * @see PluginEvents::upgrader_process_complete_event()
      */
-    public function alm_plugin_installed_event($plugins)
+    public function alm_plugin_installed_event($hook_extra)
     {
+        $alm_vars    = $this->getVar($hook_extra, '_alm_vars', []);
+
+        $action      = $this->sanitizeOption(wp_unslash($this->getVar($_GET, 'action', '')));
+        $options     = $this->getVar($alm_vars, 'options', []);
+        $plugins     = (array) $this->getVar($hook_extra, 'plugins', []);
+        $type        = $this->getVar($options, 'type', 'web');
+        $destination = $this->getVar($alm_vars, 'remote_destination', 'Unknown');
+
         if (!is_array($plugins) && is_string($plugins))
             $plugins = [$plugins];
 
@@ -462,13 +483,25 @@ trait PluginEvents
             $this->overrideActiveEventData('action', 'plugins_installed');
         }
 
-        $object_id   = 0; // Plugins installation not tide to option
-        $plugin_info = $this->getPluginEventObjectInfo($plugins);
+        $object_id   = 0; // Plugins installation not tide to any option in the database
+        $plugin_info = $this->getPluginEventObjectInfo($plugins, $destination);
 
         if (empty(trim($plugin_info)))
             $plugin_info = 'Not available. No plugin information could be retrieved from the request';
 
-        $this->setupPluginEventArgs(compact('object_id', 'total_count', '_count_object', 'plugin_info'));
+        $is_web_download   = 'web' === $type;
+        $installation_type = $is_web_download ? 'Web Download' : 'File Upload';
+
+        $package_location  = $destination;
+
+        $this->setupPluginEventArgs(compact(
+            'object_id',
+            'total_count',
+            '_count_object',
+            'plugin_info',
+            'installation_type',
+            'package_location',
+        ));
         $this->LogActiveEvent('plugin', __METHOD__);
     }
 

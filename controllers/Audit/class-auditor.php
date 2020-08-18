@@ -489,6 +489,12 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
             // Event revision
             $this->log_data['new_content']      = $this->getEventMsgArg($event_group, 'new_content');
             $this->log_data['previous_content'] = $this->getEventMsgArg($event_group, 'previous_content');
+
+            if (empty($this->log_data['new_content']))
+                $this->log_data['new_content'] = $this->_getActiveEventData('_new_content');
+
+            if (empty($this->log_data['previous_content']))
+                $this->log_data['previous_content'] = $this->_getActiveEventData('_previous_content');
         }
 
         $this->log_data['message'] = $this->generateEventMessageForDb(
