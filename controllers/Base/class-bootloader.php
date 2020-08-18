@@ -187,7 +187,7 @@ class BootLoader
         $plugin_basename = plugin_basename( $plugin_full_path );
 
         /**
-         * Only load the plugin files when the base file has been loaded
+         * Only load the plugin files when its base file has been loaded
          * {@see ./activitylogmanager/activitylogmanager.php}
          */
         if (ALM_PLUGIN_BASENAME === $plugin_basename)

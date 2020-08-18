@@ -45,7 +45,7 @@ trait SuperAdminEvents
                     'error_flag'          => true,
                     'event_successor'     => ['user', 'granted_super_admin'],
 
-                    'screen'              => [ 'admin', 'network', ],
+                    'screen'              => ['admin', 'network'],
                     'user_state'          => 'logged_in',
                     'logged_in_user_caps' => ['manage_network_options'],
 

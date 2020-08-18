@@ -906,7 +906,7 @@ abstract class PluginFactory
         $join = '';
         foreach ($data as $k => $v)
         {
-            if ( is_array($v) ) {
+            if ( is_array($v) || is_object($v) ) {
                 $join .= (empty($join) ? '' : str_repeat($separator, 2)) . "[{$k}]{$separator}";
                 $join .= $this->joinValues( $v, $separator );
             } else {
@@ -1316,5 +1316,17 @@ abstract class PluginFactory
 
         $char = '/^' . preg_quote($char, '/') . '/';
         return preg_replace($char, '', $str);
+    }
+
+    /**
+     * A wrapper for the {@see get_plugin_data() function}
+     */
+    public function getPluginData($plugin_file, $markup = false, $translate = false)
+    {
+        $plugin_data = [];
+        if (file_exists($plugin_file))
+            $plugin_data = get_plugin_data($plugin_file, $markup, $translate);
+
+        return $plugin_data;
     }
 }

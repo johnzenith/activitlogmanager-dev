@@ -590,6 +590,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
                 $event_data_separator
             ),
 
+            'post_data'                      => $_POST,
             'remote_port'                    => $this->getServerVar($_SERVER['REMOTE_PORT']),
             'server_port'                    => $this->getServerVar($_SERVER['SERVER_PORT']),
             'request_uri'                    => $this->getServerVar($_SERVER['REQUEST_URI'], true),

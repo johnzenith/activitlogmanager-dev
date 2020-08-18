@@ -8,6 +8,7 @@ defined('ALM_PLUGIN_FILE') || exit('You are not allowed to do this on your own.'
  * @package Plugin Event Handlers
  * @since   1.0.0
  */
+
 trait PluginEvents
 {
     /**
@@ -232,8 +233,7 @@ trait PluginEvents
      */
     protected function alm_upgrader_process_wrapper($plugin_upgrader, $hook_extra, $is_failed_event = false)
     {
-        $plugins = (array) $this->getVar($hook_extra, 'plugins', []);
-
+        $plugins       = (array) $this->getVar($hook_extra, 'plugins', []);
         $total_count   = '_ignore_';
         $_count_object = count($plugins);
 
@@ -266,11 +266,14 @@ trait PluginEvents
 
         foreach ($plugins as $plugin)
         {
+            if (false === strpos($plugin, '.php'))
+                continue;
+
             $plugin_file = $this->sanitizeOption($plugin);
             $plugin_path = wp_normalize_path(WP_PLUGIN_DIR . '/' . $plugin_file);
             $basename    = basename($plugin_file, '.php');
 
-            $plugin_data = get_plugin_data($plugin_path, true, false);
+            $plugin_data = $this->getPluginData($plugin_path, true);
 
             // Retrieve the plugin dir
             if (false !== strpos($plugin_file, '/'))
@@ -352,7 +355,6 @@ trait PluginEvents
             'plugin_info',
             'installation_request_url'
         ));
-        $this->LogActiveEvent('plugin', __METHOD__);
     }
 
     /**
@@ -362,15 +364,14 @@ trait PluginEvents
      */
     public function upgrader_process_complete_event($plugin_upgrader, $hook_extra)
     {
-        $type    = $this->getVar($hook_extra, 'type');
         $action  = $this->getVar($hook_extra, 'action');
         $plugins = (array) $this->getVar($hook_extra, 'plugins', []);
 
-        if ('plugin' != $type) return;
+        if (empty($plugins)) return;
 
         if (!$this->isPluginUpdateActionValid($action)) {
             /**
-             * Fire the plugin installation hook if action equals 'install'
+             * Fire the plugin installation event if action equals 'install'
              */
             if ('install' === $action)
                 do_action('alm_plugin_installed', $plugins);
@@ -397,13 +398,14 @@ trait PluginEvents
             // Get the plugin current version
             $current_version = 
             $this->getVar(
-                get_plugin_data($plugin, false, false),
+                $this->getPluginData($plugin, false, false),
                 'Version',
                 'Unknown'
             );
 
-            if ('Unknown' === $current_version || $current_version != $update_version)
-                $failed_updates[] = $plugins;
+            if (('Unknown' === $current_version || $current_version != $update_version) 
+            && !$this->isPluginUpgraderResultValid($plugin_upgrader))
+                $failed_updates[] = $plugin;
         }
 
         /**
@@ -411,20 +413,15 @@ trait PluginEvents
          * even when the update did not complete. So we have to check if the plugin action 
          * was executed successfully.
          */
-        if (empty($plugins) 
-        || !empty($failed_updates) 
-        || !$this->isPluginUpgraderResultValid($plugin_upgrader))
-        {
-            // No duplicates
-            $merge_plugins = array_merge(array_flip($plugins), array_flip($failed_updates));
-
-            $hook_extra['plugins'] = array_flip($merge_plugins);
+        if (!empty($failed_updates)) {
+            $hook_extra['plugins'] = $failed_updates;
 
             do_action('alm_upgrader_process_failed', $plugin_upgrader, $hook_extra);
             return;
         }
 
         $this->alm_upgrader_process_wrapper($plugin_upgrader, $hook_extra, false);
+        $this->LogActiveEvent('plugin', __METHOD__);
     }
 
     /**
@@ -436,6 +433,7 @@ trait PluginEvents
     public function alm_upgrader_process_failed_event($plugin_upgrader, $hook_extra)
     {
         $this->alm_upgrader_process_wrapper($plugin_upgrader, $hook_extra, true);
+        $this->LogActiveEvent('plugin', __METHOD__);
     }
 
     /**

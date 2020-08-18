@@ -36,7 +36,7 @@ trait PluginEvents
     protected $plugin_versions = [];
 
     /**
-     * Holds the plugins to update during an upgrade/update action
+     * Holds information about the plugins to update during an upgrade/update action
      * @since 1.0.0
      * @var array
      */
@@ -225,7 +225,7 @@ trait PluginEvents
         add_action('delete_plugin', function($plugin_file) use (&$self)
         {
             $plugin_path = WP_PLUGIN_DIR . '/' . $plugin_file;
-            $self->current_plugin_data = get_plugin_data( $plugin_path, true, false);
+            $self->current_plugin_data = $this->getPluginData($plugin_path, true);
         });
 
         /**
@@ -255,19 +255,21 @@ trait PluginEvents
             if (empty($hook_extra))
                 return $options;
 
-            $type   = $self->getVar($hook_extra, 'type');
             $action = $self->getVar($hook_extra, 'action');
 
-            if ('plugin' != $type) return $options;
-
-            if (!$self->isPluginUpdateActionValid($action))
+            /**
+             * Currently, the $hook_extra arguments may not contain the $type and $action 
+             * data for the plugin upgrade, let's bail out
+             */
+            $bail_plugin_action = true;
+            if (!$bail_plugin_action && !$self->isPluginUpdateActionValid($action))
                 return $options;
 
             $plugin_basename = $self->getVar($hook_extra, 'plugin');
             if (empty($plugin_basename)) return $options;
 
             $plugin_file = WP_PLUGIN_DIR . '/' . $plugin_basename;
-            $plugin_data = get_plugin_data($plugin_file, false, false);
+            $plugin_data = $this->getPluginData($plugin_file);
 
             // Set the plugin version
             $self->plugin_versions[$plugin_basename] = $self->sanitizeOption($self->getVar($plugin_data, 'Version', 'Unknown'));
@@ -318,6 +320,7 @@ trait PluginEvents
 
             /**
              * Check whether the plugin installation response is successful or not.
+             * 
              * An array specifies that the result is valid.
              */
             if ($self->isPluginUpgraderResultValid($upgrader))
@@ -866,7 +869,7 @@ trait PluginEvents
                  * 
                  * @since 1.0.0
                  * 
-                 * @see /wp-admin/wp-includes/class-wp-plugin-upgrader.php
+                 * @see /wp-admin/wp-includes/class-plugin-upgrader.php
                  */
                 'alm_plugin_installed' => [
                     'title'               => 'Plugin Installed',
@@ -909,7 +912,7 @@ trait PluginEvents
                  * 
                  * @since 1.0.0
                  * 
-                 * @see /wp-admin/wp-includes/class-wp-plugin-upgrader.php
+                 * @see /wp-admin/wp-includes/class-plugin-upgrader.php
                  */
                 'alm_plugin_installation_failed' => [
                     'title'               => 'Plugin Installation Failed',
@@ -960,7 +963,8 @@ trait PluginEvents
                  * 
                  * @since 1.0.0
                  * 
-                 * @see /wp-admin/wp-includes/class-wp-plugin-upgrader.php
+                 * @see /wp-admin/update.php
+                 * @see /wp-admin/wp-includes/class-plugin-upgrader.php
                  */
                 'alm_plugin_uploaded' => [
                     'title'               => 'Plugin Uploaded',
@@ -1025,7 +1029,7 @@ trait PluginEvents
                 $bailer, $line_break
             );
 
-        $plugin_data = get_plugin_data($plugin_path, true, false);
+        $plugin_data = $this->getPluginData($plugin_path, true);
         if (empty($plugin_data)) return $bailer;
 
         // Retrieve the plugin dir

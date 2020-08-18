@@ -1104,7 +1104,7 @@ trait UserEvents
                     'user_state' => 'logged_in',
 
                     'message'  => [
-                        '_main' => 'Changed the user ---display name---',
+                        '_main' => 'Changed the display name of the user',
                         
                         '_space_start'             => '',
                         'display_name_previous'    => ['display_name', 'previous'],
@@ -1148,7 +1148,7 @@ trait UserEvents
                     'user_state' => 'logged_in',
 
                     'message'  => [
-                        '_main' => 'Requested a change of ---email address---',
+                        '_main' => 'Requested a change of email address',
 
                         '_space_start'             => '',
                         'user_email_requested'     => ['user_email', 'requested'],
@@ -1189,7 +1189,7 @@ trait UserEvents
                     'user_state' => 'logged_in',
 
                     'message'  => [
-                        '_main' => 'Changed the user ---email address---',
+                        '_main' => 'Changed the user email address',
 
                         '_space_start'             => '',
                         'user_email_previous'      => ['user_email', 'previous'],
@@ -1232,7 +1232,7 @@ trait UserEvents
                     'user_state' => 'logged_in',
 
                     'message'  => [
-                        '_main' => 'Cancelled the request to change the user ---email address---',
+                        '_main' => 'Cancelled the request to change the email address of the user',
 
                         '_space_start'             => '',
                         'user_email_requested'     => ['user_email', 'requested'],
@@ -1274,7 +1274,7 @@ trait UserEvents
                     'user_state' => 'logged_in',
 
                     'message'  => [
-                        '_main' => 'Changed the user ---nice name---',
+                        '_main' => 'Changed the nice name of th user',
 
                         '_space_start'             => '',
                         'user_nice_name_previous'  => ['user_nicename', 'previous'],
@@ -1316,7 +1316,7 @@ trait UserEvents
                     'user_state' => 'logged_in',
 
                     'message'  => [
-                        '_main' => 'Changed the user ---URL---',
+                        '_main' => 'Changed the URL of the user',
 
                         '_space_start'             => '',
                         'user_url_previous'        => ['user_url', 'previous'],
@@ -1358,7 +1358,7 @@ trait UserEvents
                     'user_state' => 'logged_in',
 
                     'message'  => [
-                        '_main' => 'Changed the user ---status---',
+                        '_main' => 'Changed the status of the user',
 
                         '_space_start'             => '',
                         'user_status_previous'     => ['user_status', 'previous'],
@@ -1403,7 +1403,7 @@ trait UserEvents
                     'logged_in_user_caps' => [ 'edit_users' ],
 
                     'message'  => [
-                        '_main' => 'Changed the user ---password---',
+                        '_main' => 'Changed the password of the user',
 
                         'user_id'                  => ['object_id'],
                         'user_login'               => ['user_login'],
@@ -1545,7 +1545,7 @@ trait UserEvents
                     'severity' => 'critical',
 
                     'message'  => [
-                        '_main' => 'Initiated a ---password reset--- request successfully',
+                        '_main' => 'Initiated a password reset request successfully',
 
                         '_space_start'             => '',
 
@@ -1593,7 +1593,7 @@ trait UserEvents
                     'event_successor' => ['user', 'alm_retrieve_password_successfully'],
 
                     'message'  => [
-                        '_main' => 'Initiated a ---password reset--- request which could not be completed because the system was unable to save the generated password reset key.',
+                        '_main' => 'Initiated a password reset request which could not be completed because the system was unable to save the generated password reset key.',
 
                         '_space_start'                 => '',
                         // Holds the user_activation_key
@@ -1637,7 +1637,7 @@ trait UserEvents
 
                     
                     'message'  => [
-                        '_main' => 'Reset the ---user password--- successfully.',
+                        '_main' => 'Reset the user password successfully.',
                         
                         '_space_start'             => '',
                         'password_reset_url'       => ['password_reset_url'],
@@ -1720,7 +1720,7 @@ trait UserEvents
                     'severity' => 'notice',
 
                     'message'  => [
-                        '_main'                    => 'User logged in successfully.',
+                        '_main'                    => 'Logged in successfully.',
 
                         '_space_start'             => '',
                         'login_url'                => ['login_url'],
@@ -1762,7 +1762,7 @@ trait UserEvents
                     'user_state' => 'logged_in',
 
                     'message'  => [
-                        '_main'                    => 'User logged out successfully.',
+                        '_main'                    => 'Logged out successfully.',
 
                         'user_id'                  => ['object_id'],
                         'user_login'               => ['user_login'],
@@ -3196,7 +3196,7 @@ trait UserEvents
                 $custom_field_list['_title'] : $this->makeFieldReadable( $field );
 
             $context                = []; // Context of the event message
-            $field_target           = '---'.  $field_title .'---';
+            $field_target           = $field_title;
             $is_user_settings_field = $user_settings_key === $field;
 
             if ( $is_user_settings_field )
@@ -3259,11 +3259,11 @@ trait UserEvents
             switch ( $field )
             {
                 case $blog_prefix . 'user_level':
-                    $field_target = '---User level---';
+                    $field_target = 'User level';
                 break;
 
                 default:
-                    $field_target = '---'.  $field_title .'---';
+                    $field_target = $field_title;
                 break;
             }
         }
@@ -3290,7 +3290,7 @@ trait UserEvents
             $context = [ 'previous', 'new' ];
 
             if ( $is_user_settings_field && '' === $user_settings_state  ) {
-                $msg  = 'Updated the user ---User settings--- custom field without making any changes.';
+                $msg  = 'Updated the user User settings custom field without making any changes.';
 
                 $msg .= $this->explainEventMsg(
                     ' (The update was triggered without modifying the previous user settings value).'
@@ -3298,7 +3298,7 @@ trait UserEvents
             }
 
             if ( $is_user_settings_field && 'deleted' == $user_settings_state ) {
-                $msg = 'Deleted the ---User settings--- custom field from the user.';
+                $msg = 'Deleted the user settings custom field from the user.';
             }
         }
         elseif ( 'delete' == $action )

@@ -319,10 +319,10 @@ trait EventList
             $user_roles = $this->User->getCurrentUserRoles();
         }
 
-        if ( in_array('super_admin', $user_roles, true) ) {
+        if (in_array('super_admin', $user_roles, true)) {
             $role_desc = 'A Super Admin';
         }
-        elseif ( in_array('administrator', $user_roles, true) ) {
+        elseif (in_array('administrator', $user_roles, true)) {
             $role_desc = 'An Administrator';
         }
         else {
@@ -331,30 +331,30 @@ trait EventList
 
             // Get the user role
             foreach( $user_roles as $user_role ) {
-                if ( in_array($user_role, ['super_admin', 'administrator']) )
+                if (in_array($user_role, ['super_admin', 'administrator']))
                     continue;
 
                 // Custom user role may include the underscore or dash character
                 $delimiter = (false === strpos($user_role, '-' )) ? '_' : '-';
                 
                 // If the user role start with any vowels, then prefix it with 'An'
-                if ( $this->strStartsWith($user_role, $this->getVowelLetters(), true) )
+                if ($this->strStartsWith($user_role, $this->getVowelLetters(), true))
                     $role_prefix = 'An';
 
-                $role_desc = $role_prefix .' '. ucfirst( ucwords($user_role, $delimiter) );
+                $role_desc = $role_prefix .' '. ucfirst(ucwords($user_role, $delimiter));
             }
         }
 
         // This should never happen, but we have to bail out if it does
-        if ( empty($role_desc) ) return $msg;
+        if (empty($role_desc)) return $msg;
 
         // If the message starts with 'A ' or 'An ' or 'User ',
         // then let's replace it with an empty string
-        if ( $this->strStartsWith($msg, ['a ', 'an ', 'user '], true) )
+        if ($this->strStartsWith($msg, ['a ', 'an ', 'user '], true))
             $msg = substr($msg, 2);
         
         // Transform the first message character to lowercase
-        $first_char = strtolower( substr($msg, 0, 1) );
+        $first_char = strtolower(substr($msg, 0, 1));
 
         // Remove the first character from the message
         $remove_first_char = substr($msg, 1);
@@ -1105,18 +1105,23 @@ trait EventList
      * --------------------------------
      * How disabled events are treated
      * --------------------------------
-     * All registered events are passed to the Auditor Observer controller, which will then perform the 
-     * Final step, whether to watch the event or not.
-     * If the [disable] event argument is set and evaluates to true, then the Auditor watcher will
-     * Ignore such event. Simple!
+     * All registered events are passed to the Auditor Observer controller, 
+     * which will then perform the  final step, whether to watch the event or not.
+     * If the [disable] event argument is set and evaluates to true, then the 
+     * Auditor watcher will ignore such event. Simple!
      * 
      * ---------------------------------------
      * How event notifications are turned off
      * ---------------------------------------
      * 1. Get all event IDs with disabled notifications turned on
-     * 2. Set the 'notification' argument for those events to true;
+     * 2. Set the 'notification' argument for those events to false;
      * 3. The Event Notification Handler will then ignore sending notifications if the event 
-     *    'notification' argument is set to true. Cool!
+     *    'notification' argument is set to false.
+     * 4. If the notification argument is an array, then it will contain just too fields:
+     *      'sms'   => true|false,
+     *      'email' => true|false,
+     * 5. If the 'sms' or 'email' field is set to false, then the notification for such
+     *    channel will be ignored for the given event.
      */
     protected function createMainEventList( $group, array $events )
     {
