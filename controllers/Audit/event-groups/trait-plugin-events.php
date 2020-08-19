@@ -8,6 +8,7 @@ defined('ALM_PLUGIN_FILE') || exit('You are not allowed to do this on your own.'
  * @package Plugin Events
  * @since   1.0.0
  */
+
 trait PluginEvents
 {
     /**
@@ -18,6 +19,13 @@ trait PluginEvents
      * @var array
      */
     protected $activated_plugins_list = [];
+
+    /**
+     * Specifies the plugin activation event status, whether we need to trigger the event.
+     * @since 1.0.0
+     * @var array
+     */
+    protected $plugin_activation_event = [];
 
     /**
      * Specifies the current plugin data
@@ -70,7 +78,8 @@ trait PluginEvents
             if (empty($new_plugins) || !is_countable($new_plugins))
                 return;
 
-            $plugin_event = 'alm_plugin_activated';
+            $plugin_event                 = 'alm_plugin_activated';
+            $self->activated_plugins_list = array_merge($self->activated_plugins_list, $new_plugins);
 
             // Trigger the current event
             do_action($plugin_event, $new_plugins, []);
@@ -86,16 +95,14 @@ trait PluginEvents
         });
 
         /**
-         * Fires whenever a plugin is deactivated on a specific blog (single site)
+         * Fires whenever a plugin is deleted on a specific blog (single site)
          */
-        add_action('delete_option_active_plugins', function($option) use ($self)
+        add_action('delete_option_active_plugins', function() use ($self)
         {
-            if (empty($new_plugins) || !is_countable($new_plugins)) return;
-
-            $plugin_event = 'alm_plugin_deactivated';
+            $plugin_event = 'alm_plugin_deleted';
 
             // Trigger the current event
-            do_action($plugin_event, [], $self->activated_plugins_list);
+            do_action($plugin_event, $self->activated_plugins_list);
         }, 10, 2);
         
         /**
@@ -130,7 +137,8 @@ trait PluginEvents
                 if (empty($new_plugins) || !is_countable($new_plugins))
                     return;
 
-                $plugin_event = 'alm_plugin_activated';
+                $plugin_event                 = 'alm_plugin_activated';
+                $self->activated_plugins_list = array_merge($self->activated_plugins_list, $new_plugins);
 
                 // Trigger the current event
                 do_action($plugin_event, $new_plugins, []);
@@ -146,17 +154,14 @@ trait PluginEvents
             }, 10, 4);
 
             /**
-             * Listen for the plugin network deactivation event on multisite
+             * Listen for the plugin network deletion event on multisite
              */
             add_action('delete_site_option_active_sitewide_plugins', function() use (&$self)
             {
-                if (empty($new_plugins) || !is_countable($new_plugins))
-                    return;
+                $plugin_event = 'alm_plugin_deleted';
 
-            $plugin_event = 'alm_plugin_deactivated';
-
-            // Trigger the current event
-            do_action($plugin_event, [], $self->activated_plugins_list);
+                // Trigger the current event
+                do_action($plugin_event, $self->activated_plugins_list);
             }, 10, 2);
         }
 
@@ -175,44 +180,75 @@ trait PluginEvents
                 
             $url_components = wp_parse_url($location);
 
+            $bail  = false;
             $page  = $self->getVar($url_components, 'path');
             $query = $self->getVar($url_components, 'query');
 
-            if (false === strpos($page, 'plugins.php') || empty($query))
-                return $location;
+            if (false === strpos($page, 'plugins.php') || empty($query)) {
+                $bail = true;
+            }
 
             $args = [];
             parse_str($query, $args);
 
             $plugin = urldecode_deep(wp_unslash($self->getVar($args, 'plugin')));
-            if (empty($plugin)) return $location;
+            if (empty($plugin)) {
+                $bail = true;
+            }
 
             $has_error   = false;
             $error_nonce = $self->getVar($args, '_error_nonce');
             
             // Check whether a fatal error was triggered during the plugin activation
-            if (!empty($error_nonce)) {
-                $has_error = true;
-            }
-            elseif (!empty($self->getVar($args, 'charsout')) 
+            if (!empty($self->getVar($args, 'charsout')) 
             && !empty($self->getVar($args, 'plugin_status')))
             {
                 $has_error = true;
             }
 
+            if (empty($self->activated_plugins_list)) {
+                $active_plugins = $self->is_network_admin ?
+                    get_site_option('active_plugins', []) : get_option('active_plugins', []);
+
+                $self->activated_plugins_list = (array) $active_plugins;
+            }
+
+            // During plugin activation, WordPress performs a redirect with 
+            // '_error_nonce' query var
+            if ($bail || (!$has_error && !empty($error_nonce))) {
+                // Fire the plugin activation hook
+                $self->maybeFirePluginActivationEvent();
+
+                return $location; 
+            }
+
             if (!$has_error || empty($self->getVar($args, 'error')))
                 return $location;
 
+            // Fire the plugin activation hook.
+            // This is applicable when activating list of selected plugins
+            $self->maybeFirePluginActivationEvent();
+
             $plugin = $self->sanitizeOption($plugin);
 
-            // Check whether the plugin has been activated
-            if ( empty($error_nonce) 
-                &&
-                (in_array($plugin, $self->activated_plugins_list, true)) 
-                || isset($self->activated_plugins_list[$plugin])
+            // Check whether the plugin has been activated with errors
+            if ( 0 === (int) did_action('alm_plugin_activated_with_error') 
+                && 
+                (
+                    in_array($plugin, $self->activated_plugins_list, true) 
+                    || isset($self->activated_plugins_list[$plugin])
+                )
             ) {
                 do_action('alm_plugin_activated_with_error', $plugin);
-            } else {
+            }
+
+            // Check whether the plugin has been activated successfully
+            if ( 0 === (int) did_action('alm_plugin_activation_failed') 
+            && (
+                    !in_array($plugin, $self->activated_plugins_list, true)
+                    && !isset($self->activated_plugins_list[$plugin])
+                )
+            ) {
                 do_action('alm_plugin_activation_failed', $plugin);
             }
 
@@ -225,7 +261,7 @@ trait PluginEvents
         add_action('delete_plugin', function($plugin_file) use (&$self)
         {
             $plugin_path = WP_PLUGIN_DIR . '/' . $plugin_file;
-            $self->current_plugin_data = $this->getPluginData($plugin_path, true);
+            $self->current_plugin_data[$plugin_file] = $this->getPluginData($plugin_path, true);
         });
 
         /**
@@ -237,11 +273,7 @@ trait PluginEvents
          */
         add_action('deleted_plugin', function($plugin_file, $deleted)
         {
-            if ($deleted) {
-                $event = 'alm_plugin_deleted';
-            } else {
-                $event = 'alm_plugin_deletion_failed';
-            }
+            $event = $deleted ? 'alm_plugin_deleted' : 'alm_plugin_deletion_failed';
             do_action($event, $plugin_file);
         }, 10, 2);
 
@@ -367,12 +399,78 @@ trait PluginEvents
             return;
 
         if ($old_plugins < $new_plugins) {
-            $plugin_event = 'alm_plugin_activated';
+            $plugin_event                 = 'alm_plugin_activated';
+            $this->activated_plugins_list = array_merge($this->activated_plugins_list, $new_plugins);
+
+            /**
+             * Setup the plugin activation event args
+             */
+            $this->plugin_activation_event = [
+                'args'  => [$new_plugins, $old_plugins],
+                'event' => $plugin_event,
+            ];
         } else {
             $plugin_event = 'alm_plugin_deactivated';
+            do_action($plugin_event, $new_plugins, $old_plugins);
         }
-        
-        do_action($plugin_event, $new_plugins, $old_plugins);
+    }
+
+    /**
+     * Fire the plugin activation event hook if available
+     */
+    protected function maybeFirePluginActivationEvent()
+    {
+        if (empty($this->plugin_activation_event))
+            return;
+
+        $plugins     = isset($_POST['checked']) ? (array) wp_unslash($_POST['checked']) : array();
+        $last_plugin = '';
+
+        if (!empty($plugins)) {
+            $last_plugin = end($plugins);
+        }
+
+        // When activating list of selected plugins, make sure the plugin activation 
+        // event is run just once
+        if (empty($last_plugin)) {
+            do_action_ref_array(
+                $this->getVar($this->plugin_activation_event, 'event', '_alm_no_action'),
+                $this->getVar($this->plugin_activation_event, 'args', [])
+            );
+        } else {
+            $args         = $this->getVar($this->plugin_activation_event, 'args', []);
+            $last_plugin  = urldecode($last_plugin);
+            $old_plugins  = $this->getVar($args, 1, []);
+
+            if (in_array($last_plugin, $this->activated_plugins_list, true) 
+            || isset($this->activated_plugins_list[$last_plugin]))
+            {
+                // Get the newly activated plugins
+                $new_plugins = [];
+                foreach ($plugins as $plugin) {
+                    if (isset($this->activated_plugins_list[$plugin]) 
+                    || in_array($plugin, $this->activated_plugins_list, true)) {
+                        if ($this->is_network_admin) {
+                            $new_plugins[$plugin] = $this->getVar($this->activated_plugins_list, $plugin, 1);
+
+                            // Unset the plugin from the previous activated plugin list
+                            unset($old_plugins[$plugin]);
+                        } else {
+                            $new_plugins[] = $plugin;
+
+                            // Unset the plugin from the previous activated plugin list
+                            $old_plugin_key = array_search($plugin, $plugins);
+                            unset($old_plugins[$old_plugin_key]);
+                        }
+                    }
+                }
+
+                do_action(
+                    $this->getVar($this->plugin_activation_event, 'event', '_alm_no_action'),
+                    $new_plugins, $old_plugins
+                );
+            }
+        }
     }
 
     /**
@@ -511,8 +609,8 @@ trait PluginEvents
                  * @see register_activation_hook()
                  */
                 'alm_plugin_activated_with_error' => [
-                    'title'               => 'Plugin Activated With Errors',
-                    'action'              => 'plugin_activated_with_errors',
+                    'title'               => 'Plugin Activated With Error',
+                    'action'              => 'plugin_activated_with_error',
                     'event_id'            => 5072,
                     'severity'            => 'critical',
 
@@ -995,9 +1093,8 @@ trait PluginEvents
             $plugin_path = wp_normalize_path(pathinfo($plugin_path, PATHINFO_DIRNAME));
 
         // Setup the plugin object data var
-        $this->current_plugin_data = &$plugin_data;
+        $this->current_plugin_data[$plugin_file] = &$plugin_data;
 
-        $self        = &$this;
         $plugin_info = '';
 
         $data_args   = array_merge(
@@ -1005,13 +1102,13 @@ trait PluginEvents
             $this->isSuperMode() ? ['RequiresWP', 'RequiresPHP'] : []
         );
 
-        foreach ($data_args as $info ) {
-            $data    = $self->getVar($plugin_data, $info, '');
+        foreach ($data_args as $info) {
+            $data    = $this->getVar($plugin_data, $info, '');
             $no_data = empty($data);
 
             // Fallback to the plugin name if title is not given
-            if ($no_data && 'Title' === $info )
-                $data = $self->getVar($plugin_data, 'Name', '');
+            if ($no_data && 'Title' === $info)
+                $data = $this->getVar($plugin_data, 'Name', '');
 
             if ($no_data && in_array($info, ['RequiresWP', 'RequiresPHP'], true))
                 continue;

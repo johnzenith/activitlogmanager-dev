@@ -175,7 +175,7 @@ abstract class PluginFactory
      */
     public function getVar( $data, $key, $default = null )
     {
-        if (empty($data) || empty($key))
+        if (empty($data) || is_null($key) || '' === $key )
             return null;
 
         if (is_array($data)) {

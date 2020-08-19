@@ -52,8 +52,8 @@ trait PluginEvents
         if ($_count_object > 1 ) { 
             $total_count = sprintf('Plugins Activation Count: %d', $_count_object);
 
-            $this->overrideActiveEventData('title', 'Plugins Activated With Errors');
-            $this->overrideActiveEventData('action', 'plugins_activated_with_errors');
+            $this->overrideActiveEventData('title', 'Plugins Activated With Error');
+            $this->overrideActiveEventData('action', 'plugins_activated_with_error');
         }
 
         $object_id   = $this->getPluginEventObjectId();
@@ -150,7 +150,7 @@ trait PluginEvents
             $total_count = sprintf('Plugins Deactivation Count: %d', $_count_object);
 
             $this->overrideActiveEventData('title', 'Plugins Deactivated');
-            $this->overrideActiveEventData('action', 'plugin_deactivated');
+            $this->overrideActiveEventData('action', 'plugins_deactivated');
         }
 
         $object_id   = $this->getPluginEventObjectId();
@@ -212,8 +212,8 @@ trait PluginEvents
         if ($_count_object > 1) {
             $total_count = sprintf('Plugins Deletion Attempt Count: %d', $_count_object);
 
-            $this->overrideActiveEventData('title', 'Plugins Deleted');
-            $this->overrideActiveEventData('action', 'plugins_deleted');
+            $this->overrideActiveEventData('title', 'Plugins Deletion Failed');
+            $this->overrideActiveEventData('action', 'plugins_deletion_failed');
         }
 
         $object_id   = $this->getUninstalledPluginsOptionId();
