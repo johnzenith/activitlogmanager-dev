@@ -200,8 +200,6 @@ trait EventList
     public function getEventsList()
     {
         ksort($this->main_event_list, SORT_NUMERIC);
-        echo '<pre>';
-        print_r($this->main_event_list);exit;
         return $this->main_event_list;
     }
 
