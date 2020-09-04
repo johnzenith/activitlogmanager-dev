@@ -9,12 +9,8 @@ defined('ALM_PLUGIN_FILE') || exit('You are not allowed to do this on your own.'
  * @since   1.0.0
  */
 
-use \ALM\Controllers\Audit\Events\Groups\WP_Core\Settings as ALM_WP_CoreSettings;
-
 trait WP_CoreSettingsEvents
 {
-    use ALM_WP_CoreSettings\OptionsGeneralEvents;
-
     /**
      * Specifies the WP core settings events list.
      * @since 1.0.0
