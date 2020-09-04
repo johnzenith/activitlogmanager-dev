@@ -9,15 +9,8 @@ defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your ow
  * @since   1.0.0
  */
 
-use \ALM\Controllers\Audit\Events\Groups as ALM_EventGroups;
-
 trait EventList
 {
-    use ALM_EventGroups\SuperAdminEvents,
-        ALM_EventGroups\UserEvents,
-        ALM_EventGroups\PluginEvents,
-        \ALM\Controllers\Audit\Templates\EventConditionalParser;
-
     /**
      * Auditable events list
      * @var array
@@ -207,6 +200,8 @@ trait EventList
     public function getEventsList()
     {
         ksort($this->main_event_list, SORT_NUMERIC);
+        echo '<pre>';
+        print_r($this->main_event_list);exit;
         return $this->main_event_list;
     }
 
@@ -218,8 +213,8 @@ trait EventList
      * @see \ALM\Controllers\Audit\event-groups\trait-*-events.php
      * @see EventList::getDefaultEventArgs()
      * 
-     * This will auto get all trait files in the /controllers/audit/event-groups/ directory,
-     * With the pattern: trait-*-events.php
+     * This will auto get all templates (trait files) in the 
+     * /controllers/audit/event-groups/ directory, with the pattern: trait-*-events.php
      * 
      * The event group file names are constructed as: trait-event-group-name-events.php
      * We are solely interested in the 'event-group-name' form each file name, which we will 
@@ -234,20 +229,19 @@ trait EventList
          * This is just a simple hack to get all available event groups.
          * The files have been loaded already, we are not loading it here.
          */
-        $files = glob( ALM_CONTROLLERS_DIR . 'Audit/event-groups/trait-*-events.php' );
+        $files = glob(ALM_CONTROLLERS_DIR . 'Audit/event-groups/trait-*-events.php');
 
         // Initialize the event groups
         foreach ( $files as $file )
         {
             // Strip out 'trait-' and '.php' from the file name
-            $event_group = ucfirst( str_replace( [ 'trait-', '.php', ], '', basename($file) ) );
+            $event_group = ucfirst(str_replace([ 'trait-', '.php', ], '', basename($file)));
 
             // Transform the event group into actual method
-            $event_group_method = 'init' . str_replace( '-', '', ucwords( $event_group, '-' ) );
+            $event_group_method = 'init' . str_replace('-', '', ucwords( $event_group, '-' ));
             
-            if ( method_exists( $this, $event_group_method ) ) {
+            if (method_exists($this, $event_group_method))
                 $this->$event_group_method();
-            }
         }
 
         /**
@@ -1142,32 +1136,32 @@ trait EventList
 
         foreach ( $event_list as $hook => $event )
         {
-            if ( ! is_array( $event ) ) continue;
+            if (!is_array($event)) continue;
 
-            $_event                  = array_merge( $defaults, $event );
-            $_event['event_handler'] = array_merge( $event_handler, (array) $_event['event_handler'] );
+            $_event                  = array_merge($defaults, $event);
+            $_event['event_handler'] = array_merge($event_handler, (array) $_event['event_handler']);
 
-            if ( empty( $_event['group'] ) ) 
+            if (empty($_event['group'])) 
                 $_event['group'] = $group;
 
-            if ( empty( $_event['object'] ) ) 
+            if (empty($_event['object'])) 
                 $_event['object'] = $group;
 
-            if ( ! $this->isEventValid( $_event ) ) continue;
+            if (!$this->isEventValid($_event)) continue;
 
             $event_id = $_event['event_id'];
 
             /**
              * Use the message '_event_id' argument if set
              */
-            if ( isset( $_event['message']['_event_id'] ) 
-            && strlen( $_event['message']['_event_id'] ) >= 4 )
+            if (isset($_event['message']['_event_id']) 
+            && strlen($_event['message']['_event_id']) >= 4)
             {
                 $event_id = $_event['message']['_event_id'];
             }
 
             // If the event ID is not valid, then we have to skip that event
-            if ( ! is_int($event_id) || 0 >= $event_id || 4 > strlen($event_id) ) 
+            if (!is_int($event_id) || 0 >= $event_id || 4 > strlen($event_id)) 
                 continue;
 
             $_event['event'] = $hook;
@@ -1175,7 +1169,7 @@ trait EventList
             /**
              * Everything looks good at this point, let's disable all excluded events
              */
-            $this->_is_event_pre_disabled = ( true === (bool) $_event['disable'] );
+            $this->_is_event_pre_disabled = (true === (bool) $_event['disable']);
             
             /**
              * Filters the event pre-disabled state
@@ -1193,7 +1187,7 @@ trait EventList
             if ( $is_event_pre_disabled ) 
                 $_event['disable'] = true;
             
-            if ( true !== $_event['disable'] && !$this->preIsEventValid( $event_id, $hook, $_event ) ) 
+            if (true !== $_event['disable'] && !$this->preIsEventValid($event_id, $hook, $_event)) 
                 $_event['disable'] = true;
 
             /**
@@ -1287,7 +1281,7 @@ trait EventList
      *                             the event hook is specified together with the event group
      * 
      * @return int                 Returns the corresponding event ID if found.
-     *                             Otherwise 0 is returned.
+     *                             Otherwise 0.
      */
     public function getEventIdBySlug( $event_hook, $event_group = '' )
     {
@@ -1430,7 +1424,7 @@ trait EventList
          */
         $selected_active_event_error_fields = apply_filters(
             'alm/event/log/update/selected_fields',
-            [ 
+            [
                 'log_id', 'event_id', 'log_status', 'log_counter', 'event_action_trigger', 'user_data', 'object_data', 'metadata', 'message',
             ],
             $this->active_event_ID,
@@ -1444,7 +1438,10 @@ trait EventList
          * counter. If the attempted login request is made on a non-existing user account, 
          * specify it and let the admin user take an action.
          */
-        $this->active_event_error_log_data = $this->DB
+        $failed_log_increment_limit = $this->getEventFailedLogIncrementLimit(false);
+        
+        // Start building the failed log increment query
+        $this->DB
             ->reset()
             ->select( $selected_active_event_error_fields )
             ->from( $this->tables->activity_logs )
@@ -1453,16 +1450,26 @@ trait EventList
             // ->and( 'user_id', $user_id,               '='   )
             ->and( 'event_id',  $this->active_event_ID, '=' )
             ->and( 'object_id', $object_id,             '=' )
-            ->and( 'source_ip', $this->getTopLevelIp(), '=' )
-            ->and()
-            ->dateRange( 'created_at', $this->getEventLogIncrementLimit(), 'now' )
-            ->orderBy( 'log_id' )
-            ->isDesc()
-            ->limit(1)
-            ->isResultArray()
-            ->getRow();
+            ->and( 'source_ip', $this->getTopLevelIp(), '=' );
 
-        if ( empty( $this->active_event_error_log_data ) )
+            // Check if the failed log increment limit is enabled
+            if ($failed_log_increment_limit !== 0) {
+                $log_range = "{$failed_log_increment_limit} day";
+
+                $this->DB
+                ->and()
+                ->dateRange( 'created_at', $log_range, 'now' );
+            }
+
+            $this->active_event_error_log_data = 
+                $this->DB
+                ->orderBy( 'log_id' )
+                ->isDesc()
+                ->limit(1)
+                ->isResultArray()
+                ->getRow();
+
+        if (empty( $this->active_event_error_log_data ))
             return false;
 
         // Get the event ID for the most recent event successor
@@ -1471,7 +1478,7 @@ trait EventList
             $this->active_event_error_log_data, 'log_id'
         );
 
-        if ( $max_error_log_counter_event_id < 1 ) 
+        if ($max_error_log_counter_event_id < 1) 
             return false;
 
         // Get the most recent event successor ID
@@ -1492,7 +1499,7 @@ trait EventList
 
         // If the event successor ID is greater than the error log counter,
         // then the error log counter should be created
-        return ( $max_error_log_counter_event_id > $event_successor_id );
+        return ($max_error_log_counter_event_id > $event_successor_id);
     }
 
     /**

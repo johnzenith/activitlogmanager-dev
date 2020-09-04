@@ -8,6 +8,7 @@ defined('ALM_PLUGIN_FILE') || exit('You are not allowed to do this on your own.'
  * @package User Event Handlers (for multisite installation)
  * @since   1.0.0
  */
+
 trait MS_UserEvents
 {
     /**
@@ -44,9 +45,7 @@ trait MS_UserEvents
         {
             /**
              * We have to aggregate the user meta primary blog and source domain 
-             * fields if they are updated
-             * 
-             * This constant flag specifies whether aggregation is active or not
+             * fields whenever they are updated
              */
             $this->setupUserLogAggregationFlag( 'add_user_to_blog' );
 
@@ -58,9 +57,14 @@ trait MS_UserEvents
         $role_given      = $role;
         $failed_attempts = 1;
 
-        $this->setupUserEventArgs( compact(
-            'object_id', 'blog_id', 'role_given', 'blog_name', 'blog_url', 'failed_attempts'
-        ) );
+        $this->setupUserEventArgs(compact(
+            'object_id',
+            'blog_id',
+            'role_given',
+            'blog_name',
+            'blog_url',
+            'failed_attempts'
+        ));
         $this->LogActiveEvent( 'user', __METHOD__ );
 
         return $retval;

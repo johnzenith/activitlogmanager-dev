@@ -1062,6 +1062,15 @@ trait PluginEvents
     }
 
     /**
+     * Get the plugin data arguments
+     * @return array
+     */
+    protected function getPluginDataArgs()
+    {
+        return ['Title', 'Version', 'Author', 'RequiresWP', 'RequiresPHP'];
+    }
+
+    /**
      * Get the plugin info after activation/deactivation
      * @return string
      */
@@ -1095,12 +1104,8 @@ trait PluginEvents
         // Setup the plugin object data var
         $this->current_plugin_data[$plugin_file] = &$plugin_data;
 
+        $data_args   = $this->getPluginDataArgs();
         $plugin_info = '';
-
-        $data_args   = array_merge(
-            ['Title', 'Version', 'Author'],
-            $this->isSuperMode() ? ['RequiresWP', 'RequiresPHP'] : []
-        );
 
         foreach ($data_args as $info) {
             $data    = $this->getVar($plugin_data, $info, '');

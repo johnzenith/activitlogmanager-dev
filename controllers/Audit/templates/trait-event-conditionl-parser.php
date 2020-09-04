@@ -5,16 +5,16 @@ namespace ALM\Controllers\Audit\Templates;
 defined('ALM_PLUGIN_FILE') || exit('You are not allowed to do this on your own.');
 
 /**
- * @package Event Conditional Parser
+             * @package Event Conditional Parser
 
- * @since   1.0.0
- */
+             * @since   1.0.0
+             */
 
 trait EventConditionalParser
 {
     /**
-     * Event conditional arguments
-     */
+             * Event conditional arguments
+             */
     protected $event_conditional_args = [];
 
     /**
@@ -24,9 +24,20 @@ trait EventConditionalParser
     {
         $this->event_conditional_args = [
             /**
+             * Specifies whether to force 'disabled state' on the event.
+             * This is useful if a particular event should be monitored  
+             * only when a given condition evaluates to true.
+             * 
+             * Setting this to {false} will turn off the event.
+             * 
+             * Default: true
+             */
+            'can_enable' => true,
+
+            /**
              * Specifies where to load event watcher:
              *
-             *     'all'      : for admin screen
+             *     'all'      : for all screens (front-end and admin)
              *     'admin'    : for admin screens
              *     'user'     : for non-admin user dashboard
              *     'public'   : for front end (non-admin) screens
@@ -36,9 +47,11 @@ trait EventConditionalParser
              *     'main_site': for the main site in WordPress network (multisite) installation
              * 
              *     'multisite': for WordPress network (multisite) installation
+             * 
+             *     'not-multisite': for non-multisite WordPress installation
+             *     'not_multisite': alias for 'not-multisite'
              *
-             * An empty array will load it on all screen,
-             * but the event will still be where event it is applicable.
+             * Note: An empty array will load the event where it is applicable.
              * 
              * @since 1.0.0
              */
@@ -491,6 +504,7 @@ trait EventConditionalParser
         $args = [
             'screen',
             'pagenow',
+            'can_enable',
             'user_state',
             'event_id__in',
             'event_id__not_in',
@@ -721,6 +735,14 @@ trait EventConditionalParser
     }
 
     /**
+     * Check whether the event is disabled
+     */
+    protected function is_event_can_enable_valid( $event_id, $event_name, $event )
+    {
+        return true === $this->getEventConditionalData(__METHOD__, $event);
+    }
+
+    /**
      * Check whether the event can be loaded on the current screen
      * 
      * @see EventConditionalParser::preValidateEvent()
@@ -735,8 +757,9 @@ trait EventConditionalParser
         if (wp_doing_ajax() || wp_doing_cron()) 
             return true;
 
-        $found   = [];
-        $screens = $this->getEventConditionalData( __METHOD__, $event );
+        $found     = [];
+        $screens   = $this->getEventConditionalData( __METHOD__, $event );
+        $site_type = '';
 
         // Bail out if screen is not defined
         if (empty($screens))  return true;
@@ -747,35 +770,47 @@ trait EventConditionalParser
             {
                 case 'admin':
                     $found[] = (int) $this->is_admin;
+                    break;
 
                 case 'user':
                     $found[] = (int) $this->is_user_admin;
+                    break;
             
                 case 'main_site':
                 case 'mainsite':
                     $found[] = (int) $this->is_main_site;
+                    break;
                     
                 case 'network':
                     $found[] = (int) $this->is_network_admin;
 
                 case 'multisite':
-                    $found[] = (int) $this->is_multisite;
+                    $found[]   = (int) $this->is_multisite;
+                    $site_type = 'multisite';
+                    break;
 
                 case 'not-multisite':
                 case 'not_multisite':
-                    $found[] = (int) !$this->is_multisite;
+                    $found[]   = (int) !$this->is_multisite;
+                    $site_type = 'not-multisite';
+                    break;
 
                 case 'public':
-                        $found[] = (int) ( !$this->is_admin && !$this->is_network_admin );
-                
-                default:
-                    // Do nothing
-                break;
+                    $found[] = (int) ( !$this->is_admin && !$this->is_network_admin );
+                    break;
             }
         }
 
-        if ( in_array( 1, $found, true ) )
+        if (in_array( 1, $found, true )) {
+            if (!empty($site_type)) {
+                if ('multisite' === $site_type && !$this->is_multisite)
+                    return false;
+
+                if ('not-multisite' === $site_type && $this->is_multisite)
+                    return false;
+            }
             return true;
+        }
 
         return false;
     }

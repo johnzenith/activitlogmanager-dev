@@ -14,5 +14,6 @@ use \ALM\Controllers\Audit\Events\Handlers as ALM_EventHandlers;
 trait EventHandlers
 {
     use ALM_EventHandlers\UserEvents,
-        ALM_EventHandlers\PluginEvents;
+        ALM_EventHandlers\PluginEvents,
+        ALM_EventHandlers\WP_CoreSettingsEvents;
 }

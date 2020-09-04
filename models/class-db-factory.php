@@ -103,7 +103,7 @@ class DB_Factory
      */
     public function __get( $name )
     {
-        if ( property_exists( $this, $name ) ) 
+        if (property_exists( $this, $name )) 
             return $this->$name;
 
         return null;
@@ -1314,7 +1314,6 @@ class DB_Factory
     protected function _applySearchKeywordHelper( $keyword )
     {
         /**
-         * @todo
          * We need to escape the keyword in cases where more than one special 
          * characters exists
          */

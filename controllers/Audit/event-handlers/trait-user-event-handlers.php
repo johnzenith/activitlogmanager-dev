@@ -8,6 +8,7 @@ defined('ALM_PLUGIN_FILE') || exit('You are not allowed to do this on your own.'
  * @package User Event Handlers
  * @since   1.0.0
  */
+
 trait UserEvents
 {
     /**
@@ -41,7 +42,7 @@ trait UserEvents
         if ( $can_ignore_user_event ) 
             return;
 
-        $this->setupUserEventArgs( compact( 'object_id', 'meta_key', 'meta_value' ) );
+        $this->setupUserEventArgs(compact( 'object_id', 'meta_key', 'meta_value' ));
     }
     
     /**
@@ -71,20 +72,20 @@ trait UserEvents
         }
         
         if ( $user_cap_meta_field == $meta_key ) {
-            \call_user_func_array(
+            call_user_func_array(
                 [$this, $user_cap_event_alias],
                 [$object_id, $meta_value]
             );
             return;
         }
         
-        if ( $this->canIgnoreUserMetaStrictly( $meta_key ) )
+        if ($this->canIgnoreUserMetaStrictly( $meta_key ))
             return;
 
         /**
          * Check if the user meta field should be ignored
          */
-        if ( $this->isActiveMetaFieldEventIgnorable($meta_key) )
+        if ($this->isActiveMetaFieldEventIgnorable($meta_key))
             return;
 
         $can_ignore_user_event = apply_filters(
@@ -96,16 +97,16 @@ trait UserEvents
          * Append the current user custom field data if user profile data 
          * aggregation is active
          */
-        $this->appendUpdatedUserProfileData( $meta_key, [
+        $this->appendUpdatedUserProfileData($meta_key, [
             'new'      => $meta_value,
             'previous' => '',
         ]);
 
-        if ( $can_ignore_user_event ) 
+        if ($can_ignore_user_event) 
             return;
         
-        $this->setupUserEventArgs( compact( 'meta_id', 'object_id', 'meta_key', 'meta_value' ) );
-        $this->LogActiveEvent( 'user', __METHOD__ );
+        $this->setupUserEventArgs(compact( 'meta_id', 'object_id', 'meta_key', 'meta_value' ));
+        $this->LogActiveEvent('user', __METHOD__);
     }
     
     /**
@@ -125,6 +126,7 @@ trait UserEvents
             } else {
                 $user_data = get_userdata($object_id);
             }
+
             $this->old_user_caps['caps']  = $this->getVar($user_data, 'caps', []);
             $this->old_user_caps['roles'] = $this->getVar($user_data, 'roles', []);
 
@@ -142,11 +144,11 @@ trait UserEvents
         // Set the previous value
         $this->metadata_value_previous = get_user_meta( $object_id, $meta_key, true );
 
-        if ( $can_ignore_user_event ) 
+        if ($can_ignore_user_event) 
             return;
 
         $this->setupUserEventArgs(
-            compact( 'meta_id', 'object_id', 'meta_key', 'meta_value' ),
+            compact('meta_id', 'object_id', 'meta_key', 'meta_value'),
             'pre'
         );
         
@@ -185,7 +187,7 @@ trait UserEvents
                     $user_cap_event_alias = 'user_cap_event_alias';
             }
 
-            \call_user_func_array(
+            call_user_func_array(
                 [$this, $user_cap_event_alias],
                 [$object_id, $meta_value]
             );
@@ -218,8 +220,8 @@ trait UserEvents
         if ( $can_ignore_user_event ) 
             return;
 
-        $this->setupUserEventArgs( compact( 'meta_id', 'object_id', 'meta_key', 'meta_value' ) );
-        $this->LogActiveEvent( 'user', __METHOD__ );
+        $this->setupUserEventArgs(compact( 'meta_id', 'object_id', 'meta_key', 'meta_value'));
+        $this->LogActiveEvent('user', __METHOD__);
     }
     
     /**
@@ -246,9 +248,9 @@ trait UserEvents
         }
 
         // Set the deleted meta value
-        $this->metadata_value_deleted = get_user_meta( $object_id, $meta_key, true );
+        $this->metadata_value_deleted = get_user_meta($object_id, $meta_key, true);
 
-        if ( $this->canIgnoreUserMetaStrictly( $meta_key ) ) 
+        if ($this->canIgnoreUserMetaStrictly( $meta_key )) 
             return;
 
         $can_ignore_user_event = apply_filters(
@@ -256,10 +258,10 @@ trait UserEvents
             false, $meta_ids, $meta_key
         );
 
-        if ( $can_ignore_user_event ) 
+        if ($can_ignore_user_event) 
             return;
 
-        $this->setupUserEventArgs( compact( 'meta_id', 'object_id', 'meta_key', 'meta_value' ) );
+        $this->setupUserEventArgs(compact('meta_id', 'object_id', 'meta_key', 'meta_value'));
     }
     
     /**
@@ -281,7 +283,7 @@ trait UserEvents
         if ($user_cap_meta_field == $meta_key) {
             $user_cap_event_alias = 'alm_remove_all_user_cap_event';
 
-            \call_user_func_array(
+            call_user_func_array(
                 [$this, $user_cap_event_alias],
                 [$object_id, []]
             );
@@ -368,7 +370,7 @@ trait UserEvents
          */
         if ( ! $update )
         {
-            \call_user_func_array(
+            call_user_func_array(
                 [ $this, 'alm_user_profile_update_errors_event' ],
                 [ &$errors, $update, &$user ]
             );
@@ -652,7 +654,7 @@ trait UserEvents
                         && ! empty( $profile_hook_alias ) 
                         && method_exists( $this, $profile_hook_alias ) ) 
                         {
-                            \call_user_func_array(
+                            call_user_func_array(
                                 [ $this, $profile_hook_alias ],
                                 $callback_args
                             );
@@ -663,7 +665,7 @@ trait UserEvents
                 && ! empty( $user_profile_update_hook_alias ) 
                 && method_exists( $this, $user_profile_update_hook_alias ) )
                 {
-                    \call_user_func_array(
+                    call_user_func_array(
                         [ $this, $user_profile_update_hook_alias ],
                         $callback_args
                     );
@@ -705,13 +707,13 @@ trait UserEvents
         if ( $this->isUserProfileDataAggregationActive() )
         {
             $user_profile_data = $this->__aggregateUserMetaFields();
-            $this->setupUserEventArgs( compact( 'object_id', 'user_profile_data' ) );
+            $this->setupUserEventArgs(compact( 'object_id', 'user_profile_data' ));
         }
         else {
-            $this->setupUserEventArgs( compact( 'object_id' ) );
+            $this->setupUserEventArgs(compact( 'object_id' ));
         }
 
-        if ( $this->isLogAggregatable() && empty( $user_profile_data ) )
+        if ($this->isLogAggregatable() && empty( $user_profile_data ))
             return;
 
         $this->LogActiveEvent('user', __METHOD__);
@@ -739,8 +741,8 @@ trait UserEvents
         if ( $this->isUserProfileDataAggregationActive() ) 
             return;
 
-        $this->setupUserEventArgs( compact( 'object_id', 'display_name_new', 'display_name_previous' ) );
-        $this->LogActiveEvent( 'user', __METHOD__ );
+        $this->setupUserEventArgs(compact( 'object_id', 'display_name_new', 'display_name_previous' ));
+        $this->LogActiveEvent('user', __METHOD__);
     }
 
     /**
@@ -757,10 +759,10 @@ trait UserEvents
          * Bail out if the current user email is the same with the requested one,
          * or if email confirmation var ($_GET['newuseremail']) is set
          */
-        if ( empty( $user_email_requested ) ) 
+        if (empty( $user_email_requested )) 
             return;
 
-        if ( 0 === strcasecmp( $user_email_requested, $user_email_current ) )
+        if (0 === strcasecmp( $user_email_requested, $user_email_current ))
             return;
 
         if ( $this->getConstant('IS_PROFILE_PAGE') 
@@ -790,8 +792,8 @@ trait UserEvents
                 return;
         }
 
-        $this->setupUserEventArgs( compact( 'object_id', 'user_email_current', 'user_email_requested' ) );
-        $this->LogActiveEvent( 'user', __METHOD__ );
+        $this->setupUserEventArgs(compact( 'object_id', 'user_email_current', 'user_email_requested' ));
+        $this->LogActiveEvent('user', __METHOD__);
     }  
 
     /**
@@ -828,14 +830,12 @@ trait UserEvents
             // Modifying the user email should be a critical event
             $this->overrideActiveEventData('severity', 'critical');
 
-            if (
-                $this->isUserProfileDataAggregationActive()
-            )
-            return;
+            if ($this->isUserProfileDataAggregationActive())
+                return;
         }
 
         $this->setupUserEventArgs( compact( 'object_id', 'user_email_new', 'user_email_previous' ) );
-        $this->LogActiveEvent( 'user', __METHOD__ );
+        $this->LogActiveEvent('user', __METHOD__);
     }
 
     /**
@@ -880,7 +880,7 @@ trait UserEvents
         }
 
         $this->setupUserEventArgs( compact( 'object_id', 'user_email_current', 'user_email_requested' ) );
-        $this->LogActiveEvent( 'user', __METHOD__ );
+        $this->LogActiveEvent('user', __METHOD__);
     }
 
     /**
@@ -906,7 +906,7 @@ trait UserEvents
             return;
 
         $this->setupUserEventArgs( compact( 'object_id', 'user_url_new', 'user_url_previous' ) );
-        $this->LogActiveEvent( 'user', __METHOD__ );
+        $this->LogActiveEvent('user', __METHOD__);
     }
 
     /**
@@ -932,7 +932,7 @@ trait UserEvents
             return;
 
         $this->setupUserEventArgs( compact( 'object_id', 'user_nicename_new', 'user_nicename_previous' ) );
-        $this->LogActiveEvent( 'user', __METHOD__ );
+        $this->LogActiveEvent('user', __METHOD__);
     }
 
     /**
@@ -958,7 +958,7 @@ trait UserEvents
             return;
 
         $this->setupUserEventArgs( compact( 'object_id', 'user_status_new', 'user_status_previous' ) );
-        $this->LogActiveEvent( 'user', __METHOD__ );
+        $this->LogActiveEvent('user', __METHOD__);
     }
 
     /**
@@ -991,7 +991,7 @@ trait UserEvents
         }
 
         $this->setupUserEventArgs( compact( 'object_id' ) );
-        $this->LogActiveEvent( 'user', __METHOD__ );
+        $this->LogActiveEvent('user', __METHOD__);
     }
 
     /**
@@ -1024,7 +1024,7 @@ trait UserEvents
         $user_obj = $user_data;
         
         $this->setupUserEventArgs( compact( 'object_id', '_error_msg', 'user_obj' ) );
-        $this->LogActiveEvent( 'user', __METHOD__ );
+        $this->LogActiveEvent('user', __METHOD__);
     }
 
     /**
@@ -1044,7 +1044,7 @@ trait UserEvents
         if ( ! $allow || empty( $allow ) )
         {
             $this->setupUserEventArgs( compact( 'object_id' ) );
-            $this->LogActiveEvent( 'user', __METHOD__ );
+            $this->LogActiveEvent('user', __METHOD__);
         }
     }
 
@@ -1075,7 +1075,7 @@ trait UserEvents
             'object_id', 'password_reset_key', 'password_reset_url', 'password_expiration_time'
         ) );
 
-        $this->LogActiveEvent( 'user', __METHOD__ );
+        $this->LogActiveEvent('user', __METHOD__);
     }
 
     /**
@@ -1101,7 +1101,7 @@ trait UserEvents
             'object_id', 'generated_password_reset_key', 'password_reset_url'
         ) );
 
-        $this->LogActiveEvent( 'user', __METHOD__ );
+        $this->LogActiveEvent('user', __METHOD__);
     }
 
     /**
@@ -1117,7 +1117,7 @@ trait UserEvents
         $password_reset_url = $this->sanitizeOption( wp_lostpassword_url(), 'url' );
 
         $this->setupUserEventArgs( compact( 'object_id', 'password_reset_url' ) );
-        $this->LogActiveEvent( 'user', __METHOD__ );
+        $this->LogActiveEvent('user', __METHOD__);
     }
 
     /**
@@ -1137,6 +1137,10 @@ trait UserEvents
         $failed_attempts     = 1;
         $user_account_exists = $object_id > 0 ? 'Yes' : 'No';
 
+        $attempted_password  = $this->getVar(
+            $this->_user_event_log_bin, 'failed_login_attempted_password', str_repeat('*', 8)
+        );
+
         if ( is_wp_error( $errors ) )
         {
             $error_list = $errors->get_error_messages();
@@ -1147,10 +1151,35 @@ trait UserEvents
             }
         }
 
-        $this->setupUserEventArgs( compact(
-            'object_id', 'failed_attempts', 'login_url', '_error_msg', 'user_account_exists'
-        ) );
-        $this->LogActiveEvent( 'user', __METHOD__ );
+        /**
+         * Maybe we should bail the user data if the username/email doesn't exists
+         */
+        $user_obj = null;
+        if ($object_id < 1) {
+            $user_obj = [];
+            if (is_email($username)) {
+                $user_obj['user_login'] = 'Unknown';
+                $user_obj['user_email'] = $username;
+            } else {
+                $user_obj['user_login'] = $username;
+                $user_obj['user_email'] = 'Unknown';
+            }
+            
+            $user_obj['email_address'] = $user_obj['user_email'];
+
+            $user_obj = (object) $user_obj;
+        }
+
+        $this->setupUserEventArgs(compact(
+            'user_obj',
+            'object_id',
+            'failed_attempts',
+            'login_url',
+            '_error_msg',
+            'user_account_exists',
+            'attempted_password'
+        ));
+        $this->LogActiveEvent('user', __METHOD__);
     }
 
     /**
@@ -1165,7 +1194,7 @@ trait UserEvents
         $_current_user_id = $object_id;
 
         $this->setupUserEventArgs( compact( 'object_id', 'login_url', '_current_user_id' ) );
-        $this->LogActiveEvent( 'user', __METHOD__ );
+        $this->LogActiveEvent('user', __METHOD__);
     }
 
     /**
@@ -1178,7 +1207,7 @@ trait UserEvents
         $object_id = $this->User->getCurrentUserId();
 
         $this->setupUserEventArgs( compact( 'object_id' ) );
-        $this->LogActiveEvent( 'user', __METHOD__ );
+        $this->LogActiveEvent('user', __METHOD__);
     }
 
     /**

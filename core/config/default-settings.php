@@ -51,12 +51,11 @@ function alm_parse_running_modes( array $custom_modes = [] )
         foreach ( $custom_modes as $m => $v )
         {
             // Ignore default modes
-            if ( isset( $default_modes[ $m ] ) )
-            {
+            if (isset( $default_modes[ $m ] )) {
                 $splice_modes[ $m ] = $v;
             }
             else {
-                if ( $count >= 3 ) break;
+                if ($count >= 3) break;
 
                 $splice_modes[ $m ] = $v;
                 ++$count;
@@ -64,8 +63,7 @@ function alm_parse_running_modes( array $custom_modes = [] )
 		}
 	}
 	else {
-		foreach ( $custom_modes as $m => $v )
-        {
+		foreach ( $custom_modes as $m => $v ) {
 			$splice_modes[ $m ] = $v;
 		}
 	}
@@ -214,6 +212,9 @@ function alm_get_default_settings()
 	// Specifies whether php errors backtrace is enabled
 	$settings['php_errors_backtrace'] = alm_set_running_modes();
 
+	// Specifies whether the failed login attempted password should be logged
+	$settings['log_failed_login_attempted_password'] = alm_set_running_modes();
+
 	// Specifies whether to aggregate log or not
 	$settings['log_aggregation'] = alm_set_running_modes();
 
@@ -236,10 +237,20 @@ function alm_get_default_settings()
 		null
 	);
 
-	// Specifies the number of days to update the error log counter 
-	// for a given event before creating a new one
-	// Default: -7 (Last 7 days)
-	$settings['event_log_increment_limit'] = alm_set_running_modes( [], -7 );
+	/**
+	 * Specifies the number of days to update the error log counter 
+	 * for a given event before creating a new one.
+	 * 
+	 * For example, if set to 30, it simply means that the failed event log will be 
+	 * incremented within the last 30 days.
+	 * 
+	 * Note: The failed error log increment for a given event is cleared whenever the 
+	 * event successor for that failed event is logged by the user/ip that triggers it.
+	 * 
+	 * Default: 0 (Disabled. This means the log will be incremented until the event 
+	 * 			  successor for that failed event is logged by the user/ip that triggers it).
+	 */
+	$settings['failed_event_log_increment_limit'] = alm_set_running_modes( [], 0 );
 
 	// Specifies the maximum logs to keep
 	$log_max = 10000;
@@ -473,61 +484,4 @@ function alm_get_default_settings()
 	}
 
 	return $settings;
-}
-
-
-
-
-/**
- * Get the event view columns
- * @return array
- */
- function getLogViewerColumns()
-{
-	/**
-	 * The '#' before the column key specifies that column does not exists in the activity log table.
-	 * 
-	 * So you can use an array to specific the real targeted table column if needed, like so:
-	 * '#virtual_column' => [
-	 * 		'label'  => 'User',
-	 * 
-	 * 		// Real column target
-	 * 		'column' => 'user_id',
-	 * 	]
-	 */
-	$args = [
-		'user_id'   	 => 'User',
-		'event_title'    => 'Title',
-		'event_action'   => 'Action',
-		'event_group'  	 => 'Object',
-		'message'     	 => 'Message',
-		'created'     	 => 'Date',
-		'browser'     	 => 'Browser',
-		'platform'    	 => 'platform',
-		'event_id'    	 => 'Code',
-		'severity'    	 => 'severity',
-		'metadata' 	     => 'Log Info',
-		'is_mobile'      => 'Mobile',
-		'source_ip'  	 => 'Source IP',
-		'log_status'  	 => 'Log Status',
-		'updated_at'  	 => 'Updated At',
-		'log_counter' 	 => 'Log Counter',
-		'request_method' => 'Request Method',
-	];
-
-	if ( is_multisite() )
-	{
-		$args['#site'] = 'Site';
-	}
-
-	/**
-	 * Filter the event columns
-	 * 
-	 * @param $args Specifies list of event columns to disable/enable. 
-	 * 
-	 * @return array The List of event columns to display on the event log viewer
-	 * 
-	 * Note: Returning any type other than an array or empty array will hide the event log viewer completely.
-	 */
-	return apply_filters( 'alm/event/viewer/columns', $args );
 }

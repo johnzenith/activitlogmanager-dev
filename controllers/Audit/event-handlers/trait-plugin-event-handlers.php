@@ -255,14 +255,10 @@ trait PluginEvents
             );
         }
 
+        $data_args   = $this->getPluginDataArgs();
         $object_id   = $this->getPluginEventObjectId();
         $line_break  = $this->getEventMsgLineBreak();
         $plugin_info = '';
-
-        $data_args   = array_merge(
-            ['Title', 'Version', 'Author'],
-            $this->isSuperMode() ? ['RequiresWP', 'RequiresPHP'] : []
-        );
 
         foreach ($plugins as $plugin)
         {
@@ -536,7 +532,10 @@ trait PluginEvents
         $installation_request_url = $this->getPluginRequestUrl($hook_extra);
         
         $this->setupPluginEventArgs(compact(
-            'installation_request_url', 'installation_type', 'package_location', '_count_object',
+            'installation_request_url',
+            'installation_type',
+            'package_location',
+            '_count_object',
         ));
         $this->LogActiveEvent('plugin', __METHOD__);
     }

@@ -30,7 +30,7 @@ trait SuperAdminEvents
         $this->event_list['super_admins'] = [
             'title'       => 'Super Admin Events',
             'group'       => 'user', // object
-            'description' => 'Responsible for logging all Super Admins related activities.',
+            'description' => alm__('Responsible for logging all Super Admins related activities.'),
 
             'events' => [
                 /**
@@ -49,7 +49,7 @@ trait SuperAdminEvents
                     'user_state'          => 'logged_in',
                     'logged_in_user_caps' => ['manage_network_options'],
 
-                    'description' => 'Responsible for logging the initial request to <strong>Grant Super Admin Privilege</strong> to a user. This event is used to check whether the <em>Super Admin Privilege</em> will be granted to the user. If the request is successful, then it will be replaced with the <em>Granted Super Admin</em> event. This event is very important so that even when the request failed and Super Admin Privilege was not granted, you will still be notified.',
+                    'description' => alm__('Responsible for logging the initial request to <strong>Grant Super Admin Privilege</strong> to a user. This event is used to check whether the <em>Super Admin Privilege</em> will be granted to the user. If the request is successful, then it will be replaced with the <em>Granted Super Admin</em> event. This event is very important so that even when the request failed and Super Admin Privilege was not granted, you will still be notified.'),
 
                     /**
                      * Translation arguments
@@ -104,7 +104,7 @@ trait SuperAdminEvents
                     'user_state'          => 'logged_in',
                     'logged_in_user_caps' => ['manage_network_options'],
 
-                    'description' => 'Responsible for checking whether the Super Admin Privilege was granted successfully to a user. If the Super Admin Privilege was granted successfully, then it will replace the initial <em>Grant Super Admin</em> event.',
+                    'description' => alm__('Responsible for checking whether the Super Admin Privilege was granted successfully to a user. If the Super Admin Privilege was granted successfully, then it will replace the initial <em>Grant Super Admin</em> event.'),
 
                     /**
                      * Translation arguments
@@ -159,8 +159,7 @@ trait SuperAdminEvents
                     'user_state'          => 'logged_in',
                     'logged_in_user_caps' => ['manage_network_options'],
 
-                    'description' =>
-                    'Responsible for logging the initial request to <strong>Revoke Super Admin Privilege</strong> from a user. This event is used to check whether the <em>Super Admin Privilege</em> will be revoked from the user. If the request is successful, then it will be replaced with the <em>Revoked Super Admin</em> event. This event is very important so that even when the request failed and Super Admin Privilege was not revoked, you will still be notified.',
+                    'description' => alm__('Responsible for logging the initial request to <strong>Revoke Super Admin Privilege</strong> from a user. This event is used to check whether the <em>Super Admin Privilege</em> will be revoked from the user. If the request is successful, then it will be replaced with the <em>Revoked Super Admin</em> event. This event is very important so that even when the request failed and Super Admin Privilege was not revoked, you will still be notified.'),
 
                     /**
                      * Translation arguments
@@ -204,12 +203,11 @@ trait SuperAdminEvents
                     'event_id'            => 5004,
                     'severity'            => 'critical',
 
-                    'screen'              => [ 'admin', 'network', ],
+                    'screen'              => [ 'admin', 'network' ],
                     'user_state'          => 'logged_in',
                     'logged_in_user_caps' => ['manage_network_options'],
 
-                    'description' =>
-                    'Responsible for checking whether the Super Admin Privilege was revoked successfully from a user. If the Super Admin Privilege was revoked successfully, then this event will replace the initial <em>Revoke Super Admin Privilege</em> event.',
+                    'description' => alm__('Responsible for checking whether the Super Admin Privilege was revoked successfully from a user. If the Super Admin Privilege was revoked successfully, then this event will replace the initial <em>Revoke Super Admin Privilege</em> event.'),
 
                     /**
                      * Translation arguments

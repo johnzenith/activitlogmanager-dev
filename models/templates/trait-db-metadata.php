@@ -9,6 +9,7 @@ defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your ow
  * @subpackage  Database Meta Data
  * @since       1.0.0
  */
+
 trait DatabaseMetaData
 {
     /**
@@ -157,7 +158,8 @@ trait DatabaseMetaData
      */
     protected function getTableNames()
     {
-        if ( empty( $this->base_prefix ) ) $this->__setupDatabaseMetadata();
+        if (empty( $this->base_prefix )) 
+            $this->__setupDatabaseMetadata();
 
         return (object) [
             'settings'      => $this->base_prefix . 'alm_settings',

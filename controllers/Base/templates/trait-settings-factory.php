@@ -1118,19 +1118,33 @@ trait SettingsFactory
     }
 
     /**
-     * Get the event log increment limit.
-     * This is default to -7 (last 7 days).
+     * Get the failed event log increment limit.
+     * This is default to 0 (0 days), meaning it is disabled.
      * 
      * @since 1.0.0
      * 
      * @param bool $day_label Specifies whether to add the 'day' string to 
-     *                        the limit
+     *                        the limit.
+     *                        Note: if set to 0, then it has no effect.
      * 
      * @return int|string
      */
-    public function getEventLogIncrementLimit( $day_label = true )
+    public function getEventFailedLogIncrementLimit( $day_label = true )
     {
-        $limit = (int) $this->getSetting('event_log_increment_limit');
+        $limit = (int) $this->getSetting('failed_event_log_increment_limit');
+
+        // Prefix the limit by a minus sign
+        if ($limit !== 0 && strpos($limit, '-') === false)
+            $limit = "-{$limit}";
+
         return $day_label ? "$limit day" : $limit;
+    }
+
+    /**
+     * Check whether we can log failed login attempted password
+     */
+    public function canLogFailedLoginAttemptedPassword()
+    {
+        return $this->getSetting('log_failed_login_attempted_password', 'bool');
     }
 }

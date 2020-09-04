@@ -7,6 +7,7 @@ defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your ow
  * @package User Events
  * @since   1.0.0
  */
+
 trait UserEvents
 {
     /**
@@ -39,6 +40,13 @@ trait UserEvents
      * @since 1.0.0
      */
     protected $user_profile_data_to_update = null;
+
+    /**
+     * Holds log related user data
+     * @var array
+     * @since 1.0.0
+     */
+    protected $_user_event_log_bin = [];
 
     /**
      * User profile meta field name
@@ -118,6 +126,9 @@ trait UserEvents
         
         // User deletion flag setup
         add_action('delete_user', [ $this, 'setupUserDeletionFlag' ], 10, 2);
+
+        // Track the failed attempted password if allowed to
+        $this->maybeTrackFailedLoginAttemptedPassword();
 
         // Multisite events
         if ($this->is_multisite)
@@ -555,6 +566,21 @@ trait UserEvents
     }
 
     /**
+     * Track the failed login attempted password if allowed to
+     */
+    protected function maybeTrackFailedLoginAttemptedPassword()
+    {
+        if ($this->canLogFailedLoginAttemptedPassword()) {
+            add_filter('authenticate', function($user, $username, $password) {
+                $this->_user_event_log_bin['failed_login_attempted_password'] = $password;
+                return $user;
+            }, 10, 3);
+        } else {
+            $this->_user_event_log_bin['failed_login_attempted_password'] = str_repeat('*', 8);
+        }
+    }
+
+    /**
      * Setup the users events
      * 
      * @since 1.0.0
@@ -565,7 +591,7 @@ trait UserEvents
             'title' => 'Users',
             'group' => 'user', // object
 
-            'description' => 'Responsible for logging users related activities which includes: <strong>user roles and capabilities changes</strong>, <strong>user login name, display name, email and password changes</strong>, <strong>custom fields changes such as: first name, last name, nickname, etc.</strong>, <strong>user login, failed login attempts, user registration, password recovery and user logout</strong>.',
+            'description' => alm__('Responsible for logging users related activities which includes: <strong>user roles and capabilities changes</strong>, <strong>user login name, display name, email and password changes</strong>, <strong>custom fields changes such as: first name, last name, nickname, etc.</strong>, <strong>user login, failed login attempts, user registration, password recovery and user logout</strong>.'),
 
             'events' => [
                 /**
@@ -1682,17 +1708,18 @@ trait UserEvents
 
                         '_space_start'             => '',
                         'failed_attempts'          => ['failed_attempts'],
+                        'user_login'               => ['user_login'],
+                        'user_email'               => ['user_email'],
+                        'attempted_password'       => ['attempted_password'],
                         'login_url'                => ['login_url'],
                         '_error_msg'               => '',
                         '_space_end'               => '',
 
                         'user_id'                  => ['object_id'],
-                        'user_login'               => ['user_login'],
                         'display_name'             => ['display_name'],
                         'roles'                    => ['roles'],
                         'first_name'               => ['first_name'],
                         'last_name'                => ['last_name'],
-                        'user_email'               => ['user_email'],
                         'profile_url'              => ['profile_url'],
                         'user_account_exists'      => ['user_account_exists'],
                         'user_primary_site'        => ['primary_blog'],
@@ -3312,16 +3339,8 @@ trait UserEvents
         else {
             // Do nothing
         }
-
-        /**
-         * This formatting should be applied only on super mode 
-         */
-        if ( !$has_custom_field_customizer && $this->isSuperMode() ) {
-            // $msg_args['meta_key'] = $this->makeFieldReadable( $field ) . ' field key: ' . $field;
-            $msg_args['meta_key'] = 'User custom field key: ' . $field;
-        } else {
-            unset( $msg_args['meta_key'] );
-        }
+        
+        $msg_args['meta_key'] = 'User custom field key: ' . $field;
         
         // Apply the event message context to previous and new values
         if ( ! empty( $context ) && ! empty( $msg ) )
@@ -3404,13 +3423,11 @@ trait UserEvents
 
             $previous_val = $this->parseValueForDb($previous_val, 5, $is_cap_field);
 
-            // Add the user meta field name when on super mode
-            if ( $this->isSuperMode() ) {
-                $updated_str .= sprintf( 'Custom field key: %s', $field );
-                
-                // Line break;
-                $updated_str .= $line_break;
-            }
+            // The custom field key
+            $updated_str .= sprintf('Custom field key: %s', $field);
+
+            // Line break;
+            $updated_str .= $line_break;
             
             /**
              * Don't customize any user meta fields that is not part of the 

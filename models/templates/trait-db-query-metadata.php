@@ -12,6 +12,7 @@ defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your ow
  * This template requires the {@see \ALM\Models\Template\DatabaseMetaData} 
  * template as well
  */
+
 trait DatabaseQueryMetaData
 {
     /**
@@ -23,7 +24,7 @@ trait DatabaseQueryMetaData
      */
     protected function isLastQueryOK()
     {
-        return empty( $this->wpdb->last_error );
+        return empty($this->wpdb->last_error);
     }
 
     /**
@@ -35,7 +36,7 @@ trait DatabaseQueryMetaData
      */
     public function getLastInsertId()
     {
-        if ( ! empty( $this->wpdb->insert_id ) ) 
+        if (!empty( $this->wpdb->insert_id )) 
             return (int) $this->wpdb->insert_id;
 
         return 0;

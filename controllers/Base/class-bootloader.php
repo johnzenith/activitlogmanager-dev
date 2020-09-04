@@ -431,8 +431,30 @@ class BootLoader
 
             if ( $file_is_ok )
             {
+                /**
+                 * If parent file is using sub directories to register events,
+                 * let's require those files
+                 */
+                $file_dir          = $file_args['dir'];
+
+                $file_sub_dir_name = str_replace(
+                    ['trait-', '-events.php', '-event-handlers.php'], '', $file_args['file']
+                );
+
+                $file_sub_dir = $file_dir . $file_sub_dir_name;
+                
+                if (is_dir($file_sub_dir)) {
+                    $file_sub_dir_files = glob($file_sub_dir . '/trait-*.php');
+
+                    if (is_array($file_sub_dir_files)) {
+                        array_walk_recursive($file_sub_dir_files, function($f) {
+                            require_once $f;
+                        });
+                    }
+                }
+
                 $file = $this->prepareFileName( $file_args );
-                require_once( $file );
+                require_once $file;
             }
             /**
              * But this should never happen, file should not be missing!
@@ -450,9 +472,9 @@ class BootLoader
                 }
                 else {
                     /**
-                     * Inform the administrator about the error
-                     * 
                      * @todo
+                     * Inform the administrator about the error.
+                     * 
                      * Maybe send email to admin or maybe WordPress has already 
                      * sent a critical error to the site admin
                      */
@@ -521,7 +543,7 @@ class BootLoader
     }
 
     /**
-     * Append file arguments to the of the selected file sequence
+     * Append file arguments to the selected file sequence
      * @see BootLoader::defaultFileArgs()
      */
     protected function appendFileArgs( $dir, $file, $multisite = false )

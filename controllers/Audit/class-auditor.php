@@ -16,7 +16,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
     /**
      * Add the Event List template
      */
-    use ALM_EventTemplates\EventList,
+    use ALM_EventTemplates\AuditableEvents,
         ALM_EventTemplates\EventHandlers;
 
     /**
@@ -230,11 +230,67 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
     }
 
     /**
+     * Get the event view columns
+     * @return array
+     */
+    public function getLogViewerColumns()
+    {
+        /**
+         * The '#' before the column key specifies that column does not exists in the activity log table.
+         * 
+         * So you can use an array to specify the real targeted table column 
+         * if needed, like so:
+         * 
+         * '#virtual_column' => [
+         * 		'label'  => 'User',
+         * 
+         * 		// Real column target
+         * 		'column' => 'user_id',
+         * 	]
+         */
+        $args = [
+            'user_id'   	 => 'User',
+            'event_title'    => 'Title',
+            'event_action'   => 'Action',
+            'event_group'  	 => 'Object',
+            'message'     	 => 'Message',
+            'created'     	 => 'Date',
+            'browser'     	 => 'Browser',
+            'platform'    	 => 'platform',
+            'event_id'    	 => 'Code',
+            'severity'    	 => 'severity',
+            'metadata' 	     => 'Log Info',
+            'is_mobile'      => 'Mobile',
+            'source_ip'  	 => 'Source IP',
+            'log_status'  	 => 'Log Status',
+            'updated_at'  	 => 'Updated At',
+            'log_counter' 	 => 'Log Counter',
+            'request_method' => 'Request Method',
+        ];
+
+        if ( is_multisite() ) {
+            $args['#site'] = 'Site';
+        }
+
+        /**
+         * Filter the event columns
+         * 
+         * @param $args Specifies list of event columns to disable/enable. 
+         * 
+         * @return array The List of event columns to display on the event log viewer
+         * 
+         * Note: Returning any type other than an array or empty array 
+         * will hide the event log viewer completely.
+         */
+        return apply_filters( 'alm/event/viewer/columns', $args );
+    }
+
+    /**
      * Get the event hooks
      */
     public function getEventHooks()
     {
-        return ['action', 'filter', 'callback',];
+        return ['action', 'filter', 'callback'];
     }
 
     /**
@@ -283,7 +339,9 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         {
             /**
              * If the event callback is a normal PHP function or class method,
-             * let's just ignore it silently. It will be triggered automatically. 
+             * let's just ignore it silently.
+             * 
+             * Callbacks should be triggered manually.
              */
             if ('callback' != $this->event_hook) {
                 $event_hook = 'add' . ucfirst($this->event_hook);
@@ -339,10 +397,10 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         if (!isset($this->active_event[$name]) && !$use_active_event_alt)
             return '';
 
-        $data = $use_active_event_alt ?
+        $data = $use_active_event_alt ? 
             $this->active_event_alt[$name] : $this->active_event[$name];
 
-        if (!empty($arg) && is_scalar($arg)) {
+        if (is_scalar($arg) && '' !== $arg) {
             return (isset($data[$arg])) ? $data[$arg] : '';
         }
 
@@ -543,6 +601,12 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
             else {
                 $user_obj = $this->getEventMsgArg($event_group, 'user_obj', null);
                 if (is_object($user_obj)) {
+                    if (isset($user_obj->user_email)) {
+                        if (!isset($user_obj->email_address)) {
+                            $user_obj->email_address = $user_obj->user_email;
+                        }
+                        unset($user_obj->email_address);
+                    }
                     unset($user_obj->comment_shortcuts);
                     $object_data = (array) $user_obj;
                 }
