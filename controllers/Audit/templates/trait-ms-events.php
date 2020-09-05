@@ -11,11 +11,13 @@ defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your ow
 
 use \ALM\Controllers\Audit\Templates     as ALM_Events;
 use \ALM\Controllers\Audit\Events\Groups as ALM_EventGroups;
+use ALM\Controllers\Audit\Events\Handlers\MS_UserEvents;
 
 trait AuditableEvents
 {
     use
-        ALM_EventGroups\SuperAdminEvents,
+        ALM_EventGroups\Network\SuperAdminEvents,
+        ALM_EventGroups\Network\UserEvents,
         ALM_EventGroups\UserEvents,
         ALM_EventGroups\PluginEvents,
         ALM_EventGroups\WP_CoreSettingsEvents,

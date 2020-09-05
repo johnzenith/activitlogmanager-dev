@@ -227,7 +227,11 @@ trait EventList
          * This is just a simple hack to get all available event groups.
          * The files have been loaded already, we are not loading it here.
          */
-        $files = glob(ALM_CONTROLLERS_DIR . 'Audit/event-groups/trait-*-events.php');
+        if ($this->is_multisite) {
+            $files = glob(ALM_CONTROLLERS_DIR . 'Audit/event-groups/{network/,trait}*-events.php', GLOB_BRACE);
+        } else {
+            $files = glob(ALM_CONTROLLERS_DIR . 'Audit/event-groups/trait-*-events.php');
+        }
 
         // Initialize the event groups
         foreach ( $files as $file )

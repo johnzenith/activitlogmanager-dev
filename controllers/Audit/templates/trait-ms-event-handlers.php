@@ -13,8 +13,8 @@ use \ALM\Controllers\Audit\Events\Handlers as ALM_EventHandlers;
 
 trait EventHandlers
 {
-    use ALM_EventHandlers\SuperAdminEvents,
+    use ALM_EventHandlers\Network\SuperAdminEvents,
         ALM_EventHandlers\UserEvents,
-        ALM_EventHandlers\MS_UserEvents,
+        ALM_EventHandlers\Network\UserEvents,
         ALM_EventHandlers\PluginEvents;
 }

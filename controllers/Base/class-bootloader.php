@@ -71,6 +71,12 @@ class BootLoader
     protected $__mode = '';
 
     /**
+     * Multisite flag
+     * @var bool
+     */
+    protected $is_multisite = false;
+
+    /**
      * We don't want the BootLoader object to be created directly
      */
     private function __construct() {}
@@ -110,6 +116,7 @@ class BootLoader
      */
     private function init()
     {
+        $this->is_multisite     = is_multisite();
         $this->loaded_sequences = [];
         $this->requireConfigFiles();
 
@@ -444,7 +451,7 @@ class BootLoader
                 $file_sub_dir = $file_dir . $file_sub_dir_name;
                 
                 if (is_dir($file_sub_dir)) {
-                    $file_sub_dir_files = glob($file_sub_dir . '/trait-*.php');
+                    $file_sub_dir_files = glob($file_sub_dir . '/trait-*.php', GLOB_BRACE);
 
                     if (is_array($file_sub_dir_files)) {
                         array_walk_recursive($file_sub_dir_files, function($f) {
@@ -527,7 +534,7 @@ class BootLoader
         if ( false === strpos( $dir, $abspath ) ) return false;
 
         // Check whether to only load the file on multisite
-        if ( (bool) $multisite && ! is_multisite() ) return 'ignore';
+        if ( (bool) $multisite && ! $this->is_multisite ) return 'ignore';
 
         return true;
     }
@@ -555,7 +562,7 @@ class BootLoader
          */
         if ( is_string( $file ) )
         {
-            $pattern = is_multisite() ? '-ss-' : '-ms-';
+            $pattern = $this->is_multisite ? '-ss-' : '-ms-';
 
             if ( false !== strpos( $file, $pattern ) )
                 $file = '__ignore__';
@@ -584,7 +591,7 @@ class BootLoader
             $multisite       = $file_args['multisite'];
             $using_wildcard  = ( is_string( $files ) && false !== strpos( $files, '*' ) );
 
-            if ( $using_wildcard ) $files = glob( $dir . $files );
+            if ( $using_wildcard ) $files = glob($dir . $files, GLOB_BRACE);
 
             if ( ! is_array( $files ) )
             {
@@ -600,7 +607,7 @@ class BootLoader
                 {
                    $using_wildcard = ( is_string( $file ) && false !== strpos( $file, '*' ) );
 
-                    if ( $using_wildcard ) $file = glob( $dir . $file );
+                    if ( $using_wildcard ) $file = glob($dir . $file, GLOB_BRACE);
 
                     if ( is_array( $file ) )
                     {
@@ -728,13 +735,15 @@ class BootLoader
             $this->appendFileArgs(
                 ALM_CONTROLLERS_DIR . 'Audit/event-handlers/',
                 [
-                    'trait-*-event-handlers.php'
+                    ($this->is_multisite) ? 
+                        '{network/,trait}*-event-handlers.php' : 'trait-*-event-handlers.php'
                 ]
             ),
             $this->appendFileArgs(
                 ALM_CONTROLLERS_DIR . 'Audit/event-groups/',
                 [
-                    'trait-*-events.php'
+                    ($this->is_multisite) ? 
+                        '{network/,trait}*-events.php' : 'trait-*-events.php'
                 ]
             ),
             $this->appendFileArgs(

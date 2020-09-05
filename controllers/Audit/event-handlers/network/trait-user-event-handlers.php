@@ -1,5 +1,5 @@
 <?php
-namespace ALM\Controllers\Audit\Events\Handlers;
+namespace ALM\Controllers\Audit\Events\Handlers\Network;
 
 // Prevent direct file access
 defined('ALM_PLUGIN_FILE') || exit('You are not allowed to do this on your own.');
@@ -9,7 +9,7 @@ defined('ALM_PLUGIN_FILE') || exit('You are not allowed to do this on your own.'
  * @since   1.0.0
  */
 
-trait MS_UserEvents
+trait UserEvents
 {
     /**
      * Fires after the user is marked as a SPAM user.

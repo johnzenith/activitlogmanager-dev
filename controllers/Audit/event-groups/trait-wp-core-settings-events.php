@@ -351,11 +351,11 @@ trait WP_CoreSettingsEvents
      */
     protected function getWpCoreSettingsPage($setting_group, $option_name = '')
     {
+        $option_name = str_replace('_', '_', $option_name);
+
         if (!$this->is_multisite) {
             return esc_url_raw(self_admin_url("{$setting_group}.php#option_name"));
         }
-
-        
     }
 
     /**
