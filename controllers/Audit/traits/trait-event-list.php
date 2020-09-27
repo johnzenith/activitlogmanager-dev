@@ -1,5 +1,5 @@
 <?php
-namespace ALM\Controllers\Audit\Templates;
+namespace ALM\Controllers\Audit\Traits;
 
 // Prevent direct file access
 defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your own.' );
@@ -70,6 +70,13 @@ trait EventList
      * @since 1.0.0
      */
     protected $event_id_list = [];
+
+    /**
+     * Event object ID labels
+     * @var array
+     * @since 1.0.0
+     */
+    protected $event_object_id_labels = [];
 
     /**
      * Specifies list of meta fields to ignore if a specific event is triggered 
@@ -169,13 +176,37 @@ trait EventList
          * Filters the main event message.
          * 
          * This filter is document in:
-         * /activitylogmanager/controllers/Audit/Templates/trait-event-list.php
+         * /activitylogmanager/controllers/Audit/Traits/trait-event-list.php
          * 
          * This will prepend the logged-in user role to the event message
          * 
          * @since 1.0.0
          */
         add_filter( 'alm/event/message/save/main', [ $this, 'customizeEventMainMsg' ], 10, 3 );
+
+        /**
+         * Format the event message field info
+         * @see EventList::getEventMsgInfo()
+         */
+        add_filter('alm/event/msg/field/info', function($info, $event, $field, $context)
+        {
+            // Bail out if the info has been formatted
+            if ('' !== $info) return $info;
+
+            $data  = $this->getEventMsgArg($event, $field, '', true);
+            $label = $this->makeFieldReadable($field);
+
+            // Bail if the field info has been ignored
+            if ($this->isEventMsgFieldInfoIgnorable($data))
+                return $data; // Returning the '_ignore_' flag
+
+            // Retrieve the object ID label if available
+            if ('object_id' === $field) {
+                $label = $this->getVar($this->event_object_id_labels, $event, 'object_id');
+            }
+
+            return sprintf('%s: %s', $label, $data);
+        }, 98, 4);
     }
 
     /**
@@ -211,7 +242,7 @@ trait EventList
      * @see \ALM\Controllers\Audit\event-groups\trait-*-events.php
      * @see EventList::getDefaultEventArgs()
      * 
-     * This will auto get all templates (trait files) in the 
+     * This will auto get all traits (trait files) in the 
      * /controllers/audit/event-groups/ directory, with the pattern: trait-*-events.php
      * 
      * The event group file names are constructed as: trait-event-group-name-events.php
@@ -304,10 +335,24 @@ trait EventList
      */
     public function customizeEventMainMsg($msg, $event_group, $event_data)
     {
-        if ( !is_user_logged_in() ) return $msg;
+        /**
+         * Make a fallback for the user login event.
+         * 
+         * @see {is_user_logged_in()} maybe false until after the page has reloaded 
+         * from the login screen.
+         */
+        $user_roles = [];
+        if ('user' === $event_group) {
+            $user_id    = $this->getEventMsgArg($event_group, 'object_id', 0);
+            $user_roles = $this->User->getUserRoles($user_id, true);
+        }
+
+        $is_user_role_empty = empty($user_roles);
+        if ( $is_user_role_empty && !is_user_logged_in() ) 
+            return $msg;
 
         $role_desc  = '';
-        $user_roles = $this->User->getCurrentUserRoles();
+        $user_roles = $is_user_role_empty ? $this->User->getCurrentUserRoles() : $user_roles;
 
         // If the user roles is empty, let's refresh the user data
         if (empty($user_roles)) {
@@ -342,7 +387,9 @@ trait EventList
         }
 
         // This should never happen, but we have to bail out if it does
-        if (empty($role_desc)) return $msg;
+        if (empty($role_desc)) {
+            return sprintf('A user without a role %s', $msg);
+        }
 
         // If the message starts with 'A ' or 'An ' or 'User ',
         // then let's replace it with an empty string
@@ -382,13 +429,14 @@ trait EventList
     public function getDefaultEventArgs()
     {
         $args = [
-            'title'    => '',
-            'group'    => '',
-            'action'   => '',
-            'object'   => '', // post, comment, user, term, etc.
-            'message'  => [],
-            'event_id' => 0,
-            'severity' => 'notice',
+            'title'           => '',
+            'group'           => '',
+            'action'          => '',
+            'object'          => '', // post, comment, user, term, etc.
+            'message'         => [],
+            'event_id'        => 0,
+            'severity'        => 'notice',
+            'object_id_label' => 'Object ID', // Object labels such as: User ID, Post ID, etc.
             
             // Set to true to completely disable the event
             'disable' => false,
@@ -562,6 +610,19 @@ trait EventList
     }
 
     /**
+     * Check whether the event message can be ignored
+     * 
+     * @param  string $info The event message field data
+     * 
+     * @return bool   Returns true if the message field should be ignored.
+     *                Otherwise false.
+     */
+    public function isEventMsgFieldInfoIgnorable($info)
+    {
+        return is_string($info) && 'ignore' === $info;
+    }
+
+    /**
      * Generate event message before it is saved to the database
      * 
      * @see EventList::getEventMsgInfo()
@@ -579,7 +640,7 @@ trait EventList
      */
     protected function generateEventMessageForDb( $event_group, array $message_args = [], array $event_data = [] )
     {
-        if ( empty( $message_args ) ) 
+        if (empty( $message_args )) 
             return '';
 
         /**
@@ -601,6 +662,7 @@ trait EventList
         $_message_args = apply_filters( 'alm/event/message/db', $message_args, $event_group, $event_data );
 
         $list             = '';
+        $site_details     = ['blog_id', 'site_id', 'site_url', 'blog_url', 'blog_name', 'site_name'];
         $special_msg_args = $this->getTransformableSpecialMsgArgs();
 
         foreach ( $_message_args as $msg_name => $message_arg )
@@ -609,12 +671,10 @@ trait EventList
              * On multisite, we may not need to log the following message arguments:
              * {@see blog_id, blog_name, blog_url}
              * 
-             * This is we the on multisite, the blog_id, blog_name and blog_url have
+             * This is because the blog_id, blog_name and blog_url have
              * specific column in the  event log
              */
             if ($this->is_multisite) {
-                $site_details =['blog_id', 'site_id', 'site_url', 'blog_url', 'blog_name', 'site_name'];
-
                 if (in_array($msg_name, $site_details, true))
                 {
                     /**
@@ -647,7 +707,7 @@ trait EventList
             }
 
             // Ignored the message if $message_arg is set to '_ignore_'
-            if ( is_string($message_arg) && '_ignore_' == $message_arg )
+            if ( $this->isEventMsgFieldInfoIgnorable($message_arg) )
                 continue;
             
             $is_metadata    = $this->strStartsWith( $msg_name, 'meta_' );
@@ -662,7 +722,7 @@ trait EventList
                 {
                     $info = isset($_message_args['_main_processed']) ? 
                         $_message_args['_main'] : $this->getActiveEventMsg($event_group);
-
+                        
                     /**
                      * Filters the main event message before saving to database
                      * 
@@ -726,7 +786,7 @@ trait EventList
             }
 
             // Properly parse object and array values
-            $info = $this->parseValueForDb( $info );
+            $info = $this->parseValueForDb($info);
 
             /**
              * Pluralize the event message name if needed
@@ -886,6 +946,37 @@ trait EventList
     }
 
     /**
+     * Setup default event message data
+     * 
+     * @since 1.0.0
+     * 
+     * @param string $event_group Specifies the event group to setup the message data for.
+     * 
+     * @param array  $extra_data  Specifies list of extra data to merge with the event 
+     *                            message data.
+     * 
+     * @return array The setup event message data.
+     */
+    protected function setupEventMsgData($event_group, array $extra_data)
+    {
+        $this->customize_event_msg_args[$event_group] = array_merge(
+            [
+                'is_ready'     => true,
+                'network_name' => $this->getCurrentNetworkName(),
+                'blog_id'      => $this->current_blog_ID,
+                'user_id'      => $this->User->current_user_ID,
+                'blog_name'    => $this->getBlogName(),
+                'network_id'   => $this->getVar($this->network_data, 'id', $this->current_network_ID),
+                'blog_url'     => $this->sanitizeOption( $this->getVar($this->blog_data, 'url'), 'url' ),
+                'object_data'  => [],
+            ],
+            $extra_data
+        );
+
+        return $this->customize_event_msg_args[$event_group];
+    }
+
+    /**
      * Get the customized event message argument value
      * 
      * @since 1.0.0
@@ -903,11 +994,12 @@ trait EventList
 
         if (!$this->eventMsgArgExists($event, $arg)) 
             return $default;
-
+        
         $data = $this->customize_event_msg_args[ $event ][ $arg ];
         if ( $to_scalar ) {
             $data = $this->parseValueForDb($data);
         }
+
         return $data;
     }
 
@@ -997,9 +1089,9 @@ trait EventList
      * @see EventList::getEventMsgInfo()
      * @see EventList::generateEventMessageForDb()
      */
-    public function formatMsgField( $event, $field, $context = '' )
+    public function formatMsgField( $event, $field, $context = '', $format = true )
     {
-        $label            = $this->makeFieldReadable( $field );
+        $label            = $format ? $this->makeFieldReadable( $field ) : $field;
         $info             = empty( $context ) ? $label : ucfirst( $context ) . ' ' . strtolower( $label );
         $meta_field       = preg_replace( '/\_$/', '', 'meta_value_' . $context );
 
@@ -1049,17 +1141,31 @@ trait EventList
 
         foreach ( $this->event_list as $group_key => $event_list )
         {
-            $event_groups = array_merge( $default_args, $event_list );
-
-            $group  = $event_list['group'];
-            $events = $event_list['events'];
+            $group           = $event_list['group'];
+            $events          = $event_list['events'];
+            $event_groups    = array_merge($default_args, $event_list);
+            $object_id_label = $this->getVar($event_list, 'object_id_label', 'object_id');
 
             if ( empty( $events ) ) continue;
             if ( empty( $events ) ) continue;
 
-            $this->createMainEventList( $group, $events );
+            $this->setupEventObjectIdLabels($group, $object_id_label);
+            $this->createMainEventList( $group, $events, $event_list );
             $this->aggregateEventGroups( $group_key, $event_groups );
         }
+    }
+
+    /**
+     * Setup the event object ID label
+     * 
+     * @param string $group  Specifies the event group
+     * 
+     * @param string $label  Specifies the event object ID label.
+     *                       Example: User ID, Post ID, Page ID, etc.
+     */
+    protected function setupEventObjectIdLabels($group, $label)
+    {
+        $this->event_object_id_labels[$group] = $label;
     }
 
     /**
@@ -1085,8 +1191,9 @@ trait EventList
 
     /**
      * Create the main event list
-     * @param string $group  Specifies the event group
-     * @param array  $events Specifies the events associated with the group
+     * @param string $group     Specifies the event group
+     * @param array  $events    Specifies the events associated with the group
+     * @param array $group_args Specifies associated arguments for the given event group
      * 
      * @todo
      * 1. check if event is disabled
@@ -1119,7 +1226,7 @@ trait EventList
      * 5. If the 'sms' or 'email' field is set to false, then the notification for such
      *    channel will be ignored for the given event.
      */
-    protected function createMainEventList( $group, array $events )
+    protected function createMainEventList( $group, array $events, array $group_args = [] )
     {
         $defaults      = $this->getDefaultEventArgs();
         $event_handler = $defaults['event_handler'];
@@ -1144,10 +1251,10 @@ trait EventList
             $_event['event_handler'] = array_merge($event_handler, (array) $_event['event_handler']);
 
             if (empty($_event['group'])) 
-                $_event['group'] = $group;
+                $_event['group'] = $this->getVar($group_args, 'group', $group);
 
             if (empty($_event['object'])) 
-                $_event['object'] = $group;
+                $_event['object'] = $this->getVar($group_args, 'object', $group);
 
             if (!$this->isEventValid($_event)) continue;
 
@@ -1223,16 +1330,16 @@ trait EventList
              * Note: Precedence is giving to the first event if hook is already registered
              */
 
-            // Note: we could used an array to hold all the event IDs, but we don't want to.
-            // Reason is because we want to enforce the usage of unique event ID, no duplicates.
+            // Note: we could have used an array to hold all the event IDs, but we don't want to.
+            // Reason is because we want to enforce the usage of unique event IDs, no duplicates.
             if ( ! isset( $this->main_event_list[ $event_id ] ) ) 
                 $this->main_event_list[ $event_id ] = $_event;
 
             /**
-             * Namespace the event slug list with the event group name
-             * Since event hook name may appear more than once given the event ID
+             * Namespace the event slug list with the event group name, since the 
+             * event hook name may appear more than once given the event ID.
              * For example: there's the comment and user meta fields, having the
-             * First name (first_name) and Last name (last_name) hooks.
+             * First name (first_name) and Last name (last_name) hooks respectively.
              */
             $event_hook_namespace = "{$group}_{$hook}";
             if ( ! isset( $this->event_slug_list[ $event_hook_namespace ] ) ) 
@@ -1293,6 +1400,21 @@ trait EventList
             return 0;
 
         return $this->event_slug_list[$event_hook_namespace];
+    }
+
+    /**
+     * Get the event data given the event ID
+     * 
+     * @since 1.0.0
+     * 
+     * @param int $event_id Specifies the event ID
+     * 
+     * @return array|false  Returns an array containing the event data on success.
+     *                      Otherwise false.
+     */
+    public function getEventData($event_id)
+    {
+        return $this->getVar($this->main_event_list, $event_id, false);
     }
 
     /**
@@ -1519,17 +1641,48 @@ trait EventList
     /**
      * Get the event ID and Slug from the registered method name
      * 
+     * Note: The event ID or slug can be passed as the value 
+     * for the {@see $event_group} parameter.
+     * 
      * @since 1.0.0
      * 
      * @see EventList::LogActiveEvent()
      * 
-     * @return array|false Returns an associative array containing the event slug and ID 
-     *                     on success. Otherwise false.
+     * @return array|false Returns an associative array containing the event slug 
+     *                     and ID on success. Otherwise false.
      */
     protected function getEventHookInfo($event_group = '', $method_name = '')
     {
-        // The method/function must be callable
-        if (!is_callable($method_name) || empty($event_group) || empty($method_name))
+        if (empty($event_group))
+            return false;
+
+        /**
+         * Maybe the event slug has been specified
+         */
+        $event_id = $this->getEventIdBySlug($event_group);
+        if (0 !== $event_id) {
+            return [
+                'ID'   => $event_id,
+                'slug' => $event_group,
+            ];
+        }
+
+        /**
+         * Maybe the event ID has been specified
+         */
+        $event_data = $this->getEventData($event_group);
+        if ($event_data) {
+            return [
+                'ID'   => $event_group,
+                'slug' => $this->getEventSlugById($event_data),
+            ];
+        }
+
+        /**
+         * Lets auto get the event ID and slug if it's possible
+         */
+
+        if (empty($method_name))
             return false;
 
         $split_method_name = explode('::', $method_name);
@@ -1619,21 +1772,27 @@ trait EventList
      * 
      * @param string $event_group Specifies which group the even belongs to.
      * 
-     * @param string $method_name Specifies the class handler method that triggered the event.
-     *                            In a class, this is equivalent, to the __METHOD__ constant.
-     *                            Note: For correct functionality, this should be specified 
-     *                            in the class where it is being called.
+     * @param string $method_name Specifies the event handler where the event is triggered.
+     *                            Note: If the event handler is declared in a class, you can use 
+     *                            the __METHOD__  constant or __FUNCTION__ constant if not. 
+     *                            To allow automatic pulling, the class method or 
+     *                            function used as the event handler should be declared 
+     *                            semantically as the event slug.
+     *                            For example, the 'set_user_role' event is triggered when 
+     *                            changing a user's role, so the event handler should be 
+     *                            declared as 'set_user_role_event' in other to use the 
+     *                            automatic pulling behavior.
      */
     protected function LogActiveEvent( $event_group, $method_name = __METHOD__ )
     {
         $event_hook_info = $this->getEventHookInfo($event_group, $method_name);
         if (!$event_hook_info) return;
 
-        $this->active_event_ID   = $event_hook_info['ID'];
-        $this->active_event_slug = $event_hook_info['slug'];
+        $this->active_event_ID   = $this->getVar($event_hook_info, 'ID');
+        $this->active_event_slug = $this->getVar($event_hook_info, 'slug');
 
         // Setup the active event
-        $this->active_event = $this->main_event_list[ $this->active_event_ID ];
+        $this->active_event = $this->getEventData($this->active_event_ID);
 
         /**
          * Lookup metadata event ID/Slug

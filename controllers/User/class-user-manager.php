@@ -9,6 +9,7 @@ defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your ow
  * @see \ALM\Controllers\Base
  * @since 1.0.0
  */
+
 class UserManager extends \ALM\Controllers\Base\PluginFactory
 {
     /**
@@ -145,7 +146,7 @@ class UserManager extends \ALM\Controllers\Base\PluginFactory
         if ( $user_id > 0 ) 
             return $user_id;
 
-        return (int) $this->getConstant( 'ALM_CURRENT_USER_ID' );
+        return $this->sanitizeOption($this->getConstant( 'ALM_CURRENT_USER_ID' ), 'int');
     }
 
     /**
@@ -384,7 +385,7 @@ class UserManager extends \ALM\Controllers\Base\PluginFactory
             $user_id = $user->ID;
         }
         else {
-            $user    = (int) $user;
+            $user    = $this->sanitizeOption($user, 'int');
             $user_id = $user;
 
             if ( $user === $this->current_user_ID && !$refresh ) {

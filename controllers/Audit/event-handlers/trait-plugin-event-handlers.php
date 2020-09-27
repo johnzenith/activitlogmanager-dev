@@ -12,7 +12,7 @@ defined('ALM_PLUGIN_FILE') || exit('You are not allowed to do this on your own.'
 trait PluginEvents
 {
     /**
-     * Fires after a plugin is activation failed
+     * Fires after a plugin activation failed
      * 
      * @since 1.0.0
      */
@@ -370,7 +370,7 @@ trait PluginEvents
 
         $hook_extra['_alm_vars'] = compact('type', 'options', 'remote_destination');
 
-        // Set the $skin data as the new content to save along the logged data
+        // Set the $skin data as the new content to save along with the logged data
         $this->overrideActiveEventData('_new_content', $this->serialize($skin));
         
         if (!$this->isPluginUpdateActionValid($action) 

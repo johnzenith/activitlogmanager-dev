@@ -13,20 +13,20 @@ defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your ow
  * @since 	1.0.0
  */
 
-use \ALM\Controllers\Base\Templates as ALM_Base_Templates;
+use \ALM\Controllers\Base\Traits as ALM_Base_Traits;
 
 abstract class PluginFactory
 {
     /**
-     * Using the Plugin Factory Controller Templates
+     * Using the Plugin Factory Controller Traits
      */
-    use ALM_Base_Templates\SettingsFactory,
-        ALM_Base_Templates\ControllersList,
-        ALM_Base_Templates\FileUtility,
-        ALM_Base_Templates\BlogFactory,
-        ALM_Base_Templates\IP_Factory,
-        \ALM\Models\Templates\DatabaseMetaData,
-        \ALM\Models\Templates\DatabaseQueryMetaData;
+    use ALM_Base_Traits\SettingsFactory,
+        ALM_Base_Traits\ControllersList,
+        ALM_Base_Traits\FileUtility,
+        ALM_Base_Traits\BlogFactory,
+        ALM_Base_Traits\IP_Factory,
+        \ALM\Models\Traits\DatabaseMetaData,
+        \ALM\Models\Traits\DatabaseQueryMetaData;
     
     /**
      * Specify the installed plugin version
@@ -191,8 +191,8 @@ abstract class PluginFactory
      */
     public function getVar( $data, $key, $default = null )
     {
-        if (empty($data) || is_null($key) || '' === $key )
-            return null;
+        if (empty($data) || is_null($key) || '' === $key)
+            return $default;
 
         if (is_array($data)) {
             $value = isset( $data[ $key ] ) ? $data[ $key ] : $default;
@@ -276,7 +276,7 @@ abstract class PluginFactory
 
         $url = $scheme . '://' . $server . $page_path;
 
-        if ( $add_slash ) $url = wp_slash( $url );
+        if ( $add_slash ) $url = trailingslashit( $url );
 
         return esc_url_raw( $url, $scheme );
     }
@@ -411,14 +411,17 @@ abstract class PluginFactory
     final public function isPageActive( $page = 0, $parent = false )
     {
         // $page variable can be either array or string
-        if ( !is_array( $page ) || !is_string( $page ) ) return false;
+        if ( !is_array( $page ) || !is_string( $page ) ) 
+            return false;
 
         if ( is_array( $page ) )
         {
             foreach ( $page as $p )
             {
                 $is_page_active = $this->__isPageActive( $p, $parent );
-                if ( $is_page_active ) return true;
+
+                if ( $is_page_active ) 
+                    return true;
             }
             return false;
         }
@@ -428,13 +431,42 @@ abstract class PluginFactory
     }
 
     /**
+     * Check if a particular page screen is active.
+     * 
+     * It uses the {@see $_SERVER['REQUEST_URI']} value to construct the check.
+     * 
+     * Example: /admin/user, /admin/network/user, /admni/edit.php, etc.
+     * 
+     * Note: Trailing 
+     * 
+     * @param string|array $screen_path Specifies the page paths to look up for
+     * @return bool                     True if the page path is active. Otherwise false.
+     */
+    public function isPageScreenActive( $screen_path )
+    {
+        $is_screen_active = [];
+        foreach ( (array) $screen_path as $path )
+        {
+            $request_uri        = esc_url_raw($this->getServerVar('REQUEST_URI'));
+            $request_uri_path   = $this->getVar(explode('?', $request_uri), 0, '');
+
+            $screen_paths       = [$path, trailingslashit($path)];
+            $is_screen_active[] = (int) $this->strEndsWith($request_uri_path, $screen_paths);
+        }
+
+        return in_array(1, $is_screen_active, true);
+    }
+
+    /**
      * Get the last character in a string
      * @param  string $str Specifies the string to get the last character from
      * @return string      The string last character.
      */
     public function strLastChar( $str )
     {
-        if ( ! is_scalar( $str ) ) return '';
+        if ( ! is_scalar( $str ) ) 
+            return '';
+
         $str = (string) $str;
         return empty( trim($str) ) ? '' : substr( $str, -1, 1 );
     }
@@ -650,7 +682,7 @@ abstract class PluginFactory
      */
     public function isPluggable( $pluggable )
     {
-        return function_exists( "alm_{$pluggable}" ) || method_exists( $this, $pluggable );
+        return function_exists( "alm_{$pluggable}" );
     }
 
     /**
@@ -685,11 +717,11 @@ abstract class PluginFactory
      */
     public function sanitizeStr( $str = '', $context = 'display' )
     {
-        if ( empty( $str ) ) return $str;
+        if (empty($str)) return $str;
 
-        if ( ! is_string( $str ) && ! is_numeric( $str ) ) return $str;
+        if (!is_string($str) && !is_numeric($str)) return $str;
 
-        switch( $context )
+        switch($context)
         {
             case 'raw':
                 return $str;
@@ -799,10 +831,10 @@ abstract class PluginFactory
      */
     public function getServerVar( $variable, $url_decode = false )
     {
-        if ( ! $this->isServerVarSet( $variable ) ) return '';
+        if (!$this->isServerVarSet( $variable)) return '';
 
-        $var = wp_unslash( $_SERVER[ $variable ] );
-        return sanitize_text_field( $url_decode ? rawurlencode_deep( $var ) : $var );
+        $var = wp_unslash($_SERVER[ $variable]);
+        return sanitize_text_field( $url_decode ? rawurlencode_deep($var) : $var );
     }
 
     /**
@@ -810,7 +842,7 @@ abstract class PluginFactory
      */
     public function getRequestMethod()
     {
-        return sanitize_key( $this->getServerVar( 'REQUEST_METHOD' ) );
+        return sanitize_key($this->getServerVar('REQUEST_METHOD'));
     }
 
     /**
@@ -1143,9 +1175,9 @@ abstract class PluginFactory
      *  - Optionally, if the $deep_level is greater than 0 and array length
      *    is less than or equal to the $deep_level, then true is returned;
      * 
-     * @param  array $data Specifies the array data
-     * @param  $
-     * @return bool        True if array meets the large criteria. Otherwise false.
+     * @param  array $data       Specifies the array data
+     * @param  int   $deep_level Specifies how deep to walk through the array/object data
+     * @return bool              True if array meets the large criteria. Otherwise false.
      */
     public function isLargeArray( $data, $deep_level = 0 )
     {
@@ -1181,15 +1213,59 @@ abstract class PluginFactory
 
     /**
      * Parse data for DB.
-     * Properly transform an array/object data before it is saved in database
+     * Properly transform an array/object data before it is saved in database.
+     * 
+     * Note: In 'display' context, a 'view more' button will be added if the 
+     * given array/object is large.
      * 
      * @since 1.0.0
      * 
      * @see PluginFactory::isLargeArray()
      * 
+     * @param  array $data       Specifies the array data
+     * 
+     * @param  int   $deep_level Specifies how deep to walk through the array/object data
+     * 
+     * @param  bool  $flip_array Specifies whether to apply the {@see array_flip()} function
+     *                           on the given value, for switching the array keys and values.
+     * 
      * @return mixed
      */
-    public function parseValueForDb( $value, $deep_level = 0, $flip_array = false )
+    public function parseValueForDb($value, $flip_array = false)
+    {
+        if (!is_array($value) && !is_object($value))
+            return $value;
+
+        if ($flip_array) {
+            $new_val = [];
+            foreach ($value as $k => $v) {
+                $new_val[] = $this->sanitizeOption($k);
+            }
+        } else {
+            $new_val = &$value;
+        }
+
+        return $this->serialize($value);
+    }
+
+    /**
+     * Parse data for DB.
+     * Properly transform an array/object data before it is being displayed on screen.
+     * 
+     * @since 1.0.0
+     * 
+     * @see PluginFactory::isLargeArray()
+     * 
+     * @param  array $data       Specifies the array/object data
+     * 
+     * @param  int   $deep_level Specifies how deep to walk through the array/object data
+     * 
+     * @param  bool  $flip_array Specifies whether to apply the {@see array_flip()} function
+     *                           on the given value, for switching the array keys and values.
+     * 
+     * @return mixed
+     */
+    public function parseValueForDisplay( $value, $deep_level = 5, $flip_array = false )
     {
         if ( !is_array($value) && !is_object($value))
             return $value;
@@ -1344,5 +1420,45 @@ abstract class PluginFactory
             $plugin_data = get_plugin_data($plugin_file, $markup, $translate);
 
         return $plugin_data;
+    }
+
+    /**
+     * Get the WP option ID.
+     * On multisite, the sitemata ID will be retrieved if found.
+     * 
+     * The object ID represents the 'active_plugins' option ID in the
+     * 
+     * {@see WordPress options table} on single site or 
+     * {@see WordPress sitemeta table} on multisite
+     * 
+     * @param string $option_name Specifies the option name whose ID should be retrieved
+     * 
+     * @return int                 Returns the option ID if found. Otherwise 0.
+     */
+    protected function getWpOptionId($option_name = '')
+    {
+        $table_prefix = $this->getBlogPrefix();
+
+        $field        = 'option_id';
+        $table        = $table_prefix . 'options';
+        $field_key    = 'option_name';
+
+        if ($this->is_network_admin) {
+            $field       = 'meta_id';
+            $table       = $table_prefix . 'sitemeta';
+            $field_key   = 'meta_key';
+
+            $object_id = $this->wpdb->get_var($this->wpdb->prepare(
+                "SELECT $field FROM $table WHERE $field_key = %s AND site_id = %d LIMIT 1",
+                $option_name,
+                $this->main_site_ID
+            ));
+        } else {
+            $object_id = $this->wpdb->get_var($this->wpdb->prepare(
+                "SELECT $field FROM $table WHERE $field_key = %s LIMIT 1",
+                $option_name
+            ));
+        }
+        return $this->sanitizeOption($object_id, 'int');
     }
 }

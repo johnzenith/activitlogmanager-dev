@@ -9,15 +9,15 @@ defined('ALM_PLUGIN_FILE') || exit('You are not allowed to do this on your own.'
  * @since 1.0.0
  */
 
-use \ALM\Controllers\Audit\Templates as ALM_EventTemplates;
+use \ALM\Controllers\Audit\Traits as ALM_EventTraits;
 
 class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
 {
     /**
      * Add the Event List template
      */
-    use ALM_EventTemplates\AuditableEvents,
-        ALM_EventTemplates\EventHandlers;
+    use ALM_EventTraits\AuditableEvents,
+        ALM_EventTraits\EventHandlers;
 
     /**
      * @var \SplObjectStorage
@@ -146,6 +146,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
 
         // var_dump($this->network_data);
         // wp_die();
+        
         });
     }
 
@@ -315,7 +316,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
 
     /**
      * Build the audit event callback
-     * @see \ALM\Controllers\Audit\Templates\EventHandlers
+     * @see \ALM\Controllers\Audit\Traits\EventHandlers
      */
     protected function maybeBuildAuditableEvents()
     {
@@ -372,7 +373,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
      * @todo
      * Check whether or not the active loggable event can trigger notification
      * 
-     * @see \ALM\Controllers\Audit\Templates\EventList::LogActiveEvent()
+     * @see \ALM\Controllers\Audit\Traits\EventList::LogActiveEvent()
      * 
      * @return bool True if the logged active event can send notification. Otherwise false.
      */
@@ -424,7 +425,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
             $_user_id = $this->User->current_user_ID;
 
         $role_labels = $this->User->getUserRoleLabels($this->User->getUserRoles($_user_id));
-        $user_roles  = $this->parseValueForDb($role_labels, 1);
+        $user_roles  = $this->parseValueForDb($role_labels);
             
         $user_data = [
             'user_url'      => $this->User->getUserInfo(0, 'user_url', 'url'),
@@ -455,7 +456,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
      * @see Auditor::_saveLog()
      * 
      * @see 'alm/event/log/update/selected_fields' filter documented in 
-     * \ALM\Controllers\Audit\Templates::EventList
+     * \ALM\Controllers\Audit\Traits::EventList
      * 
      * @since 1.0.0
      */
@@ -641,6 +642,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
             }
         }
         else {
+            // Unknown object type
         }
 
         $this->log_data['object_data'] = $object_data;
@@ -660,7 +662,12 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
                 $event_data_separator
             ),
 
-            'post_data'                      => $_POST,
+            /**
+             * Always escape during display
+             * @todo
+             */
+            'post_data'                      => stripslashes_deep( $_POST ),
+
             'remote_port'                    => $this->getServerVar($_SERVER['REMOTE_PORT']),
             'server_port'                    => $this->getServerVar($_SERVER['SERVER_PORT']),
             'request_uri'                    => $this->getServerVar($_SERVER['REQUEST_URI'], true),

@@ -15,9 +15,9 @@ trait SuperAdminEvents
      * Init the Super Admin Events.
      * This method is called automatically.
      * 
-     * @see \ALM\Controllers\Audit\Templates\EventList
+     * @see \ALM\Controllers\Audit\Traits\EventList
      */
-    public function initSuperAdminEvents()
+    protected function initSuperAdminEvents()
     {
         $this->setupSuperAdminEvents();
     }
@@ -28,9 +28,10 @@ trait SuperAdminEvents
     protected function setupSuperAdminEvents()
     {
         $this->event_list['super_admins'] = [
-            'title'       => 'Super Admin Events',
-            'group'       => 'user', // object
-            'description' => alm__('Responsible for logging all Super Admins related activities.'),
+            'title'           => 'Super Admin Events',
+            'group'           => 'user', // object
+            'object_id_label' => 'User ID',
+            'description'     => alm__('Responsible for logging all Super Admins related activities.'),
 
             'events' => [
                 /**

@@ -17,8 +17,8 @@ defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your ow
  * 
  * @since 1.0.0
  * 
- * @see \ALM\Controllers\Audit\Templates::__setupEventList()
- * @see \ALM\Controllers\Audit\Templates::registerEventGroups()
+ * @see \ALM\Controllers\Audit\Traits::__setupEventList()
+ * @see \ALM\Controllers\Audit\Traits::registerEventGroups()
  */
 function alm_register_event_group( array $args = [] )
 {

@@ -14,7 +14,7 @@ defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your ow
 
 class ControllersEngine
 {
-    use \ALM\Controllers\Base\Templates\ControllersList;
+    use \ALM\Controllers\Base\Traits\ControllersList;
 
     /**
      * Plugin controllers. This will be an object type if not registered controller exists.

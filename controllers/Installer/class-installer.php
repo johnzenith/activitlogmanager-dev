@@ -12,15 +12,15 @@ defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your ow
  * @since 1.0.0
  */
 
-use \ALM\Controllers\Base\Templates as ALM_Base_Templates;
+use \ALM\Controllers\Base\Traits as ALM_Base_Traits;
 
 class Installer
 {
-	use ALM_Base_Templates\SettingsFactory,
-		ALM_Base_Templates\BlogFactory,
-		ALM_Base_Templates\FileUtility,
-		\ALM\Models\Templates\DatabaseMetaData,
-		\ALM\Models\Templates\DatabaseQueryMetaData,
+	use ALM_Base_Traits\SettingsFactory,
+		ALM_Base_Traits\BlogFactory,
+		ALM_Base_Traits\FileUtility,
+		\ALM\Models\Traits\DatabaseMetaData,
+		\ALM\Models\Traits\DatabaseQueryMetaData,
 		\ALM\Controllers\Installer\DB\TableSchema;
 
 	/**

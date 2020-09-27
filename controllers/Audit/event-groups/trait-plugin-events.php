@@ -54,9 +54,9 @@ trait PluginEvents
      * Init the Plugin Events.
      * This method is called automatically.
      * 
-     * @see \ALM\Controllers\Audit\Templates\EventList
+     * @see \ALM\Controllers\Audit\Traits\EventList
      */
-    public function initPluginEvents()
+    protected function initPluginEvents()
     {
         $this->setupPluginEvents();
         $this->_registerPluginEvents();
@@ -539,10 +539,11 @@ trait PluginEvents
     protected function setupPluginEvents()
     {
         $this->event_list['plugins'] = [
-            'title'       => 'Plugins Events',
-            'group'       => 'plugin', // object
+            'title'           => 'Plugins Events',
+            'group'           => 'plugin', // object
+            'object_id_label' => 'Option ID',
 
-            'description' => alm__('Responsible for logging all plugins related activities such as plugin activation, deactivation, installation, uninstallation, upgrade, upload and the front-end plugin editor'),
+            'description'     => alm__('Responsible for logging all plugins related activities such as plugin activation, deactivation, installation, uninstallation, upgrade, upload and the front-end plugin editor'),
 
             'events' => [
                 /**
@@ -1146,33 +1147,10 @@ trait PluginEvents
      * 
      * @return int
      */
-    protected function getPluginEventObjectId()
+    protected function getPluginEventObjectId($field_key = '', $field_value = '')
     {
-        $table_prefix = $this->getBlogPrefix();
-
-        $field        = 'option_id';
-        $table        = $table_prefix . 'options';
-        $field_key    = 'option_name';
-        $field_value  = 'active_plugins';
-
-        if ($this->is_network_admin) {
-            $field       = 'meta_id';
-            $table       = $table_prefix . 'sitemeta';
-            $field_key   = 'meta_key';
-            $field_value = 'active_sitewide_plugins';
-
-            $object_id = (int) $this->wpdb->get_var($this->wpdb->prepare(
-                "SELECT $field FROM $table WHERE $field_key = %s AND site_id = %d LIMIT 1",
-                $field_value,
-                $this->main_site_ID
-            ));
-        } else {
-            $object_id = (int) $this->wpdb->get_var($this->wpdb->prepare(
-                "SELECT $field FROM $table WHERE $field_key = %s LIMIT 1",
-                $field_value
-            ));
-        }
-        return $object_id;
+        $option_name = $this->is_network_admin ? 'active_sitewide_plugins' : 'active_plugins';
+        return $this->getWpOptionId($option_name);
     }
 
     /**

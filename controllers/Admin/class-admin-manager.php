@@ -9,13 +9,13 @@ defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your ow
  * @since 1.0.0
  */
 
-use \ALM\Controllers\Admin\Templates as ALM_AdminTemplates;
+use \ALM\Controllers\Admin\Traits as ALM_AdminTraits;
 
 class AdminManager extends \ALM\Controllers\Base\PluginFactory 
 {
-    use ALM_AdminTemplates\MenuPageBuilder,
-        ALM_AdminTemplates\AdminFilters,
-        ALM_AdminTemplates\AdminActions;
+    use ALM_AdminTraits\MenuPageBuilder,
+        ALM_AdminTraits\AdminFilters,
+        ALM_AdminTraits\AdminActions;
 
     /**
      * Specifies list of admin user ID as keys and user login names as values

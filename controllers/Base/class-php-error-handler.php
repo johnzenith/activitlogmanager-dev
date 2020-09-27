@@ -8,6 +8,7 @@ defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your ow
  * @package    PHP Error Handler
  * @since      1.0
  */
+
 class PHPErrorHandler
 {
     /**

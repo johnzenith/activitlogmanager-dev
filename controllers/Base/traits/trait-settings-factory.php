@@ -1,5 +1,5 @@
 <?php
-namespace ALM\Controllers\Base\Templates;
+namespace ALM\Controllers\Base\Traits;
 
 // Prevent direct file access
 defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your own.' );
@@ -9,6 +9,7 @@ defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your ow
  * @see \ALM\Controllers\Base\PluginFactory
  * @since 1.0.0
  */
+
 trait SettingsFactory
 {
     /**
@@ -338,7 +339,15 @@ trait SettingsFactory
         }
 
         return apply_filters( 'alm/mode/blog', $this->network_mode );
+    }
 
+    /**
+     * Get the admin email address
+     * @return string
+     */
+    protected function getAdminEmail()
+    {
+        return $this->sanitizeOption(get_option('admin_email'), 'email');
     }
 
     /**
@@ -425,7 +434,6 @@ trait SettingsFactory
             $settings['__global'] : [];
 
         return $settings;
-
     }
 
     /**
@@ -532,7 +540,7 @@ trait SettingsFactory
     /**
      * Get a specific option.
      * 
-     * @see \ALM\Models\Templates\DatabaseQueryMetaData
+     * @see \ALM\Models\Traits\DatabaseQueryMetaData
      *
      * @param  string  $option   The blog option to retrieve
      * 
@@ -834,10 +842,14 @@ trait SettingsFactory
     public function sanitizeOption( $value, $data_type = 'string', $strict = true )
     {
         // Do nothing if the $value is not scalar
-        if ( ! is_scalar( $value ) ) return $value;
+        if (!is_scalar($value)) return $value;
 
         // Do nothing if the value is string and is empty
         if ( '' === $value ) return $value;
+
+        $int_helper = function ($val) {
+            return preg_replace( "#[^0-9]#", '', $val );
+        };
 
         switch ( $data_type )
         {
@@ -850,11 +862,12 @@ trait SettingsFactory
 
             case 'int':
             case 'integer':
-                return ( ! $strict ) ? 
-                    preg_replace( "#[^0-9]#", '', $value ) : (int) $value;
+                $v = $int_helper( $value );
+                settype($v, 'int');
+                return $v;
 
             case 'absint':
-                return absint( $value );
+                return absint( $int_helper( $value ) );
 
             case 'float':
                 if ( $strict ) return (float) $value;

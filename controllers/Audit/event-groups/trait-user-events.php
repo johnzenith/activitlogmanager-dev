@@ -97,7 +97,7 @@ trait UserEvents
      * 
      * @since 1.0.0
      * 
-     * @see \ALM\Controllers\Audit\Templates\EventList
+     * @see \ALM\Controllers\Audit\Traits\EventList
      */
     protected function initUserEvents()
     {
@@ -199,7 +199,7 @@ trait UserEvents
         extract($user_args);
 
         // Use the $_current_user_id variable if set
-        if ( isset( $__current_user_id ) && $_current_user_id > 0 ) {
+        if (isset($__current_user_id) && $_current_user_id > 0) {
             $current_user_id = $_current_user_id;
         } else {
             $current_user_id = $this->User->getCurrentUserId();
@@ -211,20 +211,20 @@ trait UserEvents
          * from the logged in user.
          * 
          * Note: During user registration, the user ID (object ID) is not available, 
-         * if have to bail out
+         * we have to bail out
          */
-        if ( isset( $user_obj ) && is_object( $user_obj ) )
+        if (isset($user_obj) && is_object($user_obj))
         {
             // User object is available without the user ID
             $user = $user_obj;
         }
         else {
-            if ( ! empty( $this->current_user_data ) 
-            && $object_id == $this->current_user_data->ID )
+            if (!empty( $this->current_user_data) 
+            && $object_id == $this->current_user_data->ID)
             {
                 $user = $this->current_user_data;
             } else {
-                $user = get_userdata( $object_id );
+                $user = get_userdata($object_id);
             }
         }
 
@@ -588,10 +588,11 @@ trait UserEvents
     protected function setupUserEvents()
     {
         $this->event_list['users'] = [
-            'title' => 'Users',
-            'group' => 'user', // object
+            'title'           => 'Users',
+            'group'           => 'user', // object
+            'object_id_label' => 'User ID',
 
-            'description' => alm__('Responsible for logging users related activities which includes: <strong>user roles and capabilities changes</strong>, <strong>user login name, display name, email and password changes</strong>, <strong>custom fields changes such as: first name, last name, nickname, etc.</strong>, <strong>user login, failed login attempts, user registration, password recovery and user logout</strong>.')
+            'description'     => alm__('Responsible for logging users related activities which includes: <strong>user roles and capabilities changes</strong>, <strong>user login name, display name, email and password changes</strong>, <strong>custom fields changes such as: first name, last name, nickname, etc.</strong>, <strong>user login, failed login attempts, user registration, password recovery and user logout</strong>.')
         ];
 
         $events = [
@@ -1789,7 +1790,7 @@ trait UserEvents
 
                 'user_state' => 'logged_in',
 
-                'message'  => [
+                'message'    => [
                     '_main'                    => 'Logged out successfully.',
 
                     'user_id'                  => ['object_id'],
@@ -2390,7 +2391,7 @@ trait UserEvents
 
     /**
      * Set the custom user field event ID
-     * @see \ALM\Controllers\Audit\Templates\EventList::createMainEventList()
+     * @see \ALM\Controllers\Audit\Traits\EventList::createMainEventList()
      * 
      * @since 1.0.0
      */
@@ -2410,13 +2411,14 @@ trait UserEvents
     /**
      * Customize the user event message field info.
      * 
-     * @see \ALM\Controllers\Audit\Templates\EventList::getEventMsgInfo()
+     * @see \ALM\Controllers\Audit\Traits\EventList::getEventMsgInfo()
      * 
      * @since 1.0.0
      */
     public function customizeUserEventMsgFieldInfo( $info, $event, $field, $context )
     {
         $info = '';
+        
         /**
          * Format the user table fields
          */
@@ -2441,33 +2443,28 @@ trait UserEvents
         }
         else {
             switch ( $field )
-            {
-                case 'object_id':
-                case 'user_id':
-                    $info = 'User ID: ' . $this->getEventMsgArg( $event, 'object_id' );
-                break;
-                
+            {   
                 case 'first_name':
                 case 'last_name':
                     $format_field = ucfirst( str_replace( [ '_', '-' ], ' ', $field ) );
                     $info = $format_field . ': ' . $this->getEventMsgArg( $event, $field );
-                break;
+                    break;
                 
                 case 'profile_url':
                     $info = $this->getEventMsgArg( $event, 'profile_url' );
-                break;
+                    break;
 
                 case 'view_user_caps':
                     $info = $this->getEventMsgArg( $event, 'view_user_caps', '', true );
-                break;
+                    break;
                 
                 case 'is_user_owner_of_account':
                     $info = 'Is user owner of account: ' . $this->getEventMsgArg( $event, 'is_user_owner_of_account' );
-                break;
+                    break;
 
                 case 'meta_key':
                     $info = 'Custom field: ' . $this->getEventMsgArg( $event, 'meta_key' );
-                break;
+                    break;
                 
                 case 'meta_value':
                     $info        = empty( $context ) ? 'Custom' : ucfirst( $context ) . ' custom';
@@ -2483,15 +2480,15 @@ trait UserEvents
 
                 case 'custom_field_added':
                     $info = 'Was custom field added?: ' . $this->getEventMsgArg( $event, 'was_custom_field_added' );
-                break;
+                    break;
                 
                 case 'custom_field_updated':
                     $info = 'Was custom field updated?: ' . $this->getEventMsgArg( $event, 'was_custom_field_updated' );
-                break;
+                    break;
                 
                 case 'custom_field_deleted':
                     $info = 'Was custom field deleted?: ' . $this->getEventMsgArg( $event, 'was_custom_field_deleted' );
-                break;
+                    break;
 
                 case 'roles':
                     $info       = empty( $context ) ? 'Role' : ucfirst( $context ) . ' role';
@@ -2516,9 +2513,9 @@ trait UserEvents
                          */
                         // $roles = array_map( 'alm_translate_user_role', $roles );
 
-                        $info = "$user_roles_label: " . $this->parseValueForDb($roles, 5);
+                        $info = "$user_roles_label: " . $this->parseValueForDb($roles);
                     }
-                break;
+                    break;
 
                 case $this->getBlogPrefix() . 'capabilities':
                     $caps      = (array) $this->getEventMsgArg( $event, $field );
@@ -2526,11 +2523,11 @@ trait UserEvents
                     $added_cap = end( $main_caps );
 
                     $info = "Capability: $added_cap";
-                break;
+                    break;
                 
                 default:
-                    $info = $this->getEventMsgArg( $event, $field, '', true );
-                break;
+                    // $info = $this->getEventMsgArg( $event, $field, '', true );
+                    return $info;
             }
         }
 
@@ -2616,14 +2613,27 @@ trait UserEvents
         /**
          * Bail if the global log aggregation constant is set
          */
-        if ( ! empty( $this->getConstant('ALM_ALLOW_LOG_AGGREGATION') ) ) 
+        if (!empty( $this->getConstant('ALM_ALLOW_LOG_AGGREGATION'))) 
             return true;
 
         /**
-         * We have to make sure already aggregated user metadata are not fired individually
+         * We have to make sure already aggregated user metadata are not fired individually.
+         * 
+         * However, will we limit the log aggregation on the user profile for now.
          */
+        $user_screens = [
+            '/wp-admin/users.php',
+            '/wp-admin/user-new.php',
+            '/wp-admin/profile.php',
+            '/wp-admin/network/users.php',
+            '/wp-admin/network/user-new.php',
+        ];
+
         $user_custom_fields = $this->getCustomizedUserCustomFields();
-        if ( $this->isLogAggregatable() && isset( $user_custom_fields[ $meta_key ] ) ) 
+
+        if ($this->isLogAggregatable() 
+        && isset( $user_custom_fields[ $meta_key ]) 
+        && $this->isPageScreenActive($user_screens) ) 
             return true;
 
         return $this->canIgnoreUserMetaStrictly( $meta_key );
@@ -2645,40 +2655,44 @@ trait UserEvents
     /**
      * Customize the user event messages arguments which is used to build the log message
      * 
-     * @see \ALM\Controllers\Audit\Templates\EventList::generateEventMessageForDb()
+     * @see \ALM\Controllers\Audit\Traits\EventList::generateEventMessageForDb()
      * 
      * @since 1.0.0
      */
     public function customizeUserEventMsgArgs( $raw_msg_args, $event, $event_data )
     {
         $msg   = '';
-        $field = $this->getEventMsgArg( $event, 'meta_key' );
+        $field = $this->getEventMsgArg($event, 'meta_key');
 
         // Bail the raw message arguments if the meta key is empty
-        if ( empty( $field ) )
+        if (empty( $field ))
             return $raw_msg_args;
 
         $action = $this->_getActiveEventData('action');
 
         // The untransformed event message arguments
-        $msg_args = $raw_msg_args;;
+        $msg_args = $raw_msg_args;
             
         $blog_prefix                 = $this->getBlogPrefix();
+        $old_user_data               = '';
+        $updated_user_data           = '';
         $user_settings_key           = $blog_prefix . 'user-settings';
         $custom_field_list           = $this->getCustomizedUserCustomFields();
+        $user_settings_state         = '';
         $has_custom_field_customizer = isset($custom_field_list[$field]);
 
-        $field_title            = $field;
-        $is_user_settings_field = false;
+        $field_title                 = $field;
+        $is_user_settings_field      = false;
 
         if ($has_custom_field_customizer)
         { 
             // Skip the first name or last name event message fields when they are active
-            if ( in_array( $field, ['first_name', 'last_name'], true ) ) 
+            if (in_array( $field, ['first_name', 'last_name'], true )) 
                 unset( $msg_args[ $field ] );
 
-            $field_title = isset( $custom_field_list['_title'] ) ? 
-                $custom_field_list['_title'] : $this->makeFieldReadable( $field );
+            $field_title = $this->getVar(
+                $custom_field_list, '_title', $this->makeFieldReadable($field)
+            );
 
             $context                = []; // Context of the event message
             $field_target           = $field_title;
@@ -2686,13 +2700,12 @@ trait UserEvents
 
             if ( $is_user_settings_field )
             {
-                $old_user_data       = '';
-                $updated_user_data   = '';
-                $old_user_settings   = $this->getEventMsgArg( $event, 'meta_value_previous' );
-                $new_user_settings   = $this->getEventMsgArg( $event, 'meta_value' );
-                $_old_user_settings  = [];
-                $_new_user_settings  = [];
-                $user_settings_state = '';
+                $field_target                = $user_settings_key;
+                $old_user_settings           = $this->getEventMsgArg( $event, 'meta_value_previous' );
+                $new_user_settings           = $this->getEventMsgArg( $event, 'meta_value' );
+                $_old_user_settings          = [];
+                $_new_user_settings          = [];
+                $has_custom_field_customizer = false; // Don't format the meta key
 
                 if ( !empty( $new_user_settings ) && is_string( $new_user_settings ) )
                 {
@@ -2727,7 +2740,9 @@ trait UserEvents
                         $updated_user_data = rtrim( $updated_user_data, ', ' );
                         
                         foreach ( $_old_user_settings as $key => $value ) {
-                            $old_user_data .= "$key = $value, ";
+                            if ( isset( $updated_user_settings[ $key ] ) ) {
+                                $old_user_data .= "$key = $value, ";
+                            }
                         }
 
                         $old_user_data = rtrim( $old_user_data, ', ' );
@@ -2744,17 +2759,17 @@ trait UserEvents
             switch ( $field )
             {
                 case $blog_prefix . 'user_level':
-                    $field_target = 'User level';
-                break;
+                    $field_target = 'User level ';
+                    break;
 
                 default:
-                    $field_target = $field_title;
-                break;
+                    $field_target = "{$field_title} ";
+                    break;
             }
         }
 
         // Append 'custom' to the field target
-        $field_target .= $has_custom_field_customizer ? '' : 'custom';
+        $field_target .= $has_custom_field_customizer ? '' : ' custom';
 
         if ( 'create' == $action )
         {
@@ -2775,7 +2790,7 @@ trait UserEvents
             $context = [ 'previous', 'new' ];
 
             if ( $is_user_settings_field && '' === $user_settings_state  ) {
-                $msg  = 'Updated the user User settings custom field without making any changes.';
+                $msg  = 'Updated the user settings custom field without making any changes.';
 
                 $msg .= $this->explainEventMsg(
                     ' (The update was triggered without modifying the previous user settings value).'
@@ -2801,30 +2816,39 @@ trait UserEvents
         $msg_args['meta_key'] = 'User custom field key: ' . $field;
         
         // Apply the event message context to previous and new values
-        if ( ! empty( $context ) && ! empty( $msg ) )
+        if (!empty($context) && !empty($msg))
         {
-            $msg_args['meta_value'] = $this->formatMsgField( $event, $field, $context[1] );
+            $msg_args['meta_value'] = $this->formatMsgField($event, $field, $context[1]);
 
-            if ( $is_user_settings_field )
+            if ($is_user_settings_field)
             {
-                $old_user_data     = empty( $old_user_data )     ? '' : $old_user_data;
-                $updated_user_data = empty( $updated_user_data ) ? '' : $updated_user_data;
+                $old_user_data                   = empty($old_user_data)     ? '' : $old_user_data;
+                $updated_user_data               = empty($updated_user_data) ? '' : $updated_user_data;
 
-                $msg_args['meta_value'] = $updated_user_data;
+                $msg_args['meta_value']          = $updated_user_data;
+                $msg_args['meta_value_previous'] = $old_user_data;
             }
 
             // Update the meta value context field
-            foreach ( $context as $c )
+            foreach ($context as $c)
             {
                 $meta_value_key = "meta_value_{$c}";
 
-                if ( isset( $msg_args[ $meta_value_key ] ) ) {
-                    $msg_args[ $meta_value_key ] = $this->formatMsgField( $event, $field, $c );
+                /**
+                 * Bail the user settings meta key previous value context
+                 */
+                if ('previous' === $c && $is_user_settings_field)
+                    continue;
+
+                if (isset($msg_args[$meta_value_key])) {
+                    $msg_args[ $meta_value_key ] = $this->formatMsgField(
+                        $event, $field, $c, $has_custom_field_customizer
+                    );
                 }
             }
         }
 
-        if ( ! empty( $msg ) ) {
+        if (!empty($msg)) {
             $msg_args['_main']           = $msg;
             $msg_args['_main_processed'] = true;
         }
@@ -2839,7 +2863,7 @@ trait UserEvents
     protected function __aggregateUserMetaFields()
     {
         $updated_str = '';
-        if ( !$this->isUserProfileDataAggregationActive() )
+        if (!$this->isUserProfileDataAggregationActive())
             return $updated_str;
 
         $_new_val                    = '';
@@ -2849,17 +2873,17 @@ trait UserEvents
         $cap_meta_field              = $blog_prefix . 'capabilities';
         $customized_user_meta_fields = $this->getCustomizedUserCustomFields();
 
-        foreach ( $this->user_data_aggregation as $field => $value )
+        foreach ($this->user_data_aggregation as $field => $value)
         {
             $is_cap_field    = $cap_meta_field == $field;
-            $use_field_title = $this->getVar( $value, 'title' );
+            $use_field_title = $this->getVar($value, 'title');
 
             /**
              * If the requested field value is set, then it means this is 
              * a pre-update request that requires confirmation before the 
              * changes will be committed
              */
-            $field_has_confirmation = isset( $value['requested'] );
+            $field_has_confirmation = isset($value['requested']);
             if ( $field_has_confirmation )
             {
                 $new_val      = $value['current'];
@@ -2879,7 +2903,7 @@ trait UserEvents
                 $previous_val = $this->_user_profile_metadata[ $field ];
             }
 
-            $previous_val = $this->parseValueForDb($previous_val, 5, $is_cap_field);
+            $previous_val = $this->parseValueForDb($previous_val, $is_cap_field);
 
             // The custom field key
             $updated_str .= sprintf('Custom field key: %s', $field);
@@ -2922,13 +2946,13 @@ trait UserEvents
             }
 
             if ( 'update' == $update_type ) {
-                $previous_field_label = $field_has_confirmation ? 'Requested' : 'Previous';
-                $updated_str         .= "{$previous_field_label} {$field_label}: $previous_val";
-                $updated_str         .= $line_break; // Line break;
+                $previous_field_label  = $field_has_confirmation ? 'Requested' : 'Previous';
+                $updated_str          .= "{$previous_field_label} {$field_label}: $previous_val";
+                $updated_str          .= $line_break; // Line break;
             }
 
             // New val may be an array/object
-            $_new_val = $this->parseValueForDb($new_val, 5, $is_cap_field);
+            $_new_val = $this->parseValueForDb($new_val, $is_cap_field);
 
             $new_field_label = ( 'create' == $update_type ) ? 
                 $field_label 
@@ -2940,7 +2964,7 @@ trait UserEvents
         }
 
         return $updated_str;
-    }
+    }   
 
     /**
      * Determines whether the current updated user profile fields requires confirmation 
@@ -2976,14 +3000,14 @@ trait UserEvents
         /**
          * Check user email field
          */
-        if ( 'user_email' == $user_field )
+        if ('user_email' == $user_field)
         {
             $current_user_email   = $this->getVar( $old_user_data, $user_field );
             $requested_user_email = $this->getVar(
                 get_user_meta( $new_user_data->ID, '_new_email', true ), 'newemail', ''
             );
             
-            $is_confirmation_required = ( 0 !== strcasecmp( $requested_user_email, $current_user_email ) );
+            $is_confirmation_required = (0 !== strcasecmp( $requested_user_email, $current_user_email ));
         }
 
         /**
@@ -3044,8 +3068,6 @@ trait UserEvents
         $screen = $this->getCurrentPageScriptName();
         return ('user-new.php' == $screen);
     }
-
-
 
 
 
@@ -3321,6 +3343,15 @@ trait UserEvents
                 'import',
                 'export',
                 'install',
+            ],
+
+            'network' => [
+                'network_installation',
+            ],
+
+            'links_manager' => [],
+            'link_manager_enabled' => [
+
             ]
         ];
     }

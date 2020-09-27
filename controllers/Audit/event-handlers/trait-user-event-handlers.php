@@ -1317,8 +1317,8 @@ trait UserEvents
         $user->get_role_caps();
         
         $user_roles    = $user->roles;
-        $role_new      = $this->parseValueForDb($user_roles, 5);
-        $role_previous = $this->parseValueForDb($old_roles, 5);
+        $role_new      = $this->parseValueForDb($user_roles);
+        $role_previous = $this->parseValueForDb($old_roles);
 
         $no_role_found = 'None';
         if ('' === $role_new) {
@@ -1358,11 +1358,11 @@ trait UserEvents
             $role_info = sprintf('(%s) is a custom role (behaving like a capability) and may not be listed with the actual roles of the user. Please use the inspect user role button to see a full overview of all the roles given to the user.', $role);
         }
 
-        $role_new      = $this->parseValueForDb($user_roles, 5);
+        $role_new      = $this->parseValueForDb($user_roles);
         $added_role    = $role;
 
         $prev_roles    = empty($user_roles) ? '' : array_diff($user_roles, [$role]);
-        $role_previous = $this->parseValueForDb($prev_roles, 5);
+        $role_previous = $this->parseValueForDb($prev_roles);
 
         $no_role_found = 'None';
         if ('' === $role_previous) {
@@ -1402,11 +1402,11 @@ trait UserEvents
             $user_roles = $all_roles;
         }
 
-        $role_new      = $this->parseValueForDb($user_roles, 5);
+        $role_new      = $this->parseValueForDb($user_roles);
         $removed_role  = $role;
 
         $prev_roles    = array_merge($user_roles, [$role]);
-        $role_previous = $this->parseValueForDb($prev_roles, 5);
+        $role_previous = $this->parseValueForDb($prev_roles);
 
         $no_role_found = 'None';
         if ('' === $role_new) {
@@ -1441,15 +1441,15 @@ trait UserEvents
         $new_user_caps       = $user->caps;
         $old_user_caps       = $this->getVar($this->old_user_caps, 'caps', []);
         
-        $capability_new      = $this->parseValueForDb($new_user_caps, 5, true);
+        $capability_new      = $this->parseValueForDb($new_user_caps, true);
         
         $cap_added           = empty($old_user_caps) ? 
             $new_user_caps : array_diff_key($old_user_caps, $new_user_caps);
 
-        $capability_added    = $this->parseValueForDb($cap_added, 5, true);
+        $capability_added    = $this->parseValueForDb($cap_added, true);
 
         $prev_caps           = array_diff_key($new_user_caps, $old_user_caps);
-        $capability_previous = $this->parseValueForDb($prev_caps, 5, true);
+        $capability_previous = $this->parseValueForDb($prev_caps, true);
 
         $no_cap_found = 'None';
         if ('' === $capability_new) {
@@ -1484,13 +1484,13 @@ trait UserEvents
         $new_user_caps       = $user->caps;
         $old_user_caps       = $this->getVar($this->old_user_caps, 'caps', []);
 
-        $capability_new      = $this->parseValueForDb($new_user_caps, 5, true);
+        $capability_new      = $this->parseValueForDb($new_user_caps, true);
 
         $caps_removed        = array_diff_key($old_user_caps, $new_user_caps);
-        $removed_capability  = $this->parseValueForDb($caps_removed, 5, true);
+        $removed_capability  = $this->parseValueForDb($caps_removed, true);
 
         $prev_caps           = array_diff_key($new_user_caps, $old_user_caps);
-        $capability_previous = $this->parseValueForDb($prev_caps, 5, true);
+        $capability_previous = $this->parseValueForDb($prev_caps, true);
 
         $no_cap_found = 'None';
         if ('' === $capability_new) {

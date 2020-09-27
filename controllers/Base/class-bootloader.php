@@ -97,9 +97,9 @@ class BootLoader
      */
     private function igniteInstaller()
     {
-        require_once ALM_CONTROLLERS_DIR . 'base/templates/trait-file-utility-factory.php';
-        require_once ALM_CONTROLLERS_DIR . 'base/templates/trait-settings-factory.php';
-        require_once ALM_CONTROLLERS_DIR . 'base/templates/trait-blog-factory.php';
+        require_once ALM_CONTROLLERS_DIR . 'base/traits/trait-file-utility-factory.php';
+        require_once ALM_CONTROLLERS_DIR . 'base/traits/trait-settings-factory.php';
+        require_once ALM_CONTROLLERS_DIR . 'base/traits/trait-blog-factory.php';
         require_once ALM_CONTROLLERS_DIR . 'Installer/trait-db-table-schema.php';
         require_once ALM_CONTROLLERS_DIR . 'installer/class-installer.php';
         
@@ -334,8 +334,8 @@ class BootLoader
         require_once $this->getConfigDir() . 'package-list.php';
         require_once $this->getConfigDir() . 'translation-helper.php';
         require_once $this->getConfigDir() . 'meta-info.php';
-        require_once ALM_MODELS_DIR        . 'templates/trait-db-metadata.php';
-        require_once ALM_MODELS_DIR        . 'templates/trait-db-query-metadata.php';
+        require_once ALM_MODELS_DIR        . 'traits/trait-db-metadata.php';
+        require_once ALM_MODELS_DIR        . 'traits/trait-db-query-metadata.php';
         require_once ALM_CONTROLLERS_DIR   . 'base/class-php-error-handler.php';
     }
 
@@ -672,17 +672,17 @@ class BootLoader
      */
     private function BaseController()
     {
-        $base_controller_dir           = ALM_CONTROLLERS_DIR . 'base/';
-        $base_controller_templates_dir = $base_controller_dir . 'templates/';
+        $base_controller_dir        = ALM_CONTROLLERS_DIR . 'base/';
+        $base_controller_traits_dir = $base_controller_dir . 'traits/';
         
         return [
             /**
-             * Base Controller Templates
+             * Base Controller Traits
              */
             $this->appendFileArgs(
-                $base_controller_templates_dir,
+                $base_controller_traits_dir,
 
-                // Load all Traits in the Base Controller Template directory
+                // Load all Traits in the Base Controller Traits directory
                 // The '*' is a wildcard to return all files with same pattern by glob()
                 [ 'trait-*-factory.php' ]
             ),
@@ -721,7 +721,7 @@ class BootLoader
                 ]
             ),
             $this->appendFileArgs(
-                ALM_CONTROLLERS_DIR . 'Admin/templates/',
+                ALM_CONTROLLERS_DIR . 'Admin/traits/',
                 [
                     'trait-*.php',
                 ]
@@ -747,7 +747,7 @@ class BootLoader
                 ]
             ),
             $this->appendFileArgs(
-                ALM_CONTROLLERS_DIR . 'Audit/templates/',
+                ALM_CONTROLLERS_DIR . 'Audit/traits/',
                 [
                     'trait-*.php'
                 ]

@@ -1,5 +1,5 @@
 <?php
-namespace ALM\Controllers\Base\Templates;
+namespace ALM\Controllers\Base\Traits;
 
 // Prevent direct file access
 defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your own.' );
@@ -8,6 +8,7 @@ defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your ow
  * @see \ALM\Controllers\Base\PluginFactory
  * @since 1.0.0
  */
+
 trait BlogFactory
 {
     /**

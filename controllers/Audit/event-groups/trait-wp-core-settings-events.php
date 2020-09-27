@@ -12,6 +12,13 @@ defined('ALM_PLUGIN_FILE') || exit('You are not allowed to do this on your own.'
 trait WP_CoreSettingsEvents
 {
     /**
+     * Specifies the WP core settings slug
+     * @since 1.0.0
+     * @var string 
+     */
+    protected $wp_core_settings_slug = 'wp_core_setting';
+
+    /**
      * Specifies the WP core settings events list.
      * @since 1.0.0
      * @var array
@@ -38,24 +45,25 @@ trait WP_CoreSettingsEvents
      * @since 1.0.0
      * @var string
      */
-    protected $wp_core_setting_event_handler = "alm_wp_%s_setting_changed";
+    protected $wp_core_setting_event_handler = "alm_wp_%s_setting";
 
     /**
      * Init the WP Core Settings Events.
      * This method is called automatically.
      * 
-     * @see \ALM\Controllers\Audit\Templates\EventList
+     * @see \ALM\Controllers\Audit\Traits\EventList
      */
-    public function initWpCoreSettingsEvents()
+    protected function initWpCoreSettingsEvents()
     {
-        $this->event_list['wp_core_settings'] = [
-            'title'       => 'WordPress Core Settings Events',
-            'group'       => 'wp_core_settings',
-            'object'      => 'wp_core_settings',
+        $this->event_list[ $this->wp_core_settings_slug ] = [
+            'title'           => 'WordPress Core Settings Events',
+            'events'          => [],
+            'group'           => $this->wp_core_settings_slug,
+            'action'          => 'setting_modified',
+            'object'          => $this->wp_core_settings_slug,
+            'object_id_label' => 'option',
 
-            'description' => alm__('Responsible for logging all WP core settings activities. It includes settings such as General, writing, Reading, Discussion, Media, Permalinks and Privacy.'),
-
-            'events' => []
+            'description'     => alm__('Responsible for logging all WP core settings activities. It includes settings such as General, writing, Reading, Discussion, Media, Permalinks and Privacy.'),
         ];
 
         // Default event args
@@ -63,6 +71,7 @@ trait WP_CoreSettingsEvents
             // %s will be replaced with the option name and action type.
             // The action types are: 'created' | 'updated' | 'deleted'
             'title'               => '%s the %s setting',
+            'group'               => $this->wp_core_settings_slug,
             'action'              => '%s', // Action type
             'event_id'            => 0, // Must be set by each WP core setting instance
             'severity'            => 'notice',
@@ -99,24 +108,15 @@ trait WP_CoreSettingsEvents
                 '_main'                    => '%s the %s setting',
 
                 '_space_start'             => '',
+                'option_id'                => ['object_id'],
                 'option_name'              => ['option_name'],
                 'previous_value'           => ['previous_value'],
                 'new_value'                => ['new_value'],
                 'current_value'            => '_ignore_', // Useful when the setting is being added
+                'requested_value'          => '_ignore_', // Useful for email request changes
                 'settings_page'            => ['settings_page'],
+                'settings_section'         => '_ignore_',
                 '_space_end'               => '',
-
-                'user_id'                  => ['object_id'],
-                'user_login'               => ['user_login'],
-                'display_name'             => ['display_name'],
-                'first_name'               => ['first_name'],
-                'last_name'                => ['last_name'],
-                'user_email'               => ['user_email'],
-                'log_counter'              => '',
-                'profile_url'              => ['profile_url'],
-                'user_primary_blog'        => ['primary_blog'],
-                'primary_blog_name'        => ['primary_blog_name'],
-                'source_domain'            => ['source_domain'],
             ],
 
             'event_handler' => [
@@ -138,203 +138,567 @@ trait WP_CoreSettingsEvents
      */
     private function registerWpCoreSettings()
     {
-        $new_admin_email_msg = 'Requested a change of administration email address';
-
-        $this->wp_core_settings_events = [
-            // ---------------------------------------------------------------------
-            //                         Options General
-            // ---------------------------------------------------------------------
-            'general' => [
-                'group'       => 'options_general',
-                'description' => alm__('General Settings'),
-                'options'     => [
-                    'WPLANG' => [
-                        'label'       => 'Site language',
-                        'event_id'    => 5081,
-                        'severity'    => 'critical',
-                    ],
-                    'blogname' => [
-                        'label'       => 'Site title',
-                        'event_id'    => 5082,
-                        'severity'    => 'notice',
-                    ],
-                    'gmt_offset' => [
-                        'label'       => 'Timezone',
-                        'event_id'    => 5083,
-                        'severity'    => 'notice',
-                    ],
-                    'date_format' => [
-                        'label'       => 'Date format',
-                        'event_id'    => 5084,
-                        'severity'    => 'notice',
-                    ],
-                    'time_format' => [
-                        'label'       => 'Time format',
-                        'event_id'    => 5085,
-                        'severity'    => 'notice',
-                    ],
-                    'start_of_week' => [
-                        'label'       => 'Start of week',
-                        'event_id'    => 5086,
-                        'severity'    => 'notice',
-                    ],
-                    // 'timezone_string', // currently not used, mapped to 'gmt_offset'
-                    'new_admin_email' => [
-                        '_main'       => $new_admin_email_msg,
-                        'label'       => 'Administration email address',
-                        'title'       => $new_admin_email_msg,
-                        'event_id'    => 5087,
-                        'severity'    => 'critical',
-                    ],
-                    'admin_email' => [
-                        'label'       => 'Adminstration email address',
-                        'event_id'    => 5088,
-                        'severity'    => 'critical',
-                    ],
-                    'blogdescription' => [
-                        'label'       => 'Tagline',
-                        'event_id'    => 5089,
-                        'severity'    => 'notice',
-                    ],
-                    'siteurl' => [
-                        'label'       => 'WordPress address (URL)',
-                        'event_id'    => 5090,
-                        'severity'    => 'critical',
-                        'screen'      => ['admin', 'network'],
-                    ],
-                    'home' => [
-                        'label'       => 'Site address (URL)',
-                        'event_id'    => 5091,
-                        'severity'    => 'critical',
-                    ],
-                    'users_can_register' => [
-                        'label'       => 'Membership',
-                        'event_id'    => 5092,
-                        'severity'    => 'critical',
-                    ],
-                    'default_role' => [
-                        'label'       => 'New user default role',
-                        'event_id'    => 5093,
-                        'severity'    => 'critical',
-                    ],
-                    'bsf_analytics_optin' => [
-                        'label'       => 'Usage tracking',
-                        'event_id'    => 5093,
-                        'severity'    => 'critical',
-                    ],
+        // ---------------------------------------------------------------------
+        //                         Options General
+        // ---------------------------------------------------------------------
+        $this->wp_core_settings_events['general'] = [
+            'group'       => 'options_general',
+            'description' => alm__('General Settings'),
+            'options'     => [
+                'WPLANG' => [
+                    'label'       => 'Site language',
+                    'event_id'    => 5081,
+                    'severity'    => 'critical',
+                ],
+                'blogname' => [
+                    'label'       => 'Site title',
+                    'event_id'    => 5082,
+                    'severity'    => 'notice',
+                ],
+                'gmt_offset' => [
+                    'label'       => 'Timezone',
+                    'event_id'    => 5083,
+                    'severity'    => 'notice',
+                ],
+                'date_format' => [
+                    'label'       => 'Date format',
+                    'event_id'    => 5084,
+                    'severity'    => 'notice',
+                ],
+                'time_format' => [
+                    'label'       => 'Time format',
+                    'event_id'    => 5085,
+                    'severity'    => 'notice',
+                ],
+                'start_of_week' => [
+                    'label'       => 'Start of week',
+                    'event_id'    => 5086,
+                    'severity'    => 'notice',
+                ],
+                // 'timezone_string', // currently not used, mapped to 'gmt_offset'
+                'new_admin_email' => [
+                    '_main'            => 'Requested a change of the administration email address',
+                    'label'            => 'Administration email address',
+                    'title'            => 'Requested a change of the administration email address',
+                    'event_id'         => 5087,
+                    'severity'         => 'critical',
+                    '_requested_value' => true,
+                ],
+                'admin_email' => [
+                    'label'       => 'Adminstration email address',
+                    'event_id'    => 5088,
+                    'severity'    => 'critical',
+                ],
+                'blogdescription' => [
+                    'label'       => 'Tagline',
+                    'event_id'    => 5089,
+                    'severity'    => 'notice',
+                ],
+                'siteurl' => [
+                    'label'       => 'WordPress address (URL)',
+                    'event_id'    => 5090,
+                    'severity'    => 'critical',
+                    'screen'      => ['admin', 'network'],
+                ],
+                'home' => [
+                    'label'       => 'Site address (URL)',
+                    'event_id'    => 5091,
+                    'severity'    => 'critical',
+                ],
+                'users_can_register' => [
+                    'label'       => 'Membership',
+                    'event_id'    => 5092,
+                    'severity'    => 'critical',
+                    'value_contexts' => [
+                        0 => 'Disabled',
+                        1 => 'Enabled',
+                    ]
+                ],
+                'default_role' => [
+                    'label'       => 'New user default role',
+                    'event_id'    => 5093,
+                    'severity'    => 'critical',
+                ],
+                'bsf_analytics_optin' => [
+                    'label'       => 'Usage tracking',
+                    'event_id'    => 5094,
+                    'severity'    => 'critical',
+                    'value_contexts' => [
+                        0 => 'Disabled',
+                        1 => 'Enabled',
+                    ]
                 ],
             ],
-
-            // ---------------------------------------------------------------------------
-            //                             Options Discussion
-            // ---------------------------------------------------------------------------
-            'discussion' => [
-                'default_pingback_flag',
-                'default_ping_status',
-                'default_comment_status',
-                'comments_notify',
-                'moderation_notify',
-                'comment_moderation',
-                'require_name_email',
-                'comment_previously_approved',
-                'comment_max_links',
-                'moderation_keys',
-                'disallowed_keys',
-                'show_avatars',
-                'avatar_rating',
-                'avatar_default',
-                'close_comments_for_old_posts',
-                'close_comments_days_old',
-                'thread_comments',
-                'thread_comments_depth',
-                'page_comments',
-                'comments_per_page',
-                'default_comments_page',
-                'comment_order',
-                'comment_registration',
-                'show_comments_cookies_opt_in',
-            ],
-
-            // ---------------------------------------------------------------------------
-            //                             Options Media
-            // ---------------------------------------------------------------------------
-            'media'      => [
-                'thumbnail_size_w',
-                'thumbnail_size_h',
-                'thumbnail_crop',
-                'medium_size_w',
-                'medium_size_h',
-                'large_size_w',
-                'large_size_h',
-                'image_default_size',
-                'image_default_align',
-                'image_default_link_type',
-            ],
-
-            // ---------------------------------------------------------------------------
-            //                             Options Reading
-            // ---------------------------------------------------------------------------
-            'reading'    => [
-                'posts_per_page',
-                'posts_per_rss',
-                'rss_use_excerpt',
-                'show_on_front',
-                'page_on_front',
-                'page_for_posts',
-                'blog_public',
-            ],
-
-            // ---------------------------------------------------------------------------
-            //                             Options Writing
-            // ---------------------------------------------------------------------------
-            'writing'    => [
-                'default_category',
-                'default_email_category',
-                'default_link_category',
-                'default_post_format',
-            ],
-            
-            'misc'      => [],
-            'options'   => [],
-            'privacy'   => [],
         ];
 
-        $mail_options = ['mailserver_url', 'mailserver_port', 'mailserver_login', 'mailserver_pass'];
+        // ---------------------------------------------------------------------------
+        //                             Options Discussion
+        // ---------------------------------------------------------------------------
+        $this->wp_core_settings_events['discussion'] = [
+            'group'       => 'options_discussion',
+            'description' => alm__('Discussion Settings'),
+            'options'     => [
+                'default_pingback_flag' => [
+                    'label'          => 'Attempt to notify any blogs linked to from the post',
+                    'section'        => 'Default post settings',
+                    'event_id'       => 5095,
+                    'severity'       => 'notice',
+                    'value_contexts' => [
+                        0 => 'Disabled',
+                        1 => 'Enabled',
+                    ]
+                ],
+                'default_ping_status' => [
+                    'label'          => 'Allow link notifications from other blogs (pingbacks and trackbacks) on new posts',
+                    'section'        => 'Default post settings',
+                    'event_id'       => 5096,
+                    'severity'       => 'notice',
+                    'value_contexts' => [
+                        0 => 'Disabled',
+                        1 => 'Enabled',
+                    ]
+                ],
+                'default_comment_status' => [
+                    'label'          => 'Allow people to submit comments on new posts',
+                    'section'        => 'Default post settings',
+                    'event_id'       => 5097,
+                    'severity'       => 'notice',
+                    'value_contexts' => [
+                        0 => 'Disabled',
+                        1 => 'Enabled',
+                    ]
+                ],
+                'require_name_email' => [
+                    'label'          => 'Comment author must fill out name and email',
+                    'section'        => 'Other comment settings',
+                    'event_id'       => 5098,
+                    'severity'       => 'notice',
+                    'value_contexts' => [
+                        0 => 'Disabled',
+                        1 => 'Enabled',
+                    ]
+                ],
+                'comment_registration' => [
+                    'label'          => 'Users must be registered and logged in to comment',
+                    'section'        => 'Other comment settings',
+                    'event_id'       => 5099,
+                    'severity'       => 'notice',
+                    'value_contexts' => [
+                        0 => 'Disabled',
+                        1 => 'Enabled',
+                    ]
+                ],
+                'close_comments_for_old_posts' => [
+                    'label'          => 'Automatically close comments on posts older',
+                    'section'        => 'Other comment settings',
+                    'event_id'       => 5100,
+                    'severity'       => 'notice',
+                    'value_contexts' => [
+                        0 => 'Disabled',
+                        1 => 'Enabled',
+                    ]
+                ],
+                'close_comments_days_old' => [
+                    'label'    => 'Automatically close comments on posts older than days',
+                    'section'  => 'Other comment settings',
+                    'event_id' => 5101,
+                    'severity' => 'notice',
+                ],
+                'show_comments_cookies_opt_in' => [
+                    'label'          => 'Show comments cookies opt-in checkbox',
+                    'section'        => 'Other comment settings',
+                    'event_id'       => 5102,
+                    'severity'       => 'notice',
+                    'value_contexts' => [
+                        0 => 'Disabled',
+                        1 => 'Enabled',
+                    ]
+                ],
+                'thread_comments' => [
+                    'label'          => 'Enable threaded (nested) comments',
+                    'section'        => 'Other comment settings',
+                    'event_id'       => 5103,
+                    'severity'       => 'notice',
+                    'value_contexts' => [
+                        0 => 'Disabled',
+                        1 => 'Enabled',
+                    ]
+                ],
+                'thread_comments_depth' => [
+                    'label'          => 'Enable threaded (nested) comments levels deep',
+                    'section'        => 'Other comment settings',
+                    'event_id'       => 5104,
+                    'severity'       => 'notice',
+                    'value_contexts' => [
+                        0 => 'Disabled',
+                        1 => 'Enabled',
+                    ]
+                ],
+                'page_comments' => [
+                    'label'          => 'Break comments into pages with',
+                    'section'        => 'Other comment settings',
+                    'event_id'       => 5105,
+                    'severity'       => 'notice',
+                    'value_contexts' => [
+                        0 => 'Disabled',
+                        1 => 'Enabled',
+                    ]
+                ],
+                'comments_per_page' => [
+                    'label'     => 'Top level comments per page',
+                    'section'   => 'Other comment settings',
+                    'event_id'  => 5106,
+                    'severity'  => 'notice',
+                ],
+                'default_comments_page' => [
+                    'label'     => 'Comment page displayed by default',
+                    'section'   => 'Other comment settings',
+                    'event_id'  => 5107,
+                    'severity'  => 'notice',
+                ],
+                'comment_order' => [
+                    'label'     => 'Comments should be displayed with',
+                    'section'   => 'Other comment settings',
+                    'event_id'  => 5108,
+                    'severity'  => 'notice',
+                ],
+                'comments_notify' => [
+                    'label'          => 'Email me whenever anyone posts a comment',
+                    'section'        => 'Email me whenever',
+                    'event_id'       => 5109,
+                    'severity'       => 'notice',
+                    'value_contexts' => [
+                        0 => 'Disabled',
+                        1 => 'Enabled',
+                    ]
+                ],
+                'moderation_notify' => [
+                    'label'          => 'Email me whenever a comment is held for moderation',
+                    'section'        => 'Email me whenever',
+                    'event_id'       => 5110,
+                    'severity'       => 'notice',
+                    'value_contexts' => [
+                        0 => 'Disabled',
+                        1 => 'Enabled',
+                    ]
+                ],
+                'comment_moderation' => [
+                    'label'          => 'Comment must be manually approved',
+                    'section'        => 'Before a comment appears',
+                    'event_id'       => 5111,
+                    'severity'       => 'notice',
+                    'value_contexts' => [
+                        0 => 'Disabled',
+                        1 => 'Enabled',
+                    ]
+                ],
+                'comment_previously_approved' => [
+                    'label'          => 'Comment author must have a previously approved comment',
+                    'section'        => 'Before a comment appears',
+                    'event_id'       => 5112,
+                    'severity'       => 'notice',
+                    'value_contexts' => [
+                        0 => 'Disabled',
+                        1 => 'Enabled',
+                    ]
+                ],
+                'comment_max_links' => [
+                    'label'    => 'Hold a comment in the queue if it contains links',
+                    'section'  => 'Comment moderation',
+                    'event_id' => 5113,
+                    'severity' => 'notice',
+                ],
+                'moderation_keys' => [
+                    'label'    => 'Comment moderation keys',
+                    'section'  => 'Comment moderation',
+                    'event_id' => 5114,
+                    'severity' => 'notice',
+                ],
+                'disallowed_keys' => [
+                    'label'    => 'Disallowed Comment Keys',
+                    'section'  => 'Comment moderation',
+                    'event_id' => 5115,
+                    'severity' => 'notice',
+                ],
+                'show_avatars' => [
+                    'label'          => 'Show avatars',
+                    'section'        => 'Avatars',
+                    'event_id'       => 5116,
+                    'severity'       => 'notice',
+                    'value_contexts' => [
+                        0 => 'Disabled',
+                        1 => 'Enabled',
+                    ]
+                ],
+                'avatar_rating' => [
+                    'label'    => 'Avatar maximum rating',
+                    'section'  => 'Avatars',
+                    'event_id' => 5117,
+                    'severity' => 'notice',
+                ],
+                'avatar_default' => [
+                    'label'    => 'Default avatar',
+                    'section'  => 'Avatars',
+                    'event_id' => 5118,
+                    'severity' => 'notice',
+                ],
+            ]
+        ];
 
-        if (!in_array(get_option('blog_charset'), ['utf8', 'utf-8', 'UTF8', 'UTF-8'], true)) {
-            $this->wp_core_settings_events['reading'][] = 'blog_charset';
-        }
+        // ---------------------------------------------------------------------------
+        //                             Options Media
+        // ---------------------------------------------------------------------------
+        $this->wp_core_settings_events['media'] = [
+            'group'       => 'options_media',
+            'description' => alm__('Media Settings'),
+            'options'     => [
+                'thumbnail_size_w' => [
+                    'label'    => 'Thumbnail size width',
+                    'section'  => 'Image sizes (thumbnail size)',
+                    'event_id' => 5119,
+                    'severity' => 'notice',
+                ],
+                'thumbnail_size_h' => [
+                    'label'    => 'Thumbnail size height',
+                    'section'  => 'Image sizes (thumbnail size)',
+                    'event_id' => 5120,
+                    'severity' => 'notice',
+                ],
+                'thumbnail_crop' => [
+                    'label'          => 'Crop thumbnail to exact dimensions',
+                    'section'        => 'Image sizes (thumbnail size)',
+                    'event_id'       => 5121,
+                    'severity'       => 'notice',
+                    'value_contexts' => [
+                        0 => 'Disabled',
+                        1 => 'Enabled',
+                    ]
+                ],
+                'medium_size_w' => [
+                    'label'    => 'Thumbnail medium size max width',
+                    'section'  => 'Image sizes (medium size)',
+                    'event_id' => 5122,
+                    'severity' => 'notice',
+                ],
+                'medium_size_h' => [
+                    'label'    => 'Thumbnail medium size max height',
+                    'section'  => 'Image sizes (medium size)',
+                    'event_id' => 5123,
+                    'severity' => 'notice',
+                ],
+                'large_size_w' => [
+                    'label'    => 'Thumbnail large size max width',
+                    'section'  => 'Image sizes (large size)',
+                    'event_id' => 5124,
+                    'severity' => 'notice',
+                ],
+                'large_size_h' => [
+                    'label'    => 'Thumbnail large size max height',
+                    'section'  => 'Image sizes (large size)',
+                    'event_id' => 5125,
+                    'severity' => 'notice',
+                ],
+                'uploads_use_yearmonth_folders' => [
+                    'label'          => 'Organize my uploads into month- and year-based folders',
+                    'section'        => 'Uploading files',
+                    'event_id'       => 5126,
+                    'severity'       => 'notice',
+                    'value_contexts' => [
+                        0 => 'Disabled',
+                        1 => 'Enabled',
+                    ]
+                ],
+                'upload_path' => [
+                    'label'    => 'Store uploads in this folder',
+                    'section'  => 'Uploading files',
+                    'event_id' => 5127,
+                    'severity' => 'notice',
+                ],
+                'upload_url_path' => [
+                    'label'    => 'Full URL path to files',
+                    'section'  => 'Uploading files',
+                    'event_id' => 5128,
+                    'severity' => 'notice',
+                ],
+                'image_default_size' => [
+                    'label'    => 'Image default size',
+                    'event_id' => 5129,
+                    'severity' => 'notice',
+                ],
+                'image_default_align' => [
+                    'label'    => 'Image default align',
+                    'event_id' => 5130,
+                    'severity' => 'notice',
+                ],
+                'image_default_link_type' => [
+                    'label'    => 'Image default link type',
+                    'event_id' => 5131,
+                    'severity' => 'notice',
+                ],
+            ]
+        ];
 
-        if (get_site_option('initial_db_version') < 32453) {
-            $this->wp_core_settings_events['writing'][] = 'use_smilies';
-            $this->wp_core_settings_events['writing'][] = 'use_balanceTags';
-        }
+        // ---------------------------------------------------------------------------
+        //                             Options Reading
+        // ---------------------------------------------------------------------------
+        $this->wp_core_settings_events['reading'] = [
+            'group'       => 'options_reading',
+            'description' => alm__('Reading Settings'),
+            'options'     => [
+                'show_on_front' => [
+                    'label'    => 'Your homepage displays',
+                    'event_id' => 5132,
+                    'severity' => 'notice',
+                ],
+                'page_on_front' => [
+                    'label'    => 'Homepage (Page ID)',
+                    'event_id' => 5133,
+                    'severity' => 'notice',
+                ],
+                'page_for_posts' => [
+                    'label'    => 'Posts page (Page ID)',
+                    'event_id' => 5134,
+                    'severity' => 'notice',
+                ],
+                'posts_per_page' => [
+                    'label'    => 'Blog pages show at most',
+                    'event_id' => 5135,
+                    'severity' => 'notice',
+                ],
+                'posts_per_rss' => [
+                    'label'    => 'Syndication feeds show the most recent items',
+                    'event_id' => 5136,
+                    'severity' => 'notice',
+                ],
+                'rss_use_excerpt' => [
+                    'label'    => 'For each post in a feed, includes',
+                    'event_id' => 5137,
+                    'severity' => 'notice',
+                ],
+                'blog_public' => [
+                    'label'    => 'Search engine visibility',
+                    'event_id' => 5138,
+                    'severity' => 'critical',
+                ],
+                'blog_charset' => [
+                    'label'    => 'Encoding for pages and feeds',
+                    'event_id' => 5139,
+                    'severity' => 'notice',
+                ],
+            ]
+        ];
 
-        // -------------------------------------------------------------------------------
-        //                          Non-Multisite Options
-        // -------------------------------------------------------------------------------
-        if (!$this->is_multisite)
-        {
-            $this->wp_core_settings_events['writing']   = array_merge($this->wp_core_settings_events['writing'], $mail_options);
-            $this->wp_core_settings_events['writing'][] = 'ping_sites';
+        // ---------------------------------------------------------------------------
+        //                             Options Writing
+        // ---------------------------------------------------------------------------
+        $this->wp_core_settings_events['writing'] = [
+            'group'       => 'options_writing',
+            'description' => alm__('Writing Settings'),
+            'options'     => [
+                'default_category' => [
+                    'label'    => 'Default post category',
+                    'event_id' => 5140,
+                    'severity' => 'notice',
+                ],
+                'default_post_format' => [
+                    'label'    => 'Default post format',
+                    'event_id' => 5141,
+                    'severity' => 'notice',
+                ],
+                'default_email_category' => [
+                    'label'    => 'Default mail category',
+                    'event_id' => 5142,
+                    'severity' => 'notice',
+                ],
+                'default_link_category' => [
+                    'label'    => 'Default link category',
+                    'event_id' => 5143,
+                    'severity' => 'critical',
+                ],
+                'mailserver_url' => [
+                    'label'    => 'Mail server',
+                    'section'  => 'Post via email',
+                    'event_id' => 5144,
+                    'severity' => 'critical',
+                ],
+                'mailserver_port' => [
+                    'label'    => 'Mail server port',
+                    'section'  => 'Post via email',
+                    'event_id' => 5145,
+                    'severity' => 'critical',
+                ],
+                'mailserver_login' => [
+                    'label'    => 'Mail server login name',
+                    'section'  => 'Post via email',
+                    'event_id' => 5146,
+                    'severity' => 'critical',
+                ],
+                'mailserver_pass' => [
+                    'label'    => 'Mail server password',
+                    'section'  => 'Post via email',
+                    'event_id' => 5147,
+                    'severity' => 'critical',
+                ],
+                'ping_sites' => [
+                    'label'    => 'Ping sites',
+                    'section'  => 'Update Services',
+                    'event_id' => 5148,
+                    'severity' => 'critical',
+                ],
+                'use_smilies' => [
+                    'label'    => 'Use smilies',
+                    'section'  => 'Formatting',
+                    'event_id' => 5149,
+                    'severity' => 'notice',
+                ],
+                'use_balanceTags' => [
+                    'label'    => 'WordPress should correct invalidly nested XHTML automatically',
+                    'section'  => 'Formatting',
+                    'event_id' => 5150,
+                    'severity' => 'critical',
+                ],
+            ]
+        ];
 
-            $this->wp_core_settings_events['media'][] = 'uploads_use_yearmonth_folders';
+        $this->wp_core_settings_events['privacy'] = [
+            'group'       => 'options_privacy',
+            'description' => alm__('Privacy Settings'),
+            'options'     => [
+                'wp_page_for_privacy_policy' => [
+                    'label'    => 'Privacy policy page',
+                    'event_id' => 5151,
+                    'severity' => 'notice',
+                ]
+            ]
+        ];
 
-            /*
-            * If upload_url_path is not the default (empty),
-            * or upload_path is not the default ('wp-content/uploads' or empty),
-            * they can be edited, otherwise they're locked.
-            */
-            if (get_option('upload_url_path') || (get_option('upload_path') != 'wp-content/uploads' && get_option('upload_path'))) {
-                $this->wp_core_settings_events['media'][] = 'upload_path';
-                $this->wp_core_settings_events['media'][] = 'upload_url_path';
-            }
-        }
-        else {
-            if (apply_filters('enable_post_by_email_configuration', true)) {
-                $this->wp_core_settings_events['writing'] = array_merge($this->wp_core_settings_events['writing'], $mail_options);
-            }
-        }
+        $this->wp_core_settings_events['permalinks'] = [
+            'group'       => 'options_permalinks',
+            'description' => alm__('Permalink Settings'),
+            'options'     => [
+                'permalink_structure' => [
+                    'label'    => 'Permalink structure',
+                    'section'  => 'Common settings',
+                    'event_id' => 5152,
+                    'severity' => 'notice',
+                ],
+                'category_base' => [
+                    'label'    => 'Category base',
+                    'section'  => 'Optional',
+                    'event_id' => 5153,
+                    'severity' => 'notice',
+                ],
+                'tab_base' => [
+                    'label'    => 'Tag base',
+                    'section'  => 'Optional',
+                    'event_id' => 5154,
+                    'severity' => 'notice',
+                ],
+            ]
+        ];
+
+        $this->wp_core_settings_events['misc']    = [];
+        $this->wp_core_settings_events['options'] = [];
     }
 
     /**
@@ -351,11 +715,59 @@ trait WP_CoreSettingsEvents
      */
     protected function getWpCoreSettingsPage($setting_group, $option_name = '')
     {
-        $option_name = str_replace('_', '_', $option_name);
+        $setting_group = str_replace('_', '-', $setting_group);
+        $setting_page  = "{$setting_group}.php";
+        $option_target = empty($option_name) ? '' : '#' . $this->sanitizeOption($option_name);
 
-        if (!$this->is_multisite) {
-            return esc_url_raw(self_admin_url("{$setting_group}.php#option_name"));
-        }
+        if (!$this->is_multisite)
+            return sprintf(
+                '%s%s',
+                esc_url_raw(self_admin_url($setting_page)),
+                $option_target
+            );
+
+        $event_handler    = $this->getWpCoreSettingEventHandler($option_name);
+
+        $event_id         = $this->getEventIdBySlug($event_handler, $this->wp_core_settings_slug);
+        $event_data       = $this->getEventData($event_id);
+
+        if (!$event_data) return '#';
+        
+        $is_network_setting = $this->getVar($event_data, 'network', false);
+        
+        $setting_page_url   = $is_network_setting 
+            ? network_admin_url('settings.php') 
+            : self_admin_url($setting_page);
+
+        return $setting_page_url;
+    }
+
+    /**
+     * Get the WP core setting (option) ID.
+     * 
+     * Thi is basically a wrapper around the {@see ALM/Controllers/Base/PluginFactory::getWpOptionId()}.
+     * 
+     * @param string $option_name  Specifies the setting (option) name whose ID should be retrieved.
+     * 
+     * @return int                 Returns the given option ID if found. Otherwise 0.
+     */
+    protected function getWpCoreOptionId($option_name = '')
+    {
+        if (empty($option_name))
+            return 0;
+
+        return $this->getWpOptionId($option_name);
+    }
+
+    /**
+     * Get the WP core setting handler
+     * 
+     * @param  string $option_name Specifies the option name for the setting
+     * @return string
+     */
+    protected function getWpCoreSettingEventHandler($option_name)
+    {
+        return sprintf($this->wp_core_setting_event_handler, $option_name);
     }
 
     /**
@@ -367,75 +779,151 @@ trait WP_CoreSettingsEvents
 
         foreach ($this->wp_core_settings_events as $setting)
         {
-            if (empty($setting['options']))
-                continue;
+            if (empty($setting['options'])) continue;
 
             foreach ($setting['options'] as $option_name => $option_data)
             {
-                $option_label  = lcfirst($option_data['label']);
-                $event_handler = sprintf($this->wp_core_setting_event_handler, $option_name);
+                if (!is_array($option_data)) continue;
+
+                $option_label   = lcfirst($option_data['label']);
+                $event_handler  = $this->getWpCoreSettingEventHandler($option_name);
+
+                $setting_object = $this->getVar(
+                    $setting, 'object', $this->event_list[ $this->wp_core_settings_slug ]['object']
+                );
+
+                $setting_group = $this->getVar(
+                    $setting, 'group', $this->event_list[ $this->wp_core_settings_slug ]['group']
+                );
 
                 $wp_core_setting_event_data = [
                     'title'    => sprintf($default_event_args['title'], '%s', $option_label),
-                    'object'   => $setting['group'],
+                    'group'    => $setting_group,
+                    'object'   => $setting_object,
                     'event_id' => $option_data['event_id'],
                     'severity' => $option_data['severity'],
                 ];
+
+                // Setup the network flag if the setting is registered on the network settings page
+                if (!empty($setting['network'])) {
+                    $wp_core_setting_event_data['network'] = true;
+                }
 
                 $wp_core_setting_event_data = array_merge(
                     $default_event_args, $wp_core_setting_event_data
                 );
 
+                // Main message
                 if (!empty($option_data['_main'])) {
                     $wp_core_setting_event_data['message']['_main'] = $option_data['_main'];
                 }
 
+                // Set the settings section if specified in the option data
+                if (!empty($option_data['section'])) {
+                    $wp_core_setting_event_data['message']['settings_section'] = $this->getVar($option_data, 'section', '_ignore_');
+                }
+
+                // If the event message is using the 'requested_value' info, let's set it up
+                if (!empty($option_data['_requested_value'])) {
+                    $wp_core_setting_event_data['message']['requested_value'] = ['requested_value'];
+                }
+
                 /**
-                 * Add the event to the event list
+                 * Add the registered WP core settings events to the event main list
                  */
-                $this->event_list['wp_core_settings']['events'][$event_handler] = $wp_core_setting_event_data;
+                $this->event_list[$this->wp_core_settings_slug]['events'][$event_handler] = $wp_core_setting_event_data;
 
                 // ------------------------------------------------------------------------
-                //                  Bind the option to the event handler
+                //                  Bind each settings changes to the event handler
                 // ------------------------------------------------------------------------
 
-                // Run when the setting is added for the first time
-                add_action("add_option_{$option_name}", function ($option, $value) use ($option_data)
+                $trigger_event_args = [
+                    'value'  => null,
+                    'label'  => $option_data['label'],
+                    'group'  => $wp_core_setting_event_data['group'],
+                ];
+
+                // Runs whenever the setting is added for the first time
+                add_action("add_option_{$option_name}", function ($option, $value) use ($trigger_event_args)
                 {
-                    $this->alm_wp_core_settings_changed([
+                    $this->alm_wp_core_settings_changed(array_merge($trigger_event_args, [
                         'value'       => $value,
-                        'label'       => $option_data['label'],
                         'option'      => $option,
-                        'action_type' => 'added'
-                    ]);
-                });
+                        'action_type' => 'added',
+                    ]));
+                }, 10, 2);
 
-                // Run when the setting is updated
-                add_action("update_option_{$option_name}", function ($old_value, $value, $option) use ($option_data)
+                // Runs whenever the setting is updated
+                add_action("update_option_{$option_name}", function ($old_value, $value, $option) use ($trigger_event_args)
                 {
-                    $this->alm_wp_core_settings_changed([
+                    $this->alm_wp_core_settings_changed(array_merge($trigger_event_args, [
                         'value'          => $value,
-                        'label'          => $option_data['label'],
                         'option'         => $option,
                         'action_type'    => 'updated',
                         'previous_value' => $old_value,
-                    ]);
-                });
+                    ]));
+
+                    /**
+                     * Set the admin email update flag
+                     */
+                    if ('admin_email' === $option) {
+                        $this->setConstant('ALM_WP_CORE_SETTING_ADMIN_EMAIL', 'updated');
+                    }
+                }, 10, 3);
 
                 // Retrieve the option value immediately before the option is deleted
-                add_action("delete_option_{$option_name}", function ($option) {
-                    $this->wp_core_setting_deleted_data = get_option($option);
+                add_action("delete_option", function ($option)
+                {
+                    $event_handler = $this->getWpCoreSettingEventHandler($option);
+                    $event_id      = $this->getEventIdBySlug($event_handler, $this->wp_core_settings_slug);
+                    $event_data    = $this->getEventData($event_id);
+                    $event_group   = $this->getVar($event_data, 'group', '');
+
+                    $this->wp_core_setting_deleted_data = [
+                        'value'    => get_option($option),
+                        'event_id' => $this->getWpCoreOptionId($option, $event_group)
+                    ];
                 });
 
-                // Run when the setting is deleted
-                add_action("delete_option_{$option_name}", function ($option) use ($option_data)
+                // Runs whenever the setting is deleted
+                add_action("delete_option_{$option_name}", function ($option) use ($trigger_event_args)
                 {
-                    $this->alm_wp_core_settings_changed([
-                        'value'       => null,
-                        'label'       => $option_data['label'],
-                        'option'      => $option,
-                        'action_type' => 'deleted',
-                    ]);
+                    if ('new_admin_email' === $option) {
+                        /**
+                         * Ignore the 'new_admin_email' deletion when the 'admin_email' is updated
+                         */
+                        if ('updated' === $this->getConstant('ALM_WP_CORE_SETTING_ADMIN_EMAIL')) {
+                            return;
+                        }
+
+                        /**
+                         * Run a customize event when cancelling the 'new_admin_email' request
+                         */
+                        if ( ! empty( $_GET['dismiss'] ) && 'new_admin_email' === $_GET['dismiss'] )
+                        {
+                            $this->alm_wp_core_settings_changed(array_merge($trigger_event_args, [
+                                'message_args' => [
+                                    '_main'    => 'Cancelled the request to change the administration email address',
+                                    'label'    => 'Administration email address',
+                                    'title'    => 'Cancelled the request to change the administration email address',
+                                    'severity' => 'notice',
+                                ],
+                                'event_id'        => $this->wp_core_setting_deleted_data['event_id'],
+                                'option'          => $option,
+                                'action_type'     => 'cancelled',
+                                'current_value'   => $this->sanitizeOption(get_option('admin_email'), 'email'),
+                                'requested_value' => $this->wp_core_setting_deleted_data['value'],
+                            ]));
+                            return;
+                        }
+                    }
+
+                    $this->alm_wp_core_settings_changed(array_merge($trigger_event_args, [
+                        'option'        => $option,
+                        'event_id'      => $this->wp_core_setting_deleted_data['event_id'],
+                        'action_type'   => 'deleted',
+                        'current_value' => $this->wp_core_setting_deleted_data['value'],
+                    ]));
                 });
             }
         }

@@ -8,21 +8,22 @@ defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your ow
  * @package Audit Observer
  * @since   1.0.0
  */
+
 class AuditObserver implements \SplObserver
 {
     /**
      * @var Audit
-     * This is the states for auditing
+     * This are the states for auditing
      */
     private $_audit = null;
 
     /**
-     * @var \SplFixedArray()
+     * @var \SplFixedArray
      */
     private $_events = null;
 
     /**
-     * @var Array
+     * @var array
      */
     private $_event = null;
 
@@ -46,9 +47,9 @@ class AuditObserver implements \SplObserver
         $this->Auditor = $Auditor;
 
         $events = $this->Auditor->loadEvents();
-        if ( empty( $events ) ) return;
+        if (empty( $events )) return;
 
-        $this->_events = \SplFixedArray::fromArray( $events, false );
+        $this->_events = \SplFixedArray::fromArray($events, false);
     }
 
     /**
@@ -57,6 +58,10 @@ class AuditObserver implements \SplObserver
      */
     public function update( \SplSubject $subject )
     {
+        /**
+         * @todo
+         * Inspect the {@see $this->_audit} subject handle whether we need to ignore it
+         */
         $this->_audit = clone $subject;
         $this->registerEvents();
     }
@@ -66,14 +71,14 @@ class AuditObserver implements \SplObserver
      */
     public function registerEvents()
     {
-        if ( ! $this->_events instanceof \SplFixedArray ) return;
+        if (!$this->_events instanceof \SplFixedArray) return;
         
         do 
         {
-            $this->prepareEventData( $this->_events->current() )->watch();
+            $this->prepareEventData($this->_events->current())->watch();
             $this->_events->next();
         } 
-        while ( $this->_events->valid() );
+        while ($this->_events->valid());
     }
 
     /**
@@ -89,12 +94,12 @@ class AuditObserver implements \SplObserver
 
     /**
      * Check whether the event is watchable (not disabled)
-     * @return bool True if event is watchable. Otherwise.
+     * @return bool True if event is watchable. Otherwise false.
      */
     protected function isEventWatchable()
     {
-        $event_disabled = isset( $this->_event['disable'] ) ? 
-            ( (bool) $this->_event['disable'] ) : false;
+        $event_disabled = isset($this->_event['disable']) ? 
+            ((bool) $this->_event['disable']) : false;
 
         return !$event_disabled;
     }
@@ -104,11 +109,11 @@ class AuditObserver implements \SplObserver
      */
     protected function watch()
     {
-        if ( ! $this->isEventWatchable() ) return;
+        if (!$this->isEventWatchable()) return;
 
         /**
          * Start watching the event
          */
-        $this->Auditor->setupObserver( $this->_event )->addEvent();
+        $this->Auditor->setupObserver($this->_event)->addEvent();
     }
 }

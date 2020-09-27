@@ -24,7 +24,7 @@ trait SuperAdminEvents
 
         $user->get_role_caps();
 
-        $roles = $this->parseValueForDb($user->roles, 5);
+        $roles = $this->parseValueForDb($user->roles);
 
         $this->maybe_trigger_failed_events[$event_slug] = [
             'method'      => __METHOD__,
@@ -51,10 +51,10 @@ trait SuperAdminEvents
         if (!in_array($role, $user_roles, true))
             $user_roles[] = $role;
 
-        $role_new      = $this->parseValueForDb($user_roles, 5);
+        $role_new      = $this->parseValueForDb($user_roles);
 
         $prev_roles    = empty($user_roles) ? '' : array_diff($user_roles, [$role]);
-        $role_previous = $this->parseValueForDb($prev_roles, 5);
+        $role_previous = $this->parseValueForDb($prev_roles);
 
         $no_role_found = 'None';
         if ('' === $role_previous) {
@@ -78,7 +78,7 @@ trait SuperAdminEvents
 
         $user->get_role_caps();
 
-        $roles = $this->parseValueForDb($user->roles, 5);
+        $roles = $this->parseValueForDb($user->roles);
 
         $this->maybe_trigger_failed_events[$event_slug] = [
             'method'      => __METHOD__,
@@ -110,10 +110,10 @@ trait SuperAdminEvents
             $user_roles = $all_roles;
         }
 
-        $role_new      = $this->parseValueForDb($user_roles, 5);
+        $role_new      = $this->parseValueForDb($user_roles);
 
         $prev_roles    = array_merge($user_roles, [$role]);
-        $role_previous = $this->parseValueForDb($prev_roles, 5);
+        $role_previous = $this->parseValueForDb($prev_roles);
 
         $no_role_found = 'None';
         if ('' === $role_new) {
