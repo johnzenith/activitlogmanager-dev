@@ -16,7 +16,14 @@ trait WidgetEvents
      * @var string
      * @since 1.0.0
      */
-    protected $sidebar_widgets_option_name = 'update_option_sidebars_widgets';
+    protected $sidebar_widgets_option_name = 'sidebars_widgets';
+
+    /**
+     * Specifies the inactive widgets key
+     * @var string 
+     * @since 1.0.0
+     */
+    protected $wp_inactive_widgets_key  = 'wp_inactive_widgets';
 
     /**
      * Specifies the widget status
@@ -54,7 +61,7 @@ trait WidgetEvents
                  */
                 'alm_widget_added' => [
                     'title'               => 'Widget added',
-                    'action'              => 'widget_modified',
+                    'action'              => 'widget_added',
                     'event_id'            => 5651,
                     'severity'            => 'notice',
 
@@ -68,11 +75,13 @@ trait WidgetEvents
 
                         '_space_start'     => '',
                         'widget_option_id' => ['object_id'],
+                        'sidebar_id'       => ['sidebar_id'],
+                        'sidebar_name'     => ['sidebar_name'],
                         'widget_id'        => ['widget_id'],
                         'widget_title'     => ['widget_title'],
                         'widget_position'  => ['widget_position'],
-                        'sidebar_id'       => ['sidebar_id'],
-                        'sidebar_name'     => ['sidebar_name'],
+                        '_space_line'      => '',
+                        'widget_settings'  => ['widget_settings'],
                         '_space_end'       => '',
                     ],
                 ],
@@ -94,17 +103,15 @@ trait WidgetEvents
 
                     '_translate' => [
                         '_main' => [
-                            'plural' => 'Changed the following widgets positions in the %s sidebar location, see details below',
+                            'plural' => 'Changed the following widgets positions in the %s sidebar location, see details below:',
                         ],
                     ],
 
                     'message' => [
-                        '_main'            => 'Changed a widget position in the %s widget location',
+                        '_main'            => 'Changed a widget position in the %s sidebar location',
 
                         '_space_start'     => '',
                         'widget_option_id' => ['object_id'],
-                        'sidebar_name'     => ['sidebar_name'],
-                        'sidebar_id'       => ['sidebar_id'],
                         'widget_info'      => ['widget_info'],
                         '_space_end'       => '',
                     ],
@@ -116,7 +123,7 @@ trait WidgetEvents
                  * @see wp_ajax_save_widget()
                  */
                 'alm_widget_location_changed' => [
-                    'title'               => 'Widget location changed',
+                    'title'               => 'Widget sidebar location changed',
                     'action'              => 'widget_modified',
                     'event_id'            => 5653,
                     'severity'            => 'notice',
@@ -127,17 +134,26 @@ trait WidgetEvents
 
                     '_translate' => [
                         '_main' => [
-                            'plural' => 'Changed the following widgets sidebar locations, see details below',
+                            'plural' => 'Changed the following widgets sidebar locations, see details below:',
                         ],
                     ],
 
                     'message' => [
-                        '_main'            => 'Changed the sidebar location of a widget',
+                        '_main'                    => 'Changed the sidebar location of a widget',
 
-                        '_space_start'     => '',
-                        'widget_option_id' => ['object_id'],
-                        'widget_info'      => ['widget_info'],
-                        '_space_end'       => '',
+                        '_space_start'             => '',
+                        'widget_option_id'         => ['object_id'],
+                        'widget_id'                => ['widget_id'],
+                        'widget_title'             => ['widget_title'],
+                        '_space_line'              => '',
+                        'previous_sidebar_id'      => ['previous_sidebar_id'],
+                        'previous_sidebar_name'    => ['previous_sidebar_name'],
+                        'previous_widget_position' => ['previous_widget_position'],
+                        '_space_line'              => '',
+                        'new_sidebar_id'           => ['new_sidebar_id'],
+                        'new_sidebar_name'         => ['new_sidebar_name'],
+                        'new_widget_position'      => ['new_widget_position'],
+                        '_space_end'               => '',
                     ],
                 ],
 
@@ -157,16 +173,19 @@ trait WidgetEvents
                     'logged_in_user_caps'  => ['edit_theme_options'],
 
                     'message' => [
-                        '_main'            => 'Changed the content of a widget',
+                        '_main'            => 'Changed the content of a widget located in the %s sidebar',
 
                         '_space_start'     => '',
                         'widget_option_id' => ['object_id'],
-                        'widget_info'      => ['widget_info'],
+                        'option_name'      => 'option_name',
+                        'sidebar_id'       => ['sidebar_id'],
+                        'sidebar_name'     => ['sidebar_name'],
+                        'widget_id'        => ['widget_id'],
+                        'widget_title'     => ['widget_title'],
+                        'widget_position'  => ['widget_position'],
+                        '_space_line'      => '',
+                        'widget_settings'  => ['widget_settings'],
                         '_space_end'       => '',
-                    ],
-
-                    'event_handler' => [
-                        'num_args' => 3,
                     ],
                 ],
 
@@ -192,11 +211,14 @@ trait WidgetEvents
                     ],
 
                     'message' => [
-                        '_main'            => 'Deleted a widget from the %s',
+                        '_main'            => 'Deleted a widget from the %s sidebar',
 
                         '_space_start'     => '',
                         'widget_option_id' => ['object_id'],
-                        'widget_info'      => ['widget_info'],
+                        'sidebar_id'       => ['sidebar_id'],
+                        'sidebar_name'     => ['sidebar_name'],
+                        'widget_id'        => ['widget_id'],
+                        'widget_title'     => ['widget_title'],
                         '_space_end'       => '',
                     ],
 
@@ -222,17 +244,21 @@ trait WidgetEvents
 
                     '_translate' => [
                         '_main' => [
-                            'plural' => 'Moved the following widgets to the inactive widgets list, see details below',
+                            'plural' => 'Moved the following widgets to the inactive widgets list, see details below:',
                         ],
                     ],
 
                     'message' => [
-                        '_main'            => 'Moved a widget to the inactive widgets list',
+                        '_main'                    => 'Moved a widget to the inactive widgets list',
 
-                        '_space_start'     => '',
-                        'widget_option_id' => ['object_id'],
-                        'widget_info'      => ['widget_info'],
-                        '_space_end'       => '',
+                        '_space_start'             => '',
+                        'widget_option_id'         => ['object_id'],
+                        'widget_id'                => ['widget_id'],
+                        'widget_title'             => ['widget_title'],
+                        'previous_widget_position' => ['previous_widget_position'],
+                        'previous_sidebar_id'      => ['previous_sidebar_id'],
+                        'previous_sidebar_name'    => ['previous_sidebar_name'],
+                        '_space_end'               => '',
                     ],
 
                     'event_handler' => [
@@ -268,7 +294,6 @@ trait WidgetEvents
                         '_space_start'     => '',
                         'widget_option_id' => ['object_id'],
                         'widget_info'      => ['widget_info'],
-                        'widget_note'      => ['widget_note'],
                         '_space_end'       => '',
                     ]
                 ],
@@ -290,12 +315,12 @@ trait WidgetEvents
 
                     '_translate' => [
                         '_main' => [
-                            'plural' => 'Cleared the following widgets from the inactive widgets list.',
+                            'plural' => 'Cleared the following widgets from the inactive widgets area.',
                         ],
                     ],
 
                     'message' => [
-                        '_main'            => 'Cleared a widget from the inactive widgets list',
+                        '_main'            => 'Cleared a widget from the inactive widgets area',
 
                         '_space_start'     => '',
                         'widget_option_id' => ['object_id'],
@@ -315,12 +340,16 @@ trait WidgetEvents
         /**
          * @see update_option()
          */
-        add_action($this->sidebar_widgets_option_name, function($old_value, $value, $option)
+        $widget_action = sprintf('update_option_%s', $this->sidebar_widgets_option_name);
+        add_action($widget_action, function($old_value, $value, $option)
         {
-            $_sidebars            = $value;
-            $has_new_widget       = false;
-            $new_widget_counter   = 0;
-            $inactive_widgets_key = 'wp_inactive_widgets';
+            global $wp_registered_widgets;
+            
+            $_sidebars                = $value;
+            $has_new_widget           = false;
+            $new_widget_counter       = 0;
+            $inactive_widgets_key     = $this->wp_inactive_widgets_key;
+            $inactive_widgets_cleared = false;
 
             /**
              * Check if the widget location has changed
@@ -340,10 +369,6 @@ trait WidgetEvents
                     {
                         if (!is_array($widgets)) continue;
 
-                        // Ignore inactive widgets
-                        if ($inactive_widgets_key === $inner_sidebar_id)
-                            continue;
-
                         if ($inner_sidebar_id === $sidebar_id)
                             continue;
 
@@ -352,6 +377,10 @@ trait WidgetEvents
 
                         if (false === $old_widget_position)
                             continue;
+
+                        if ($inactive_widgets_key === $inner_sidebar_id) {
+                            $inactive_widgets_cleared = true;
+                        }
 
                         /**
                          * Prevent the {@see alm_widget_position_changed action hook} 
@@ -431,7 +460,8 @@ trait WidgetEvents
                         }
                         
                         // This should not run when the widget was only moved to a new location
-                        if (!$this->widget_status) continue;
+                        if (!$this->widget_status) 
+                            continue;
 
                         ++$new_widget_counter;
 
@@ -442,6 +472,25 @@ trait WidgetEvents
                             (array) $this->getVar($old_value, $inactive_widgets_key, []),
                             true
                         ) !== false;
+
+                        /**
+                         * Get the widget settings
+                         */
+                        $widget_control   = $wp_registered_widgets[$widget_id] ?? [];
+ 
+                        $callback         = $widget_control['callback'] ?? [];
+                        $widget_obj       = $callback[0] ?? [];
+
+                        $_widget_settings = is_object($widget_obj) ? $widget_obj->get_settings() : false;
+
+                        if ($_widget_settings) {
+                            $widget_settings = current($_widget_settings);
+                            if (!is_array($widget_settings)) {
+                                $widget_settings = next($_widget_settings);
+                            }
+                        }
+
+                        if (!$widget_settings) $widget_settings = [];
 
                         /**
                          * Fires immediately after a widget has been added
@@ -459,6 +508,11 @@ trait WidgetEvents
                          * 
                          *  - @param bool   $widget_inactive Specifies whether or not the widget was 
                          *                                   previously in the inactive widgets list
+                         * 
+                         *  - @param array  $widget_settings Specifies list of settings for the widget.
+                         *                                   This will be an empty array if no 
+                         *                                   settings is registered for the widget.
+                         *                                   
                          */
                         do_action(
                             'alm_widget_added',
@@ -466,6 +520,7 @@ trait WidgetEvents
                                 'widget_id'           => $widget_id,
                                 'sidebar_id'          => $sidebar_id,
                                 'widget_position'     => $widget_position,
+                                'widget_settings'     => $widget_settings,
                                 'was_widget_inactive' => $was_widget_inactive,
                             ]
                         );
@@ -476,7 +531,9 @@ trait WidgetEvents
             /**
              * Check if the widget position has changed
              */
-            $widget_args = [];
+            $widget_args                 = [];
+            $has_widget_changed_position = 0;
+
             if ($new_widget_counter < 1 && $this->widget_status)
             {
                 foreach ((array) $value as $sidebar_id => $sidebar)
@@ -506,7 +563,22 @@ trait WidgetEvents
                     }
                 }
 
-                if (!empty($widget_args)) {
+                if (!empty($widget_args))
+                {
+                    /**
+                     * Check that the last triggererd event is not the 'delete_widget' event,
+                     * we want to avoid duplicates because when a widget is deleted, 
+                     * the sidebr widgets are re-oredered.
+                     */
+                    $last_logged_event_id = $this->sanitizeOption($this->getLastActivityLogData(['event_id']), 'int');
+
+                    $is_delete_widget_event = $this->getEventIdBySlug('delete_widget', 'widget') === $last_logged_event_id;
+
+                    if ($is_delete_widget_event && !$this->isVerboseLoggingEnabled())
+                        return;
+
+                    ++$has_widget_changed_position;
+
                     /**
                      * Fires immediately after a widget position has changed
                      * 
@@ -531,6 +603,7 @@ trait WidgetEvents
             /**
              * Check whether a widget has been added to the list of inactive widgets
              */
+            $has_inactive_widgets     = 0;
             $inactive_widgets         = (array) $this->getVar($value, $inactive_widgets_key, []);
             $old_inactive_widgets     = (array) $this->getVar($old_value, $inactive_widgets_key, []);
             $widgets_without_sidebars = [];
@@ -566,6 +639,8 @@ trait WidgetEvents
                      */
                     unset($widgets_without_sidebars[$widget_id]);
 
+                    ++$has_inactive_widgets;
+
                     /**
                      * Fire immediately after a widget is set as inactive
                      * 
@@ -586,11 +661,23 @@ trait WidgetEvents
              * Check whether the inactive widgets has been cleared
              */
             if ($new_widget_counter < 1 
+            && $has_inactive_widgets < 1 
+            && $has_widget_changed_position < 1  
+            && !$inactive_widgets_cleared 
+            //
+            // The delete widget event should not trigger the 'inactive_widgets' 
+            // cleared event
+            && empty($this->getVar($value, $inactive_widgets_key, [])) 
+            //
+            // The cleared inactive widgets should not trigger when there is only 
+            // one widget in the list of inactive widgets
+            && count((array) $this->getVar($old_value, $inactive_widgets_key, [])) > 1 
+            //
             && empty($widgets_without_sidebars) 
             && !empty($old_inactive_widgets))
             {
                 /**
-                 * Fires immedidately after clearing the list of inactive widgets
+                 * Fires immediately after clearing the list of inactive widgets
                  * 
                  * @param array $inactive_widgets Specifies list of inactive widgets 
                  *                                that was cleared
@@ -614,7 +701,7 @@ trait WidgetEvents
         /**
          * Check for widget settings update
          */
-        if (isset($_POST['id_base'], $_POST['widget-id'], $_POST['sidebar']))
+        if (isset($_POST['id_base'], $_POST['widget-id'], $_POST['sidebar'], $_POST['multi_number']))
         {
             $widget_id_base       = $this->sanitizeStr($_POST['id_base']);
             $widget_settings_name = sprintf('update_option_widget_%s', $widget_id_base);
@@ -623,17 +710,42 @@ trait WidgetEvents
              * @see WP_Widget::save_settings()
              * @see update_option()
              */
-            add_action($widget_settings_name, function($old_value, $value, $option)
+            add_action($widget_settings_name, function($old_value, $value, $option) use (&$widget_id_base)
             {
                 unset($old_value['_multiwidget'], $value['_multiwidget']);
 
-                $option_name       = $option;
-                $current_settings  = current($value);
-                $previous_settings = current($old_value);
+                $sidebar_id   = wp_unslash($this->sanitizeOption($_POST['sidebar']));
+                $multi_number = (int) $_POST['multi_number'];
 
-                $settings_updated  = array_diff($current_settings, $previous_settings);
+                if (0 === $multi_number && isset($_POST['widget_number'])) {
+                    $multi_number = (int) $_POST['widget_number'];
+                }
+
+                // $_POST['widget-id'] seems to be returning the last widgets in the 
+                // inactive widgets list
+                $widget_id         = sprintf('%s-%s', $widget_id_base, $multi_number);
+
+                $_sidebars_widgets = wp_get_sidebars_widgets();
+                $sidebar_widgets   = (array) $this->getVar($_sidebars_widgets, $sidebar_id, []);
+
+                $option_name       = $option;
+                $widget_position   = array_search($widget_id, $sidebar_widgets, true);
+                $current_settings  = $this->getVar($value,     $multi_number, []);
+                $previous_settings = $this->getVar($old_value, $multi_number, []);
+
+                if (!is_array($previous_settings))
+                    $previous_settings = [];
+
+                if (!is_array($current_settings))
+                    $current_settings = [];
+
+                $settings_updated = $this->arrayDiffAssocRecursive($current_settings, $previous_settings);
 
                 if (empty($settings_updated))
+                    return;
+
+                // Don't run when the widgets are added for the first time 
+                if (!empty($_POST['add_new']) && !$this->isVerboseLoggingEnabled())
                     return;
 
                 /**
@@ -641,20 +753,66 @@ trait WidgetEvents
                  * 
                  * @since 1.0.0
                  * 
-                 * @param array $previous_settings Specifies an array containing the previous 
-                 *                                 widget settings
+                 * @param array $widget_args Specifies list of arguments containing information 
+                 *                           about the modified widget settings
                  * 
-                 * @param array $current_settings  Specifies an array containing the current 
-                 *                                 widget settings
+                 *  - @param string $widget_id       Specifies the widget ID
                  * 
-                 * @param string $option_name      Specifies the widget settings option name
+                 *  - @param string $widget_position Specifies the widget position in the sidebar
+                 * 
+                 *  - @param string $sidebar_id      Specifies the sidebar of the widget
+                 * 
+                 *  - @param array $previous_settings Specifies an array containing the previous 
+                 *                                   widget settings
+                 * 
+                 *  - @param array $current_settings Specifies an array containing the current 
+                 *                                   widget settings
+                 * 
+                 *  - @param array $settings_updated Specifies an array containing only the updated  
+                 *                                   widget settings
+                 * 
+                 *  - @param string $option_name     Specifies the widget settings option name
                  */
                 do_action(
                     'alm_widget_content_modified',
-                    $previous_settings, $current_settings, $option_name
+                    [
+                        'widget_id'         => $widget_id,
+                        'sidebar_id'        => $sidebar_id,
+                        'option_name'       => $option_name,
+                        'widget_position'   => $widget_position,
+                        'settings_updated'  => $settings_updated,
+                        'current_settings'  => $current_settings,
+                        'previous_settings' => $previous_settings,
+                    ]
                 );
 
             }, 10, 3);
         }
+    }
+
+    /**
+     * Get the widget object data
+     * @return string
+     */
+    public function getWidgetObjectData(array $widget_data = [])
+    {
+        return $widget_data;
+    }
+
+    /**
+     * Stringify the widget settings
+     * 
+     * @param  array $_widget_settings List of widget settings
+     * @return string
+     */
+    protected function stringifyWidgetSettings($_widget_settings)
+    {
+        if (empty($_widget_settings)) {
+            $widget_settings = 'No settings';
+        } else {
+            $break_line      = $this->getEventMsgLineBreak();
+            $widget_settings = $this->joinValues($_widget_settings, $break_line);
+        }
+        return $widget_settings;
     }
 }

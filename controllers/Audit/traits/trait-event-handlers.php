@@ -24,6 +24,7 @@ trait EventHandlers_SS
         ALM_EventHandlers\ThemeEvents,
         ALM_EventHandlers\MediaEvents,
         ALM_EventHandlers\WidgetEvents,
+        ALM_EventHandlers\NavMenuEvents,
         ALM_EventHandlers\WP_CoreSettingsEvents;
 }
 
@@ -39,9 +40,7 @@ if ( is_multisite() ) {
     }
 
 } else {
-
     trait EventHandlers_MS { }
-
 }
 
 /**

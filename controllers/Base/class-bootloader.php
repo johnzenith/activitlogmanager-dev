@@ -336,6 +336,7 @@ class BootLoader
         require_once $this->getConfigDir() . 'meta-info.php';
         require_once ALM_MODELS_DIR        . 'traits/trait-db-metadata.php';
         require_once ALM_MODELS_DIR        . 'traits/trait-db-query-metadata.php';
+        require_once ALM_MODELS_DIR        . 'traits/trait-activity-log-table-sql.php';
         require_once ALM_CONTROLLERS_DIR   . 'base/class-php-error-handler.php';
     }
 

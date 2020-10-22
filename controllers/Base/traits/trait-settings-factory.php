@@ -900,7 +900,11 @@ trait SettingsFactory
                 return sanitize_html_class( $value );
 
             case 'url':
+            case 'url_raw':
                 return esc_url_raw( $value );
+
+            case 'url_display':
+                return esc_url( $value );
 
             case 'username':
                 return sanitize_user( $value, false );
@@ -917,6 +921,9 @@ trait SettingsFactory
     }
 
 
+    // ---------------------------------------------------------------------------
+    //                              Settings Helper
+    // ---------------------------------------------------------------------------
 
 
     /**
@@ -929,12 +936,25 @@ trait SettingsFactory
         return true;
     }
 
-
-
-
-    /**********************************************************************
-     * Settings Helper
+    /**
+     * @todo - retrieve the mode from the db table
+     * Check whether the plugin is running in super mode
+     * @return bool
      */
+    public function isStealthMode()
+    {
+        return false;
+    }
+    
+    /**
+     * @todo - retrieve the mode from the db table
+     * Check whether the plugin is running in super mode
+     * @return bool
+     */
+    public function isNormalMode()
+    {
+        return false;
+    }
     
     /**
      * Check whether or not a specific option is set
@@ -958,7 +978,7 @@ trait SettingsFactory
     }
 
     /**
-     * Check whether the plugin settings is refreshed
+     * Check whether the plugin settings is refreshed (reset)
      * 
      * @see SettingsFactory::isSettingEnabled()
      */
@@ -996,12 +1016,31 @@ trait SettingsFactory
     }
 
     /**
-     * Check whether event aggregation is allowed
+     * Check whether event aggregation is allowed.
+     * 
+     * If enabled, we will try to aggregate the log data where possible to reduce 
+     * the number of logs per event.
+     * 
      * @return bool
      */
     public function isLogAggregatable()
     {
         return $this->isSettingEnabled('log_aggregation');
+    }
+
+    /**
+     * Check whether verbose login is allowed.
+     * 
+     * If enabled, we will explicitly log all events that are triggered,
+     * no matter the context.
+     * 
+     * Note: This is the recommended behevior for audit logs
+     * 
+     * @return bool
+     */
+    public function isVerboseLoggingEnabled()
+    {
+        return $this->isSettingEnabled('verbose_logging');
     }
 
     /**
@@ -1154,7 +1193,7 @@ trait SettingsFactory
     }
 
     /**
-     * Check whether we can log failed login attempted password
+     * Check whether we can log the failed login attempted password
      */
     public function canLogFailedLoginAttemptedPassword()
     {

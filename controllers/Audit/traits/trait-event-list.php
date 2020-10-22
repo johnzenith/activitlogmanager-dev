@@ -145,10 +145,39 @@ trait EventList
     protected $maybe_trigger_failed_events = [];
 
     /**
+     * Pre-event data before update
+     * @since 1.0.0
+     * @var array
+     * 
+     * The object data are referenced with their respective object name or type:
+     * 
+     *  [
+     *      'post'     => WP_POST,
+     *      'term'     => WP_Term,
+     *      'taxonomy' => WP_Taxonomy,
+     *      ...
+     *  ]
+     */
+    protected $_pre_event_data = [];
+
+    /**
+     * Specifies list of custom event handlers
+     * @see EventList::canBailOutWithCustomEventHandler()
+     */
+    protected $custom_event_handler_list = [];
+
+    /**
      * Setup the Event List
      */
     protected function __setupEventList()
     {   
+        /**
+         * We want to make sure the global event helper is available to every other 
+         * event instances so that registered event can make used of the 
+         * global event data.
+         */
+        $this->_registerGlobalEventHelpers();
+
         $this->initEventConditionalArgs();
         $this->registerAllEventGroups();
 
@@ -176,9 +205,9 @@ trait EventList
          * Filters the main event message.
          * 
          * This filter is document in:
-         * /activitylogmanager/controllers/Audit/Traits/trait-event-list.php
+         * (@see /activitylogmanager/controllers/Audit/Traits/trait-event-list.php)
          * 
-         * This will prepend the logged-in user role to the event message
+         * This will prepend the logged-in user role to the event message.
          * 
          * @since 1.0.0
          */
@@ -204,6 +233,8 @@ trait EventList
             if ('object_id' === $field) {
                 $label = $this->getVar($this->event_object_id_labels, $event, 'object_id');
             }
+
+            if (is_null($data)) $data = 'Null';
 
             return sprintf('%s: %s', $label, $data);
         }, 98, 4);
@@ -245,7 +276,7 @@ trait EventList
      * This will auto get all traits (trait files) in the 
      * /controllers/audit/event-groups/ directory, with the pattern: trait-*-events.php
      * 
-     * The event group file names are constructed as: trait-event-group-name-events.php
+     * The event group file names are constructed as: trait-[event-group-name]-events.php
      * We are solely interested in the 'event-group-name' form each file name, which we will 
      * then transform into the corresponding event group method as defined in the trait file.
      * 
@@ -264,7 +295,6 @@ trait EventList
             $files = glob(ALM_CONTROLLERS_DIR . 'Audit/event-groups/trait-*-events.php');
         }
 
-        // Initialize the event groups
         foreach ( $files as $file )
         {
             // Strip out 'trait-' and '.php' from the file name
@@ -273,6 +303,7 @@ trait EventList
             // Transform the event group into actual method
             $event_group_method = 'init' . str_replace('-', '', ucwords( $event_group, '-' ));
             
+            // Initialize the event groups
             if (method_exists($this, $event_group_method))
                 $this->$event_group_method();
         }
@@ -329,12 +360,104 @@ trait EventList
     }
 
     /**
+     * Setup the custom event handler list
+     * 
+     * @param array $event Specifies the event data
+     */
+    protected function setupCustomEventHandlerList(array $event = [])
+    {
+        $custom_event_handler = $this->getVar($event, 'bail_event_handler');
+
+        if (empty($custom_event_handler) || !is_array($custom_event_handler)) 
+            return;
+
+        $event_type  = $this->getVar($custom_event_handler, 'event_type');
+        $event_group = $this->getVar($custom_event_handler, 'event_group');
+
+
+        if (empty($event_type) 
+        || empty($event_group) 
+        || !is_string($event_type) 
+        || !is_string($event_group) )
+            return;
+
+        if (!isset($this->custom_event_handler_list[ $event_group ]))
+            $this->custom_event_handler_list[ $event_group ] = [];
+
+        $this->custom_event_handler_list[ $event_group ][ $event_type ] = $event_type;
+    }
+
+    /**
+     * Custom event handlers may be registered for an existing event. So we need 
+     * to make sure that the custom handlers and exiting event are not fired together.
+     * 
+     * For example, the {@see 'after_delete_post'} action hook is fired whenever 
+     * any post data is deleted. In this case, if we register any custom handlers 
+     * by using the 'after_delete_post' action hook, let's say we created an 
+     * 'alm_menu_item_deleted' action hook that will fire whenever a menu item is 
+     * deleted (that is, the 'alm_menu_item_deleted' action hook should fire 
+     * when the post type 'nav_menu_item' is deleted). 
+     * 
+     * So we must bail out from the original event hook to prevent duplicated event.
+     * 
+     * Also, for usage with {@see set_theme_mod()} and the likes, you should specify 
+     * the  option name as $event_group and $event_type_to_bail as the targeted
+     *  option key.
+     * 
+     * @param string $event_group        Specifies the event group to bail corresponding 
+     *                                   event for.
+     * 
+     * @param string $event_type_to_bail Specifies the targeted event type. Basically, this 
+     *                                   is the type of term, post type, etc.
+     * 
+     * @return bool                      Returns true if current event should be bailed out 
+     *                                   because a custom handler already exists for logging 
+     *                                   the event. Otherwise false.
+     */
+    protected function canBailOutWithCustomEventHandler($event_group, $event_type_to_bail = '')
+    {
+        if (empty($event_type_to_bail) || is_countable($event_type_to_bail)) 
+            return false;
+
+        $custom_handlers = $this->getVar($this->custom_event_handler_list, $event_group);
+
+        return isset($custom_handlers[ $event_type_to_bail ]);
+    }
+
+    /**
      * Customized the event main message
      * 
      * @see alm/event/message/save/main filter
      */
     public function customizeEventMainMsg($msg, $event_group, $event_data)
     {
+        $object_id = $this->getEventMsgArg($event_group, 'object_id', 0);
+
+        /**
+         * Format the event message with the specified placeholders: (%s)
+         */
+        if ( false !== strpos($msg, '(%s)') ) {
+            switch($event_group) {
+                case 'user':
+                    $username = $this->getVar(
+                        $this->User->getUserData($object_id, true),
+                        'user_login'
+                    );
+
+                    // Will raw escape the url
+                    $user_profile_url = $this->User->getUserProfileEditUrl($object_id);
+
+                    $user_profile = sprintf(
+                        '<a href="%s">%s</a>',
+                        empty($user_profile_url) ? '#' : $user_profile_url,
+                        $username
+                    );
+
+                    $msg = sprintf($msg, $user_profile);
+                    break;
+            }
+        }
+
         /**
          * Make a fallback for the user login event.
          * 
@@ -442,12 +565,27 @@ trait EventList
             'disable' => false,
 
             /**
-             * Specifies list of options to ignore.
-             * This is useful if custom events are being registered with a specific 
-             * option.
+             * Specifies list of option's events to ignore.
+             * 
+             * This is useful if custom events are being registered for a 
+             * specific option.
              */
             'wp_options'      => [],
             'wp_site_options' => [], // multisite only
+
+            /**
+             * Specifies list of post meta event to ignore.
+             * This is useful in cases where the event has been handled individually.
+             * 
+             * @todo
+             * include the {@see 'object'} when building the post meta list
+             * ============================================================
+             * 'post_meta' => [
+             *      'post_meta_key' => ['object1', 'object2', 'object etc', ]
+             * ]
+             * ============================================================
+             */
+            'wp_post_meta'    => [],
 
             /**
              * Specifies enabled/disabled notifications
@@ -539,6 +677,19 @@ trait EventList
     }
 
     /**
+     * Get event field contexts.
+     * This is used to determine whether a field is created, updated, etc
+     * 
+     * @since 1.0.0
+     * 
+     * @return array
+     */
+    protected function getEventFieldContexts()
+    {
+        return ['new', 'previous', 'intended', 'current', 'requested'];
+    }
+
+    /**
      * Check whether event message argument exists
      * 
      * @see EventList::getEventMsgArg()
@@ -604,6 +755,20 @@ trait EventList
                 $translation_type,
                 $msg
             );
+        }
+
+        /**
+         * Maybe we should format the event message with the given paceholders values
+         */
+        $placeholder_values = $this->getEventMsgArg($event_group, '_placeholder_values', '');
+
+        if (!is_array($placeholder_values))
+            $placeholder_values = [];
+
+        if (false !== strpos($msg, ' (%s)') && !empty($placeholder_values)) {
+            $msg = sprintf($msg, ...$placeholder_values);
+        } else {
+            $msg = str_replace(' (%s)', '', $msg);
         }
 
         return $msg;
@@ -672,7 +837,7 @@ trait EventList
              * {@see blog_id, blog_name, blog_url}
              * 
              * This is because the blog_id, blog_name and blog_url have
-             * specific column in the  event log
+             * specific columns in the event log
              */
             if ($this->is_multisite) {
                 if (in_array($msg_name, $site_details, true))
@@ -706,7 +871,7 @@ trait EventList
                 }
             }
 
-            // Ignored the message if $message_arg is set to '_ignore_'
+            // Ignored the message if $message_arg var is set to '_ignore_'
             if ( $this->isEventMsgFieldInfoIgnorable($message_arg) )
                 continue;
             
@@ -778,6 +943,8 @@ trait EventList
 
                         if ( empty( $lookup_msg ) ) 
                             continue;
+
+                        $info = $lookup_msg;
                     }
                 }
                 else {
@@ -789,18 +956,19 @@ trait EventList
             $info = $this->parseValueForDb($info);
 
             /**
-             * Pluralize the event message name if needed
+             * Pluralize the event message name if needed.
              * 
              * Note: special fields starting with an underscore character are ignored
              */
             $_msg_name = $msg_name;
             if ( !$is_special_field 
-            && isset($event_data['_translate'][$msg_name]) )
-            {
+            && isset($event_data['_translate'][$msg_name]) 
+            && 0 === $this->getEventMsgArg($event_group, '_count_object', 0))
+            {  
                 $pluralize_str = $this->getVar($event_data['_translate'][$msg_name], 'plural_char', ', ');
                 
                 if ( false !== strpos($info, $pluralize_str) ) {
-                    $plural   = $this->getVar($event_data['_translate'][$msg_name], 'plural', $msg_name);
+                    $plural    = $this->getVar($event_data['_translate'][$msg_name], 'plural', $msg_name);
                     $_msg_name = $plural;
                 } else {
                     $singular = $this->getVar($event_data['_translate'][$msg_name], 'singular', '');
@@ -812,7 +980,7 @@ trait EventList
             $list .= $_msg_name . '=' . $info . $this->getEventMsgSeparatorChar();
         }
 
-        return rtrim( $list, $this->getEventMsgSeparatorChar() );
+        return $this->rtrim( $list, $this->getEventMsgSeparatorChar() );
     }
 
     /**
@@ -1068,7 +1236,7 @@ trait EventList
         if (!is_string($msg)) return $msg;
 
         return preg_replace(
-            '/\-{3}([\w ]+)\-{3}/', // trip out the 3 dashes from the event message target
+            '/\-{3}([\w ]+)\-{3}/', // strip out the 3 dashes from the event message target
             "<strong class=\"alm-msg-target\">$1</strong>",
             $msg
         );
@@ -1135,7 +1303,17 @@ trait EventList
         $default_args = [
             'title'       => '',
             'group'       => '',
+            'object'      => '',
             'events'      => [],
+
+            // Whether this event is a WP_Term object.
+            // This is used to prevent duplicated monitoring on terms events
+            'is_term'     => false,
+
+            // Specifies the taxonomy name for the event group.
+            // This is used to prevent duplicated monitoring on taxonomies events
+            'taxonomy'    => false,
+
             'description' => '',
         ];
 
@@ -1147,11 +1325,10 @@ trait EventList
             $object_id_label = $this->getVar($event_list, 'object_id_label', 'object_id');
 
             if ( empty( $events ) ) continue;
-            if ( empty( $events ) ) continue;
 
             $this->setupEventObjectIdLabels($group, $object_id_label);
-            $this->createMainEventList( $group, $events, $event_list );
-            $this->aggregateEventGroups( $group_key, $event_groups );
+            $this->createMainEventList($group, $events, $event_list);
+            $this->aggregateEventGroups($group_key, $event_groups);
         }
     }
 
@@ -1176,15 +1353,23 @@ trait EventList
     protected function aggregateEventGroups( $group_key, array $event_list )
     {
         $title       = $event_list['title'];
-        $group       = $event_list['title'];
+        $group       = $event_list['group'];
+        $object      = $event_list['object'];
+        $is_term     = $event_list['is_term'];
+        $taxonomy    = $event_list['taxonomy'];
         $description = $event_list['description'];
 
-        if ( empty( $title ) || empty( $group ) || empty( $description ) ) return;
+        if ( empty( $title ) || empty( $group ) || empty( $description ) )
+            return;
+
+        if (empty($object)) $object = $group;
 
         $this->aggregated_event_groups[ $group_key ] = [
             'title'       => $title,
             'group'       => $group,
-            'object'      => $group,
+            'object'      => $object,
+            'is_term'     => $is_term,
+            'taxonomy'    => $taxonomy,
             'description' => $description,
         ];
     }
@@ -1198,24 +1383,24 @@ trait EventList
      * @todo
      * 1. check if event is disabled
      * 
-     * -----------------------
+     * ------------------------------------------------------------------------------
      * How events are disabled
-     * -----------------------
+     * ------------------------------------------------------------------------------
      * 1. Get all excluded events
      * 2. Check if the event is in any exclude event list
      * 3. If event is listed in the exclude event list, then set the event 'disable' argument to true
      * 
-     * --------------------------------
+     * ------------------------------------------------------------------------------
      * How disabled events are treated
-     * --------------------------------
+     * ------------------------------------------------------------------------------
      * All registered events are passed to the Auditor Observer controller, 
      * which will then perform the  final step, whether to watch the event or not.
      * If the [disable] event argument is set and evaluates to true, then the 
      * Auditor watcher will ignore such event. Simple!
      * 
-     * ---------------------------------------
+     * ------------------------------------------------------------------------------
      * How event notifications are turned off
-     * ---------------------------------------
+     * ------------------------------------------------------------------------------
      * 1. Get all event IDs with disabled notifications turned on
      * 2. Set the 'notification' argument for those events to false;
      * 3. The Event Notification Handler will then ignore sending notifications if the event 
@@ -1264,12 +1449,14 @@ trait EventList
              * Use the message '_event_id' argument if set
              */
             if (isset($_event['message']['_event_id']) 
+            && is_string($_event['message']['_event_id']) 
             && strlen($_event['message']['_event_id']) >= 4)
             {
                 $event_id = $_event['message']['_event_id'];
             }
 
             // If the event ID is not valid, then we have to skip that event
+            // Note: maximum event length is 5
             if (!is_int($event_id) || 0 >= $event_id || 4 > strlen($event_id)) 
                 continue;
 
@@ -1299,11 +1486,12 @@ trait EventList
             if (true !== $_event['disable'] && !$this->preIsEventValid($event_id, $hook, $_event)) 
                 $_event['disable'] = true;
 
-            /**
-             * If the event specifies any meta field to be ignored, add it to the 
-             * ignorable meta field list, but only when the event has not been disabled
-             */
-            if ( !$_event['disable'] ) {
+            if ( !$_event['disable'] )
+            {
+                /**
+                 * If the event specifies any meta field to be ignored, add it to the 
+                 * ignorable meta field list, but only when the event has not been disabled
+                 */
                 $ignore_meta_fields = $this->getVar($_event, 'ignore_meta_fields');
                 if ( is_array($ignore_meta_fields) && !empty($ignore_meta_fields) ) {
                     /**
@@ -1319,6 +1507,11 @@ trait EventList
                         }
                     }
                 }
+
+                /**
+                 * Setup the custom event handler list
+                 */
+                $this->setupCustomEventHandlerList($_event);
             }
 
             /**
@@ -1327,7 +1520,8 @@ trait EventList
             $_event['notification'] = $this->getEventNotificationState( $event_id, $hook, $_event );
 
             /**
-             * Note: Precedence is giving to the first event if hook is already registered
+             * Note: Precedence is giving to the first registered event if the 
+             * given hook is already registered
              */
 
             // Note: we could have used an array to hold all the event IDs, but we don't want to.
@@ -1403,6 +1597,28 @@ trait EventList
     }
 
     /**
+     * Get the event slug by using the event handler name
+     * 
+     * @param string $event_handler_name Specifies the event handler name. This is 
+     *                                   equivalent to {@see __FUNCTION__ constant} 
+     *                                   when called inside the event handler function.
+     *                                   Also, this return the expected event handler name 
+     *                                   even if the {@see __METHOD__ constant} is used.
+     * 
+     * @return string                    Returns the event handler name.
+     */
+    public function getEventSlugByEventHandlerName($event_handler_name = '')
+    {
+        if (empty($event_handler_name)) return '';
+
+        // Maybe the __METHOD__ constant has been used
+        $split_event_handler_name = explode('::', $event_handler_name);
+        $_event_handler_name      = end($split_event_handler_name);
+
+        return preg_replace('/(_event)$/', '', $_event_handler_name);
+    }
+
+    /**
      * Get the event data given the event ID
      * 
      * @since 1.0.0
@@ -1428,6 +1644,110 @@ trait EventList
     }
 
     /**
+     * Get metadata previous value helper
+     * @see get_metadata()
+     */
+    private function _doMetadataPreviousValueHelper( $meta_type )
+    {
+        $self = $this;
+
+        add_action("update_{$meta_type}_meta", function( $meta_id, $object_id, $meta_key, $meta_value ) use (&$self, &$meta_type)
+        {
+            // Get the previous value
+            $prev_value = get_metadata_raw( $meta_type, $object_id, $meta_key );
+            if ( is_countable($prev_value ) && count( $prev_value ) === 1 ) {
+                if ($prev_value[0] === $meta_value ) {
+                    return;
+                }
+                $prev_value = $prev_value[0];
+            }
+
+            if ($prev_value != $meta_value) {
+                $self->_pre_event_data[$object_id][$meta_key] = $prev_value;
+            }
+        }, 10, 4);
+    }
+
+    /**
+     * Register global event helpers.
+     * This is used to retrieve an event data before it is updated.
+     * By event data, we mean things such as: post data, comment data, menu data, etc.
+     * 
+     * -------------------
+     * Naming conventions:
+     * -------------------
+     * 
+     * For any previous event data, it will be named the corresponding 
+     * object slug. For example: the post event object before update will be named as 'post', 
+     * also 'comment', 'term', etc.
+     * 
+     * While for event related data, it will be named the corresponding hook name like so:
+     * the {@see wp_insert_post} action hook will be named 'wp_insert_post' and vice versa.
+     */
+    private function _registerGlobalEventHelpers()
+    {
+        $self = $this;
+
+        /**
+         * Get the insert post object.
+         * This is useful for event handlers that is connected with the wp_post table 
+         * so that the handlers can retrieve its corresponding post data.
+         * 
+         * @see wp_insert_post()
+         * 
+         * @todo - maybe this should be removed
+         */
+        add_action('wp_insert_post', function($post_ID, $post, $update) use (&$self) {
+            $self->_pre_event_data['wp_insert_post'] = [
+                'ID'     => $post_ID,
+                'post'   => $post,
+                'update' => $update,
+            ];
+        }, 10, 3);
+
+        /**
+         * Get the post data before an update.
+         * 
+         * Note: This uses the {@see post_updated} action hook to retrieve the post data 
+         * before it is updated.
+         */
+        add_action('post_updated', function($post_ID, $post_after, $post_before) use (&$self) {
+            $self->_pre_event_data['post'] = $post_before;
+        }, 10, 3);
+
+        /**
+         * Get metadata values before they are updated
+         */
+        $meta_types = ['post', 'comment', 'term', 'user'];
+
+        foreach ($meta_types as $meta_type)
+        {
+            $this->_doMetadataPreviousValueHelper($meta_type);
+        }
+
+        /**
+         * Get the nav menu previous location before it is updated
+         */
+        if (!empty($this->current_theme_mods) && is_array($this->current_theme_mods)) {
+            foreach ($this->current_theme_mods as $name => $value) {
+                
+            }
+        }
+        add_filter('pre_set_theme_mod_nav_menu_locations', function ($value, $old_value) {
+        }, 10, 3);
+    }
+
+    /**
+     * Get the event data before to update
+     * @param  string     $name Specifies the type of event
+     * @return mixed|null       The pre-event data on success. Otherwise null.
+     */
+    protected function _getPreEventData($name)
+    {
+        return $this->getVar($this->_pre_event_data, $name, null);
+    }
+
+    /**
      * Setup the active event data override
      * 
      * @since 1.0.0
@@ -1443,7 +1763,10 @@ trait EventList
     }
 
     /**
-     * Check whether we should ignore a specific meta field if an event is active
+     * Check whether we should ignore a specific meta field if an event is active.
+     * 
+     * Note: This is only applicable when the {@see $this->isVerboseLoggingEnabled()} 
+     * settings helper returns false.
      * 
      * @since 1.0.0
      * 
@@ -1452,7 +1775,8 @@ trait EventList
      */
     public function isActiveMetaFieldEventIgnorable( $meta_field = '' )
     {
-        return isset($this->ignorable_meta_field_event_list[ $meta_field ]);
+        return !$this->isVerboseLoggingEnabled() 
+            && isset($this->ignorable_meta_field_event_list[ $meta_field ]);
     }
 
     /**
@@ -1507,7 +1831,7 @@ trait EventList
      */
     protected function isActiveEventLogIncrementValid( $user_id = 0, $object_id = 0 )
     {
-        if ( ! $this->activeEventHasErrorFlag() ) 
+        if (!$this->activeEventHasErrorFlag() || !$this->isLogAggregatable()) 
             return false;
 
         $event_successor = $this->getVar( $this->active_event, 'event_successor' );
@@ -1522,10 +1846,10 @@ trait EventList
             $event_ID = (int) $this->getVar( $this->active_event, 'event_successor' );
         }
 
-        if ( $event_ID < 1 )
+        if ($event_ID < 1)
             return false;
 
-        if ( $event_ID == $this->active_event_ID )
+        if ($event_ID == $this->active_event_ID)
             return false;
 
         /**
@@ -1679,7 +2003,7 @@ trait EventList
         }
 
         /**
-         * Lets auto get the event ID and slug if it's possible
+         * Auto get the event ID and slug if it's possible
          */
 
         if (empty($method_name))

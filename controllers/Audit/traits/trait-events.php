@@ -25,6 +25,7 @@ trait AuditableEvents_SS
         ALM_EventGroups\ThemeEvents,
         ALM_EventGroups\MediaEvents,
         ALM_EventGroups\WidgetEvents,
+        ALM_EventGroups\NavMenuEvents,
         ALM_EventGroups\WP_CoreSettingsEvents,
         ALM_Events\EventConditionalParser,
         ALM_Events\EventList;
@@ -43,9 +44,7 @@ if ( is_multisite() ) {
     }
 
 } else {
-
     trait AuditableEvents_MS { }
-
 }
 
 /**

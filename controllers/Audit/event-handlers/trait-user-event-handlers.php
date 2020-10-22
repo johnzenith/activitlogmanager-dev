@@ -351,6 +351,29 @@ trait UserEvents
         $this->setupUserEventArgs( compact( 'object_id' ) );
         $this->LogActiveEvent( 'user', __METHOD__ );
     }
+
+    /**
+     * Fires after the 'About the User' settings table on the 'Edit User' screen.
+     * @see edit_user_profile action hook
+     */
+    public function edit_user_profile_event($profileuser)
+    {
+        $object_id = $this->getVar($profileuser, 'ID', 0);
+        $this->setupUserEventArgs(compact('object_id'));
+        $this->LogActiveEvent('user', __METHOD__);
+    }
+
+    /**
+     * Fires after the 'About the User' settings table on the 'Edit User' screen.
+     * The action only fires if the current user is editing their own profile.
+     * @see show_user_profile action hook
+     */
+    public function show_user_profile_event($profileuser)
+    {
+        $object_id = $this->getVar($profileuser, 'ID', 0);
+        $this->setupUserEventArgs(compact('object_id'));
+        $this->LogActiveEvent('user', __METHOD__);
+    }
     
     /**
      * Fires before user profile update errors are returned.
@@ -670,6 +693,8 @@ trait UserEvents
                         $callback_args
                     );
                 }
+
+                $user_profile_update_hook_alias = ''; // Prevent event duplication
             }
         } // foreach ( $user_table_fields as $user_table_field )
 
@@ -905,7 +930,7 @@ trait UserEvents
         if ( $this->isUserProfileDataAggregationActive() ) 
             return;
 
-        $this->setupUserEventArgs( compact( 'object_id', 'user_url_new', 'user_url_previous' ) );
+        $this->setupUserEventArgs(compact( 'object_id', 'user_url_new', 'user_url_previous' ));
         $this->LogActiveEvent('user', __METHOD__);
     }
 

@@ -147,32 +147,32 @@ trait WP_CoreSettingsEvents
             'options'     => [
                 'WPLANG' => [
                     'label'       => 'Site language',
-                    'event_id'    => 5081,
+                    'event_id'    => 5251,
                     'severity'    => 'critical',
                 ],
                 'blogname' => [
                     'label'       => 'Site title',
-                    'event_id'    => 5082,
+                    'event_id'    => 5252,
                     'severity'    => 'notice',
                 ],
                 'gmt_offset' => [
                     'label'       => 'Timezone',
-                    'event_id'    => 5083,
+                    'event_id'    => 5253,
                     'severity'    => 'notice',
                 ],
                 'date_format' => [
                     'label'       => 'Date format',
-                    'event_id'    => 5084,
+                    'event_id'    => 5254,
                     'severity'    => 'notice',
                 ],
                 'time_format' => [
                     'label'       => 'Time format',
-                    'event_id'    => 5085,
+                    'event_id'    => 5255,
                     'severity'    => 'notice',
                 ],
                 'start_of_week' => [
                     'label'       => 'Start of week',
-                    'event_id'    => 5086,
+                    'event_id'    => 5256,
                     'severity'    => 'notice',
                 ],
                 // 'timezone_string', // currently not used, mapped to 'gmt_offset'
@@ -180,34 +180,34 @@ trait WP_CoreSettingsEvents
                     '_main'            => 'Requested a change of the administration email address',
                     'label'            => 'Administration email address',
                     'title'            => 'Requested a change of the administration email address',
-                    'event_id'         => 5087,
+                    'event_id'         => 5257,
                     'severity'         => 'critical',
                     '_requested_value' => true,
                 ],
                 'admin_email' => [
                     'label'       => 'Adminstration email address',
-                    'event_id'    => 5088,
+                    'event_id'    => 5258,
                     'severity'    => 'critical',
                 ],
                 'blogdescription' => [
                     'label'       => 'Tagline',
-                    'event_id'    => 5089,
+                    'event_id'    => 5259,
                     'severity'    => 'notice',
                 ],
                 'siteurl' => [
                     'label'       => 'WordPress address (URL)',
-                    'event_id'    => 5090,
+                    'event_id'    => 5260,
                     'severity'    => 'critical',
                     'screen'      => ['admin', 'network'],
                 ],
                 'home' => [
                     'label'       => 'Site address (URL)',
-                    'event_id'    => 5091,
+                    'event_id'    => 5261,
                     'severity'    => 'critical',
                 ],
                 'users_can_register' => [
                     'label'       => 'Membership',
-                    'event_id'    => 5092,
+                    'event_id'    => 5262,
                     'severity'    => 'critical',
                     'value_contexts' => [
                         0 => 'Disabled',
@@ -216,12 +216,12 @@ trait WP_CoreSettingsEvents
                 ],
                 'default_role' => [
                     'label'       => 'New user default role',
-                    'event_id'    => 5093,
+                    'event_id'    => 5263,
                     'severity'    => 'critical',
                 ],
                 'bsf_analytics_optin' => [
                     'label'       => 'Usage tracking',
-                    'event_id'    => 5094,
+                    'event_id'    => 5264,
                     'severity'    => 'critical',
                     'value_contexts' => [
                         0 => 'Disabled',
@@ -241,7 +241,7 @@ trait WP_CoreSettingsEvents
                 'default_pingback_flag' => [
                     'label'          => 'Attempt to notify any blogs linked to from the post',
                     'section'        => 'Default post settings',
-                    'event_id'       => 5095,
+                    'event_id'       => 5265,
                     'severity'       => 'notice',
                     'value_contexts' => [
                         0 => 'Disabled',
@@ -251,7 +251,7 @@ trait WP_CoreSettingsEvents
                 'default_ping_status' => [
                     'label'          => 'Allow link notifications from other blogs (pingbacks and trackbacks) on new posts',
                     'section'        => 'Default post settings',
-                    'event_id'       => 5096,
+                    'event_id'       => 5266,
                     'severity'       => 'notice',
                     'value_contexts' => [
                         0 => 'Disabled',
@@ -261,7 +261,7 @@ trait WP_CoreSettingsEvents
                 'default_comment_status' => [
                     'label'          => 'Allow people to submit comments on new posts',
                     'section'        => 'Default post settings',
-                    'event_id'       => 5097,
+                    'event_id'       => 5267,
                     'severity'       => 'notice',
                     'value_contexts' => [
                         0 => 'Disabled',
@@ -271,7 +271,7 @@ trait WP_CoreSettingsEvents
                 'require_name_email' => [
                     'label'          => 'Comment author must fill out name and email',
                     'section'        => 'Other comment settings',
-                    'event_id'       => 5098,
+                    'event_id'       => 5268,
                     'severity'       => 'notice',
                     'value_contexts' => [
                         0 => 'Disabled',
@@ -281,7 +281,7 @@ trait WP_CoreSettingsEvents
                 'comment_registration' => [
                     'label'          => 'Users must be registered and logged in to comment',
                     'section'        => 'Other comment settings',
-                    'event_id'       => 5099,
+                    'event_id'       => 5269,
                     'severity'       => 'notice',
                     'value_contexts' => [
                         0 => 'Disabled',
@@ -291,7 +291,7 @@ trait WP_CoreSettingsEvents
                 'close_comments_for_old_posts' => [
                     'label'          => 'Automatically close comments on posts older',
                     'section'        => 'Other comment settings',
-                    'event_id'       => 5100,
+                    'event_id'       => 5270,
                     'severity'       => 'notice',
                     'value_contexts' => [
                         0 => 'Disabled',
@@ -301,13 +301,13 @@ trait WP_CoreSettingsEvents
                 'close_comments_days_old' => [
                     'label'    => 'Automatically close comments on posts older than days',
                     'section'  => 'Other comment settings',
-                    'event_id' => 5101,
+                    'event_id' => 5271,
                     'severity' => 'notice',
                 ],
                 'show_comments_cookies_opt_in' => [
                     'label'          => 'Show comments cookies opt-in checkbox',
                     'section'        => 'Other comment settings',
-                    'event_id'       => 5102,
+                    'event_id'       => 5272,
                     'severity'       => 'notice',
                     'value_contexts' => [
                         0 => 'Disabled',
@@ -317,7 +317,7 @@ trait WP_CoreSettingsEvents
                 'thread_comments' => [
                     'label'          => 'Enable threaded (nested) comments',
                     'section'        => 'Other comment settings',
-                    'event_id'       => 5103,
+                    'event_id'       => 5273,
                     'severity'       => 'notice',
                     'value_contexts' => [
                         0 => 'Disabled',
@@ -327,7 +327,7 @@ trait WP_CoreSettingsEvents
                 'thread_comments_depth' => [
                     'label'          => 'Enable threaded (nested) comments levels deep',
                     'section'        => 'Other comment settings',
-                    'event_id'       => 5104,
+                    'event_id'       => 5274,
                     'severity'       => 'notice',
                     'value_contexts' => [
                         0 => 'Disabled',
@@ -337,7 +337,7 @@ trait WP_CoreSettingsEvents
                 'page_comments' => [
                     'label'          => 'Break comments into pages with',
                     'section'        => 'Other comment settings',
-                    'event_id'       => 5105,
+                    'event_id'       => 5275,
                     'severity'       => 'notice',
                     'value_contexts' => [
                         0 => 'Disabled',
@@ -347,25 +347,25 @@ trait WP_CoreSettingsEvents
                 'comments_per_page' => [
                     'label'     => 'Top level comments per page',
                     'section'   => 'Other comment settings',
-                    'event_id'  => 5106,
+                    'event_id'  => 5276,
                     'severity'  => 'notice',
                 ],
                 'default_comments_page' => [
                     'label'     => 'Comment page displayed by default',
                     'section'   => 'Other comment settings',
-                    'event_id'  => 5107,
+                    'event_id'  => 5277,
                     'severity'  => 'notice',
                 ],
                 'comment_order' => [
                     'label'     => 'Comments should be displayed with',
                     'section'   => 'Other comment settings',
-                    'event_id'  => 5108,
+                    'event_id'  => 5278,
                     'severity'  => 'notice',
                 ],
                 'comments_notify' => [
                     'label'          => 'Email me whenever anyone posts a comment',
                     'section'        => 'Email me whenever',
-                    'event_id'       => 5109,
+                    'event_id'       => 5279,
                     'severity'       => 'notice',
                     'value_contexts' => [
                         0 => 'Disabled',
@@ -375,7 +375,7 @@ trait WP_CoreSettingsEvents
                 'moderation_notify' => [
                     'label'          => 'Email me whenever a comment is held for moderation',
                     'section'        => 'Email me whenever',
-                    'event_id'       => 5110,
+                    'event_id'       => 5280,
                     'severity'       => 'notice',
                     'value_contexts' => [
                         0 => 'Disabled',
@@ -385,7 +385,7 @@ trait WP_CoreSettingsEvents
                 'comment_moderation' => [
                     'label'          => 'Comment must be manually approved',
                     'section'        => 'Before a comment appears',
-                    'event_id'       => 5111,
+                    'event_id'       => 5281,
                     'severity'       => 'notice',
                     'value_contexts' => [
                         0 => 'Disabled',
@@ -395,7 +395,7 @@ trait WP_CoreSettingsEvents
                 'comment_previously_approved' => [
                     'label'          => 'Comment author must have a previously approved comment',
                     'section'        => 'Before a comment appears',
-                    'event_id'       => 5112,
+                    'event_id'       => 5282,
                     'severity'       => 'notice',
                     'value_contexts' => [
                         0 => 'Disabled',
@@ -405,25 +405,25 @@ trait WP_CoreSettingsEvents
                 'comment_max_links' => [
                     'label'    => 'Hold a comment in the queue if it contains links',
                     'section'  => 'Comment moderation',
-                    'event_id' => 5113,
+                    'event_id' => 5283,
                     'severity' => 'notice',
                 ],
                 'moderation_keys' => [
                     'label'    => 'Comment moderation keys',
                     'section'  => 'Comment moderation',
-                    'event_id' => 5114,
+                    'event_id' => 5284,
                     'severity' => 'notice',
                 ],
                 'disallowed_keys' => [
                     'label'    => 'Disallowed Comment Keys',
                     'section'  => 'Comment moderation',
-                    'event_id' => 5115,
+                    'event_id' => 5285,
                     'severity' => 'notice',
                 ],
                 'show_avatars' => [
                     'label'          => 'Show avatars',
                     'section'        => 'Avatars',
-                    'event_id'       => 5116,
+                    'event_id'       => 5286,
                     'severity'       => 'notice',
                     'value_contexts' => [
                         0 => 'Disabled',
@@ -433,13 +433,13 @@ trait WP_CoreSettingsEvents
                 'avatar_rating' => [
                     'label'    => 'Avatar maximum rating',
                     'section'  => 'Avatars',
-                    'event_id' => 5117,
+                    'event_id' => 5287,
                     'severity' => 'notice',
                 ],
                 'avatar_default' => [
                     'label'    => 'Default avatar',
                     'section'  => 'Avatars',
-                    'event_id' => 5118,
+                    'event_id' => 5288,
                     'severity' => 'notice',
                 ],
             ]
@@ -455,19 +455,19 @@ trait WP_CoreSettingsEvents
                 'thumbnail_size_w' => [
                     'label'    => 'Thumbnail size width',
                     'section'  => 'Image sizes (thumbnail size)',
-                    'event_id' => 5119,
+                    'event_id' => 5289,
                     'severity' => 'notice',
                 ],
                 'thumbnail_size_h' => [
                     'label'    => 'Thumbnail size height',
                     'section'  => 'Image sizes (thumbnail size)',
-                    'event_id' => 5120,
+                    'event_id' => 5290,
                     'severity' => 'notice',
                 ],
                 'thumbnail_crop' => [
                     'label'          => 'Crop thumbnail to exact dimensions',
                     'section'        => 'Image sizes (thumbnail size)',
-                    'event_id'       => 5121,
+                    'event_id'       => 5291,
                     'severity'       => 'notice',
                     'value_contexts' => [
                         0 => 'Disabled',
@@ -477,31 +477,31 @@ trait WP_CoreSettingsEvents
                 'medium_size_w' => [
                     'label'    => 'Thumbnail medium size max width',
                     'section'  => 'Image sizes (medium size)',
-                    'event_id' => 5122,
+                    'event_id' => 5292,
                     'severity' => 'notice',
                 ],
                 'medium_size_h' => [
                     'label'    => 'Thumbnail medium size max height',
                     'section'  => 'Image sizes (medium size)',
-                    'event_id' => 5123,
+                    'event_id' => 5293,
                     'severity' => 'notice',
                 ],
                 'large_size_w' => [
                     'label'    => 'Thumbnail large size max width',
                     'section'  => 'Image sizes (large size)',
-                    'event_id' => 5124,
+                    'event_id' => 5294,
                     'severity' => 'notice',
                 ],
                 'large_size_h' => [
                     'label'    => 'Thumbnail large size max height',
                     'section'  => 'Image sizes (large size)',
-                    'event_id' => 5125,
+                    'event_id' => 5295,
                     'severity' => 'notice',
                 ],
                 'uploads_use_yearmonth_folders' => [
                     'label'          => 'Organize my uploads into month- and year-based folders',
                     'section'        => 'Uploading files',
-                    'event_id'       => 5126,
+                    'event_id'       => 5296,
                     'severity'       => 'notice',
                     'value_contexts' => [
                         0 => 'Disabled',
@@ -511,28 +511,28 @@ trait WP_CoreSettingsEvents
                 'upload_path' => [
                     'label'    => 'Store uploads in this folder',
                     'section'  => 'Uploading files',
-                    'event_id' => 5127,
+                    'event_id' => 5297,
                     'severity' => 'notice',
                 ],
                 'upload_url_path' => [
                     'label'    => 'Full URL path to files',
                     'section'  => 'Uploading files',
-                    'event_id' => 5128,
+                    'event_id' => 5298,
                     'severity' => 'notice',
                 ],
                 'image_default_size' => [
                     'label'    => 'Image default size',
-                    'event_id' => 5129,
+                    'event_id' => 5299,
                     'severity' => 'notice',
                 ],
                 'image_default_align' => [
                     'label'    => 'Image default align',
-                    'event_id' => 5130,
+                    'event_id' => 5300,
                     'severity' => 'notice',
                 ],
                 'image_default_link_type' => [
                     'label'    => 'Image default link type',
-                    'event_id' => 5131,
+                    'event_id' => 5301,
                     'severity' => 'notice',
                 ],
             ]
@@ -547,42 +547,42 @@ trait WP_CoreSettingsEvents
             'options'     => [
                 'show_on_front' => [
                     'label'    => 'Your homepage displays',
-                    'event_id' => 5132,
+                    'event_id' => 5302,
                     'severity' => 'notice',
                 ],
                 'page_on_front' => [
                     'label'    => 'Homepage (Page ID)',
-                    'event_id' => 5133,
+                    'event_id' => 5303,
                     'severity' => 'notice',
                 ],
                 'page_for_posts' => [
                     'label'    => 'Posts page (Page ID)',
-                    'event_id' => 5134,
+                    'event_id' => 5304,
                     'severity' => 'notice',
                 ],
                 'posts_per_page' => [
                     'label'    => 'Blog pages show at most',
-                    'event_id' => 5135,
+                    'event_id' => 5305,
                     'severity' => 'notice',
                 ],
                 'posts_per_rss' => [
                     'label'    => 'Syndication feeds show the most recent items',
-                    'event_id' => 5136,
+                    'event_id' => 5306,
                     'severity' => 'notice',
                 ],
                 'rss_use_excerpt' => [
                     'label'    => 'For each post in a feed, includes',
-                    'event_id' => 5137,
+                    'event_id' => 5307,
                     'severity' => 'notice',
                 ],
                 'blog_public' => [
                     'label'    => 'Search engine visibility',
-                    'event_id' => 5138,
+                    'event_id' => 5308,
                     'severity' => 'critical',
                 ],
                 'blog_charset' => [
                     'label'    => 'Encoding for pages and feeds',
-                    'event_id' => 5139,
+                    'event_id' => 5309,
                     'severity' => 'notice',
                 ],
             ]
@@ -597,64 +597,64 @@ trait WP_CoreSettingsEvents
             'options'     => [
                 'default_category' => [
                     'label'    => 'Default post category',
-                    'event_id' => 5140,
+                    'event_id' => 5310,
                     'severity' => 'notice',
                 ],
                 'default_post_format' => [
                     'label'    => 'Default post format',
-                    'event_id' => 5141,
+                    'event_id' => 5311,
                     'severity' => 'notice',
                 ],
                 'default_email_category' => [
                     'label'    => 'Default mail category',
-                    'event_id' => 5142,
+                    'event_id' => 5312,
                     'severity' => 'notice',
                 ],
                 'default_link_category' => [
                     'label'    => 'Default link category',
-                    'event_id' => 5143,
+                    'event_id' => 5313,
                     'severity' => 'critical',
                 ],
                 'mailserver_url' => [
                     'label'    => 'Mail server',
                     'section'  => 'Post via email',
-                    'event_id' => 5144,
+                    'event_id' => 5314,
                     'severity' => 'critical',
                 ],
                 'mailserver_port' => [
                     'label'    => 'Mail server port',
                     'section'  => 'Post via email',
-                    'event_id' => 5145,
+                    'event_id' => 5315,
                     'severity' => 'critical',
                 ],
                 'mailserver_login' => [
                     'label'    => 'Mail server login name',
                     'section'  => 'Post via email',
-                    'event_id' => 5146,
+                    'event_id' => 5316,
                     'severity' => 'critical',
                 ],
                 'mailserver_pass' => [
                     'label'    => 'Mail server password',
                     'section'  => 'Post via email',
-                    'event_id' => 5147,
+                    'event_id' => 5317,
                     'severity' => 'critical',
                 ],
                 'ping_sites' => [
                     'label'    => 'Ping sites',
                     'section'  => 'Update Services',
-                    'event_id' => 5148,
+                    'event_id' => 5318,
                     'severity' => 'critical',
                 ],
                 'use_smilies' => [
                     'label'    => 'Use smilies',
                     'section'  => 'Formatting',
-                    'event_id' => 5149,
+                    'event_id' => 5319,
                     'severity' => 'notice',
                 ],
                 'use_balanceTags' => [
                     'label'    => 'WordPress should correct invalidly nested XHTML automatically',
                     'section'  => 'Formatting',
-                    'event_id' => 5150,
+                    'event_id' => 5320,
                     'severity' => 'critical',
                 ],
             ]
@@ -666,7 +666,7 @@ trait WP_CoreSettingsEvents
             'options'     => [
                 'wp_page_for_privacy_policy' => [
                     'label'    => 'Privacy policy page',
-                    'event_id' => 5151,
+                    'event_id' => 5321,
                     'severity' => 'notice',
                 ]
             ]
@@ -679,19 +679,19 @@ trait WP_CoreSettingsEvents
                 'permalink_structure' => [
                     'label'    => 'Permalink structure',
                     'section'  => 'Common settings',
-                    'event_id' => 5152,
+                    'event_id' => 5322,
                     'severity' => 'notice',
                 ],
                 'category_base' => [
                     'label'    => 'Category base',
                     'section'  => 'Optional',
-                    'event_id' => 5153,
+                    'event_id' => 5323,
                     'severity' => 'notice',
                 ],
                 'tab_base' => [
                     'label'    => 'Tag base',
                     'section'  => 'Optional',
-                    'event_id' => 5154,
+                    'event_id' => 5324,
                     'severity' => 'notice',
                 ],
             ]

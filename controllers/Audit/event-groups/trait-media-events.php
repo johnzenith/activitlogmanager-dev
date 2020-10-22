@@ -48,7 +48,7 @@ trait MediaEvents
                     // 'logged_in_user_caps' => ['edit_post'], // Only possible when post is active
 
                     'message' => [
-                        '_main'                     => 'Attached a media to a post',
+                        '_main'                     => 'Attached a media (%s) to a post (%s)',
 
                         '_space_start'              => '',
                         'attachment_id'             => ['object_id'],
@@ -82,7 +82,7 @@ trait MediaEvents
                     // 'logged_in_user_caps' => ['edit_post'], // Only possible when post is active
 
                     'message' => [
-                        '_main'                     => 'Detached a media from a post',
+                        '_main'                     => 'Detached a media (%s) from a post (%s)',
 
                         '_space_start'              => '',
                         'attachment_id'             => ['object_id'],

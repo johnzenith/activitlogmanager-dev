@@ -218,6 +218,12 @@ function alm_get_default_settings()
 	// Specifies whether to aggregate log or not
 	$settings['log_aggregation'] = alm_set_running_modes();
 
+	// Specifies whether to allow verbose logging or not
+	// However, some event object log cannot be simplified.
+	// For example, the posts, comments, terms, taxomies events are logged in 
+	// verbose form.
+	$settings['verbose_logging'] = alm_set_running_modes([]);
+
 	// Specifies whether error pages request logging is enabled
 	$settings['error_pages'] = alm_set_running_modes();
 

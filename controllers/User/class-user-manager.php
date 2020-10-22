@@ -509,7 +509,7 @@ class UserManager extends \ALM\Controllers\Base\PluginFactory
     public function getAdditionalUserCaps( $user_id = 0 )
     {
         $user = $this->getUserData( $user_id );
-        if (!isset($user->caps) || empty($user->caps) )
+        if (!isset($user->caps) || empty($user->caps) ) 
             return '';
 
         $output = '';

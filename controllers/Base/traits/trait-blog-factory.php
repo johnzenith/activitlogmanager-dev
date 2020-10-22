@@ -98,6 +98,22 @@ trait BlogFactory
     protected $network_data = null;
 
     /**
+     * Specifies the current theme
+     * @var string
+     * @since 1.0.0
+     */
+    protected $current_theme = '';
+
+    /**
+     * Specifies the current theme's modifications
+     * @var array|null
+     * @since 1.0.0
+     * 
+     * @see get_theme_mods()
+     */
+    protected $current_theme_mods = [];
+
+    /**
      * Setup the Blog Factory data
      * 
      * @since 1.0.0
@@ -113,6 +129,8 @@ trait BlogFactory
         $this->network_data          = is_null( $cache ) ? $this->getNetworkData() : $cache->network_data;
         $this->main_site_ID          = is_null( $cache ) ? get_main_site_id() : $cache->main_site_ID;
         $this->is_main_site          = is_null( $cache ) ? is_main_site() : $cache->is_main_site;
+        $this->current_theme         = $this->sanitizeOption(get_option('stylesheet'));
+        $this->current_theme_mods    = get_theme_mods();
         $this->is_user_admin         = is_user_admin();
         $this->current_blog_ID       = $this->blog_data->ID;
         $this->is_network_admin      = is_network_admin();

@@ -63,7 +63,7 @@ trait SuperAdminEvents
                     ],
 
                     'message' => [
-                        '_main' => 'Tried to grant the Super Admin Privilege to a user, but the request was unsuccessful.',
+                        '_main' => 'Tried to grant the Super Admin Privilege to a user (%s), but the request was unsuccessful.',
 
                         '_space_start'             => '',
                         'roles'                    => ['roles'],
@@ -122,7 +122,7 @@ trait SuperAdminEvents
                     ],
 
                     'message' => [
-                        '_main'                    => 'Granted the Super Admin Privilege to a user.',
+                        '_main'                    => 'Granted the Super Admin Privilege to a user (%s).',
 
                         '_space_start'             => '',
                         'previous_role'            => ['role_previous'],
@@ -173,7 +173,7 @@ trait SuperAdminEvents
                     ],
 
                     'message' => [
-                        '_main' => 'Tried to revoke the Super Admin Privilege from a user, but the request was unsuccessful.',
+                        '_main' => 'Tried to revoke the Super Admin Privilege from a user (%s), but the request was unsuccessful.',
 
                         '_space_start'             => '',
                         'roles'                    => ['roles'],
@@ -225,7 +225,7 @@ trait SuperAdminEvents
                     ],
 
                     'message' => [
-                        '_main'                    => 'Revoked the Super Admin Privilege from a user.',
+                        '_main'                    => 'Revoked the Super Admin Privilege from a user (%s).',
 
                         '_space_start'             => '',
                         'previous_role'            => ['role_previous'],

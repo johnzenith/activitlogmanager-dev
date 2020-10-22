@@ -104,6 +104,7 @@ trait TableSchema
             user_data longtext NOT NULL DEFAULT '',
             object_data longtext NOT NULL DEFAULT '',
             user_login varchar(60) NOT NULL DEFAULT '',
+            user_email varchar(90) NOT NULL DEFAULT '',
             user_role varchar(200) NOT NULL DEFAULT '',
             first_name varchar(90) NOT NULL DEFAULT '',
             last_name varchar(90) NOT NULL DEFAULT '',

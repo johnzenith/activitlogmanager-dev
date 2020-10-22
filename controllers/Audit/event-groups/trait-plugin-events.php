@@ -1,6 +1,8 @@
 <?php
 namespace ALM\Controllers\Audit\Events\Groups;
 
+use WP_Error;
+
 // Prevent direct file access
 defined('ALM_PLUGIN_FILE') || exit('You are not allowed to do this on your own.');
 
@@ -34,6 +36,14 @@ trait PluginEvents
      * @var array
      */
     protected $current_plugin_data = [];
+
+    /**
+     * Holds the plugin previous data before an upgrade.
+     * Useful when upgrading a plugin with a zip package.
+     * @since 1.0.0
+     * @var array
+     */
+    protected $previous_plugin_info = [];
 
     /**
      * Holds the plugins' version before an upgrade/update process is run.
@@ -287,7 +297,21 @@ trait PluginEvents
             if (empty($hook_extra))
                 return $options;
 
-            $action = $self->getVar($hook_extra, 'action');
+                $action = $self->getVar($hook_extra, 'action');
+                $package = $self->getVar($options, 'package');
+
+            /**
+             * Get the plugin data before it is upgraded by using an uploaded zip package
+             */
+            if (!empty($package)) {
+                $package_file = pathinfo(wp_normalize_path($package), PATHINFO_FILENAME);
+
+                $destination  = wp_normalize_path(trailingslashit(WP_PLUGIN_DIR) . $package_file);
+                $plugin_data  = $this->getPluginDataByRemoteDestination($destination);
+                $plugin_name  = $this->getVar($plugin_data, 'Name', basename($package));
+
+                $this->previous_plugin_info[$plugin_name] = $plugin_data;
+            }
 
             /**
              * Currently, the $hook_extra arguments may not contain the $type and $action 
@@ -381,7 +405,85 @@ trait PluginEvents
                 return;
             }
 
-            do_action('alm_plugin_installation_failed', $api, $file_upload, $hook_extra);
+            $upgrader_skin   = $this->getVar($upgrader, 'skin');
+            $wp_error        = $this->getVar($upgrader_skin, 'result');
+
+            $new_plugin_data = $this->getVar($upgrader, 'new_plugin_data', []);
+            if (empty($new_plugin_data)) {
+                $new_plugin_data = '_ignore_';
+            }
+
+            $_placeholder_values   = [];
+            $installed_plugin_data = '_ignore_';
+            if (is_wp_error($wp_error)) {
+                $folder                = $wp_error->get_error_data('folder_exists');
+                $installed_plugin_data = $this->getPluginDataByRemoteDestination($folder);
+
+                if (empty($installed_plugin_data)) {
+                    $installed_plugin_data = 'Not available';
+                } else {
+                    $_placeholder_values = $this->getVar($installed_plugin_data, 'Name', '');
+
+                    if (empty($_placeholder_values)) {
+                        $_placeholder_values = [];
+                    } else {
+                        $_placeholder_values = [ $_placeholder_values ];
+                    }
+                }
+            }
+            
+            $errors          = (array) $this->getVar($wp_error, 'errors', []);
+            $error_data      = (array) $this->getVar($wp_error, 'error_data', []);
+            $error_list      = [];
+
+            if (is_wp_error($wp_error)) {
+                foreach ($errors as $error_code => $error) {
+                    if (!empty($error_code) && is_array($error)) {
+                        $error_list[$error_code] = implode( ', ', $error ) . '.';
+                    }
+                }
+
+                foreach ($error_data as $error_code => $data) {
+                    if (!empty($error_code) 
+                    && !empty($data) 
+                    && is_string($data) 
+                    && isset($error_list[$error_code]))
+                    {
+                        $error_list[$error_code] .= ' ' . $data;
+
+                        // Get the plugin data
+                        $assume_plugin_path = wp_normalize_path($data);
+                        if ($assume_plugin_path && false !== strpos($data, WP_PLUGIN_DIR)) {
+                            $lookup_plugin_data = $this->getPluginDataByRemoteDestination($assume_plugin_path);
+
+                            if (!empty($lookup_plugin_data)) {
+                                $plugin_alt_basename = $this->getVar($lookup_plugin_data, 'Name');
+
+                                $this->current_plugin_data[$plugin_alt_basename] = $lookup_plugin_data;
+                            }
+                        }
+                    }
+                }
+            }
+
+            $error_info = implode( $this->getEventMsgErrorChar(), $error_list );
+
+            // Replace occurrencies of multiple periods '..'
+            $error_info = str_replace('..', '.', $error_info);
+
+            if (strlen($error_info) <= 6) {
+                $error_info = 'Not available';
+            }
+
+            do_action('alm_plugin_installation_failed', [
+                'api'                   => $api,
+                'file_upload'           => $file_upload,
+                'hook_extra'            => $hook_extra, 
+                'error_info'            => $error_info, 
+                'new_plugin_data'       => $new_plugin_data,
+                '_placeholder_values'   => $_placeholder_values,
+                'installed_plugin_data' => $installed_plugin_data,
+            ]);
         });
     }
 
@@ -394,7 +496,7 @@ trait PluginEvents
     {
         $old_plugins = $this->unserialize($_old_plugins);
         $new_plugins = $this->unserialize($_new_plugins);
-
+        
         if (!is_countable($old_plugins) || !is_countable($new_plugins))
             return;
 
@@ -554,7 +656,7 @@ trait PluginEvents
                 'alm_plugin_activation_failed' => [
                     'title'               => 'Plugin Activation Failed',
                     'action'              => 'plugin_activation_failed',
-                    'event_id'            => 5071,
+                    'event_id'            => 5201,
                     'severity'            => 'critical',
 
                     'error_flag'          => true,
@@ -577,16 +679,16 @@ trait PluginEvents
                      */
                     '_translate' => [
                         '_main' => [
-                            'plural' => 'Tried to activate the following plugins on the site but the attempt was unsuccessful because it triggered a fatal error, see details below',
+                            'plural' => 'Tried to activate the following plugins on the site but the attempt was unsuccessful because it triggered a fatal error, see details below:',
 
-                            'plural_network' => 'Tried to activate the following plugins on all site on the network but the attempt was unsuccessful because it triggered a fatal error, see details below',
+                            'plural_network' => 'Tried to activate the following plugins on all site on the network but the attempt was unsuccessful because it triggered a fatal error, see details below:',
 
-                            'singular_network' => 'Tried to activate a plugin on all sites on the network but the attempt was unsuccessful because it triggered a fatal error, see details below',
+                            'singular_network' => 'Tried to activate a plugin (%s) on all sites on the network but the attempt was unsuccessful because it triggered a fatal error, see details below:',
                         ],
                     ],
 
                     'message' => [
-                        '_main'         => 'Tried to activate a plugin on the site but the attempt was unsuccessful because it triggered a fatal error, see details below',
+                        '_main'         => 'Tried to activate a plugin (%s) on the site but the attempt was unsuccessful because it triggered a fatal error, see details below:',
 
                         '_space_start'  => '',
                         '_count_object' => ['_count_object'],
@@ -612,7 +714,7 @@ trait PluginEvents
                 'alm_plugin_activated_with_error' => [
                     'title'               => 'Plugin Activated With Error',
                     'action'              => 'plugin_activated_with_error',
-                    'event_id'            => 5072,
+                    'event_id'            => 5202,
                     'severity'            => 'critical',
 
                     'error_flag'          => true,
@@ -634,14 +736,14 @@ trait PluginEvents
 
                     '_translate' => [
                         '_main' => [
-                            'plural'           => 'Activated the following plugins on the site which triggers some errors during the process, see details below',
-                            'plural_network'   => 'Activated the following plugins on all sites on the network which triggers some errors during the process, see details below',
-                            'singular_network' => 'Activated a plugin on all sites on the network which triggers some errors during the process, see details below',
+                            'plural'           => 'Activated the following plugins on the site which triggers some errors during the process, see details below:',
+                            'plural_network'   => 'Activated the following plugins on all sites on the network which triggers some errors during the process, see details below:',
+                            'singular_network' => 'Activated a plugin (%s) on all sites on the network which triggers some errors during the process, see details below:',
                         ],
                     ],
 
                     'message' => [
-                        '_main'         => 'Activated a plugin on the site which triggers some errors during the process, see details below',
+                        '_main'         => 'Activated a plugin (%s) on the site which triggers some errors during the process, see details below',
 
                         '_space_start'  => '',
                         '_count_object' => ['_count_object'],
@@ -668,7 +770,7 @@ trait PluginEvents
                 'alm_plugin_activated' => [
                     'title'               => 'Plugin Activated',
                     'action'              => 'plugin_activated',
-                    'event_id'            => 5073,
+                    'event_id'            => 5203,
                     'severity'            => 'critical',
 
                     'screen'              => ['admin', 'network'],
@@ -687,14 +789,14 @@ trait PluginEvents
 
                     '_translate' => [
                         '_main' => [
-                            'plural'           => 'Activated the following plugins on the site, see details below',
-                            'plural_network'   => 'Activated the following plugins on all sites on the network, see details below',
-                            'singular_network' => 'Activated a plugin on all sites on the network, see details below',
+                            'plural'           => 'Activated the following plugins on the site, see details below:',
+                            'plural_network'   => 'Activated the following plugins on all sites on the network, see details below:',
+                            'singular_network' => 'Activated a plugin (%s) on all sites on the network, see details below:',
                         ],
                     ],
 
                     'message' => [
-                        '_main'         => 'Activated a plugin on the site, see details below',
+                        '_main'         => 'Activated a plugin (%s) on the site, see details below:',
 
                         '_space_start'  => '',
                         '_count_object' => ['_count_object'],
@@ -725,7 +827,7 @@ trait PluginEvents
                 'alm_plugin_deactivated' => [
                     'title'               => 'Plugin Deactivated',
                     'action'              => 'plugin_deactivated',
-                    'event_id'            => 5074,
+                    'event_id'            => 5204,
                     'severity'            => 'critical',
 
                     'screen'              => ['admin', 'network'],
@@ -744,14 +846,14 @@ trait PluginEvents
 
                     '_translate' => [
                         '_main' => [
-                            'plural'           => 'Deactivated the following plugins from the site, see details below',
-                            'plural_network'   => 'Deactivated the following plugins from all sites on the network, see details below',
-                            'singular_network' => 'Deactivated a plugin from all sites on the network, see details below',
+                            'plural'           => 'Deactivated the following plugins from the site, see details below:',
+                            'plural_network'   => 'Deactivated the following plugins from all sites on the network, see details below:',
+                            'singular_network' => 'Deactivated a plugin (%s) from all sites on the network, see details below:',
                         ],
                     ],
 
                     'message' => [
-                        '_main'         => 'Deactivated a plugin from the site, see details below',
+                        '_main'         => 'Deactivated a plugin (%s) from the site, see details below:',
 
                         '_space_start'  => '',
                         '_count_object' => ['_count_object'],
@@ -782,7 +884,7 @@ trait PluginEvents
                 'alm_plugin_deleted' => [
                     'title'               => 'Plugin Deleted',
                     'action'              => 'plugin_deleted',
-                    'event_id'            => 5075,
+                    'event_id'            => 5205,
                     'severity'            => 'critical',
 
                     'screen'              => ['admin', 'network'],
@@ -797,14 +899,14 @@ trait PluginEvents
 
                     '_translate' => [
                         '_main' => [
-                            'plural'           => 'Deleted the following plugins from the site, see details below',
-                            'plural_network'   => 'Deleted the following plugins from all sites on the network, see details below',
-                            'singular_network' => 'Deleted a plugin from all sites on the network, see details below',
+                            'plural'           => 'Deleted the following plugins from the site, see details below:',
+                            'plural_network'   => 'Deleted the following plugins from all sites on the network, see details below:',
+                            'singular_network' => 'Deleted a plugin (%s) from all sites on the network, see details below:',
                         ],
                     ],
 
                     'message' => [
-                        '_main'         => 'Deleted a plugin from the site, see details below',
+                        '_main'         => 'Deleted a plugin (%s) from the site, see details below:',
 
                         '_space_start'  => '',
                         '_count_object' => ['_count_object'],
@@ -828,7 +930,7 @@ trait PluginEvents
                 'alm_plugin_deletion_failed' => [
                     'title'               => 'Plugin Deletion Failed',
                     'action'              => 'plugin_deletion_failed',
-                    'event_id'            => 5076,
+                    'event_id'            => 5206,
                     'severity'            => 'critical',
 
                     'error_flag'          => true,
@@ -846,14 +948,14 @@ trait PluginEvents
 
                     '_translate' => [
                         '_main' => [
-                            'plural'           => 'Tried to delete the following plugins from the site but the attempt was unsuccessful, see details below',
-                            'plural_network'   => 'Tried to delete the following plugins from all sites on the network but the attempt was unsuccessful, see details below',
-                            'singular_network' => 'Tried to delete a plugin from all sites on the network but the attempt was unsuccessful, see details below',
+                            'plural'           => 'Tried to delete the following plugins from the site but the attempt was unsuccessful, see details below:',
+                            'plural_network'   => 'Tried to delete the following plugins from all sites on the network but the attempt was unsuccessful, see details below:',
+                            'singular_network' => 'Tried to delete a plugin (%s) from all sites on the network but the attempt was unsuccessful, see details below:',
                         ],
                     ],
 
                     'message' => [
-                        '_main'         => 'Tried to delete a plugin from the site but the attempt was unsuccessful, see details below',
+                        '_main'         => 'Tried to delete a plugin (%s) from the site but the attempt was unsuccessful, see details below:',
 
                         '_space_start'  => '',
                         '_count_object' => ['_count_object'],
@@ -877,7 +979,7 @@ trait PluginEvents
                 'upgrader_process_complete' => [
                     'title'               => 'Plugin Updated', // Plural: Plugins Updated
                     'action'              => 'plugin_updated', // Plural: plugins_updated
-                    'event_id'            => 5077,
+                    'event_id'            => 5207,
                     'severity'            => 'critical',
                     
                     'screen'              => ['admin', 'network'],
@@ -889,12 +991,12 @@ trait PluginEvents
 
                     '_translate' => [
                         '_main' => [
-                            'plural' => 'Updated the following plugins, see details below',
+                            'plural' => 'Updated the following plugins, see details below:',
                         ],
                     ],
 
                     'message' => [
-                        '_main'         => 'Updated a plugin, see details below',
+                        '_main'         => 'Updated a plugin (%s), see details below:',
 
                         '_space_start'  => '',
                         '_count_object' => ['_count_object'],
@@ -922,7 +1024,7 @@ trait PluginEvents
                 'alm_upgrader_process_failed' => [
                     'title'               => 'Plugin Update Failed',
                     'action'              => 'plugin_updated_failed',
-                    'event_id'            => 5078,
+                    'event_id'            => 5208,
                     'severity'            => 'error',
 
                     'error_flag'          => true,
@@ -937,12 +1039,12 @@ trait PluginEvents
 
                     '_translate' => [
                         '_main' => [
-                            'plural' => 'Tried to update the following plugins but the attempt was unsuccessful, see details below',
+                            'plural' => 'Tried to update the following plugins but the attempt was unsuccessful, see details below:',
                         ],
                     ],
 
                     'message' => [
-                        '_main' => 'Tried to update a plugin but the attempt was unsuccessful, see details below',
+                        '_main' => 'Tried to update a plugin (%s) but the attempt was unsuccessful, see details below:',
 
                         '_space_start'              => '',
                         '_count_object'             => ['_count_object'],
@@ -973,7 +1075,7 @@ trait PluginEvents
                 'alm_plugin_installed' => [
                     'title'               => 'Plugin Installed',
                     'action'              => 'plugin_installed',
-                    'event_id'            => 5079,
+                    'event_id'            => 5209,
                     'severity'            => 'critical',
                     
                     'screen'              => ['admin', 'network'],
@@ -990,7 +1092,7 @@ trait PluginEvents
                     ],
 
                     'message' => [
-                        '_main'              => 'Installed a plugin, see details below',
+                        '_main'              => 'Installed a plugin (%s), see details below',
 
                         '_space_start'       => '',
                         '_count_object'      => ['_count_object'],
@@ -1018,7 +1120,7 @@ trait PluginEvents
                 'alm_plugin_installation_failed' => [
                     'title'               => 'Plugin Installation Failed',
                     'action'              => 'plugin_installation_failed',
-                    'event_id'            => 5080,
+                    'event_id'            => 5210,
                     'severity'            => 'critical',
 
                     'error_flag'          => true,
@@ -1033,18 +1135,21 @@ trait PluginEvents
 
                     '_translate' => [
                         '_main' => [
-                            'plural' => 'Tried to install the following plugins but the attempt was unsuccessful, see details below',
+                            'plural' => 'Tried to install the following plugins but the attempt was unsuccessful, see details below:',
                         ],
                     ],
 
                     'message' => [
-                        '_main' => 'Tried to install a plugin but the attempt was unsuccessful, see details below',
+                        '_main' => 'Tried to install a plugin (%s) but the attempt was unsuccessful, see details below:',
 
                         '_space_start'             => '',
                         '_count_object'            => ['_count_object'],
                         'installation_type'        => ['installation_type'],
                         'plugin_location'          => ['package_location'],
                         'installation_request_url' => ['installation_request_url'],
+                        'error_info'               => ['error_info'],
+                        'installed_plugin_data'    => ['installed_plugin_data'],
+                        'attempted_plugin_data'    => ['attempted_plugin_data'],
                         '_space_end'               => '',
 
                         'site_id'                  => ['blog_id'],
@@ -1052,6 +1157,42 @@ trait PluginEvents
                         'site_url'                 => ['blog_url'],
                         'network_ID'               => ['network_id'],
                         'network_name'             => ['network_name'],
+                    ],
+                ],
+
+                /**
+                 * Fires when the upgrader has successfully overwritten a currently installed
+			     * plugin or theme with an uploaded zip package.
+                 * 
+                 * @since 1.0.0
+                 */
+                'upgrader_overwrote_package' => [
+                    'title'               => 'Plugin overwritten successfully', // Plural: Plugins Updated
+                    'action'              => 'plugin_updated', // Plural: plugins_updated
+                    'event_id'            => 5211,
+                    'severity'            => 'critical',
+
+                    'screen'              => ['admin', 'network'],
+                    'user_state'          => 'logged_in',
+                    'logged_in_user_caps' => ['update_plugins', 'install_plugins'],
+
+                    'wp_transient'        => ['update_plugins'],
+                    'wp_site_transient'   => ['update_plugins'],
+
+                    'message' => [
+                        '_main'         => 'successfully overwritten a currently installed plugin (%s) with an uploaded zip package, see details below:',
+
+                        '_space_start'          => '',
+                        'uploaded_package'      => ['uploaded_package'],
+                        'previous_plugin_info'  => ['previous_plugin_info'],
+                        'new_plugin_info'       => ['new_plugin_info'],
+                        '_space_end'            => '',
+
+                        'site_id'               => ['blog_id'],
+                        'site_name'             => ['blog_name'],
+                        'site_url'              => ['blog_url'],
+                        'network_ID'            => ['network_id'],
+                        'network_name'          => ['network_name'],
                     ],
 
                     'event_handler' => [
@@ -1202,6 +1343,21 @@ trait PluginEvents
         $line_break  = str_repeat($this->getEventMsgLineBreak(), $repeater);
         $plugin_info = '';
 
+        foreach ($this->parseSelectedPluginsArray($plugins) as $new_plugin) {
+            $plugin_info .= $this->getPluginInfo($new_plugin) . $line_break;
+        }
+
+        return rtrim($plugin_info, $line_break);
+    }
+
+    /**
+     * Parse selected plugins array properly
+     * @param  array $plugins Specifies list of plugins to parse
+     * @return array          The parse plugins array
+     */
+    protected function parseSelectedPluginsArray($plugins)
+    {
+        $selected_plugins = [];
         if ($this->is_network_admin) {
             foreach ($plugins as $new_plugin => $timestamp) {
                 /**
@@ -1209,8 +1365,8 @@ trait PluginEvents
                  */
                 if (false !== strpos($timestamp, '.php'))
                     $new_plugin = $timestamp;
-
-                $plugin_info .= $this->getPluginInfo($new_plugin) . $line_break;
+                    
+                $selected_plugins[] = $new_plugin;
             }
         } else {
             foreach ($plugins as $index => $new_plugin) {
@@ -1219,11 +1375,12 @@ trait PluginEvents
                  */
                 if (false !== strpos($index, '.php'))
                     $new_plugin = $index;
-
-                $plugin_info .= $this->getPluginInfo($new_plugin) . $line_break;
+                    
+                $selected_plugins[] = $new_plugin;
             }
         }
-        return $plugin_info;
+
+        return $selected_plugins;
     }
 
     /**
@@ -1264,5 +1421,43 @@ trait PluginEvents
             esc_url_raw(self_admin_url($url)) : esc_url_raw($request_url);
 
         return $installation_request_url;
+    }
+
+    /**
+     * Get the Plugin Title or Name given the plugin data object
+     * @param  object $plugin_data Specifies the plugin data object
+     * @return string              The plugin Title or Name. Unknow is returned on failure.
+     */
+    public function getPluginNameFromObj($plugin_data)
+    {
+        return $this->sanitizeOption($this->getVar(
+            $plugin_data,
+            'Title',
+            // Use Name if Title is empty
+            $this->getVar($plugin_data, 'Name', 'Unknown')
+        ));
+    }
+
+    /**
+     * Get the plugin data given th remote destination
+     * @param  string $destination Specifies the remote destination for the plugin
+     * @return array               The plugin data on success. Otherwise empty array.
+     */
+    public function getPluginDataByRemoteDestination($destination)
+    {
+        $destination = trailingslashit(wp_normalize_path($destination));
+
+        if (!$destination) return [];
+
+        $folder      = ltrim(substr($destination, strlen(WP_PLUGIN_DIR)), '/');
+        $all_plugins = get_plugins();
+
+        foreach ($all_plugins as $plugin => $plugin_data) {
+            if (strrpos($plugin, $folder) !== 0) {
+                continue;
+            }
+            return $plugin_data;
+        }
+        return [];
     }
 }

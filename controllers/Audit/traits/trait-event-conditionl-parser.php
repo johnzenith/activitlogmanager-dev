@@ -12,8 +12,8 @@ defined('ALM_PLUGIN_FILE') || exit('You are not allowed to do this on your own.'
 trait EventConditionalParser
 {
     /**
-             * Event conditional arguments
-             */
+     * Event conditional arguments
+     */
     protected $event_conditional_args = [];
 
     /**

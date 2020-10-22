@@ -20,36 +20,38 @@ trait PluginEvents
     {
         if (empty($plugin)) return;
 
-        $object_id     = $this->getPluginEventObjectId();
-        $plugin_info   = $this->getPluginInfo($plugin);
-        $_count_object = 1;
+        $object_id      = $this->getPluginEventObjectId();
+        $plugin_info    = $this->getPluginInfo($plugin);
+        $_count_object  = 1;
+
+        $plugin_name    = $this->getPluginNameFromObj($this->getVar($this->current_plugin_data, $plugin));
+
+        // Event main message placeholder value(s)
+        $_placeholder_values = [$plugin_name];
 
         /**
          * @todo
          * Maybe we should retrieve the plugin error and save it to 
          * the [new_content] log column
          */
-        $this->setupPluginEventArgs(compact('object_id', '_count_object', 'plugin_info'));
+        $this->setupPluginEventArgs(compact(
+            'object_id', '_count_object', 'plugin_info', '_placeholder_values'
+        ));
         $this->LogActiveEvent('plugin', __METHOD__);
     }
 
     /**
-     * Fires after a plugin has been activated with errors
-     * 
-     * @since 1.0.0
+     * Plugin activated with error helper
+     * @see PluginEvents::alm_plugin_activated_with_error()
      */
-    public function alm_plugin_activated_with_error_event($plugins)
+    private function alm_plugin_activated_with_error_helper($plugins)
     {
-        if (!is_array($plugins) && is_string($plugins))
-            $plugins = [$plugins];
-
-        if (!is_array($plugins) || empty($plugins))
-            return;
-
         $total_count   = '_ignore_';
         $_count_object = count($plugins);
 
-        if ($_count_object > 1 ) { 
+        if ($_count_object > 1 
+        && !( $this->isVerboseLoggingEnabled() || !$this->isLogAggregatable() ))
+        {
             $total_count = sprintf('Plugins Activation Count: %d', $_count_object);
 
             $this->overrideActiveEventData('title', 'Plugins Activated With Error');
@@ -70,8 +72,76 @@ trait PluginEvents
          * Retrieve the plugin error and save it to the [new_content] log column
          */
 
-        $this->setupPluginEventArgs(compact('object_id', 'total_count', 'plugin_info'));
-        $this->LogActiveEvent('plugin', __METHOD__);
+        // Set the event message placholder values for use in sprintf()
+        if ($_count_object === 1) {
+            $plugin_name         = $this->getPluginNameFromObj($this->getVar($this->current_plugin_data, $plugin));
+            $_placeholder_values = [$plugin_name];
+        } else {
+            $_placeholder_values = [];
+        }
+
+        $this->setupPluginEventArgs(compact(
+            'object_id', 'total_count', 'plugin_info', '_placeholder_values'
+        ));
+    }
+
+    /**
+     * Fires after a plugin has been activated with errors
+     * 
+     * @since 1.0.0
+     */
+    public function alm_plugin_activated_with_error_event($plugins)
+    {
+        if (!is_array($plugins) && is_string($plugins))
+            $plugins = [$plugins];
+
+        if (!is_array($plugins) || empty($plugins))
+            return;
+            
+        if ($this->isVerboseLoggingEnabled() 
+        || !$this->isLogAggregatable() 
+        || count($plugins) === 1 )
+        {
+            foreach ($plugins as $plugin) {
+                $this->alm_plugin_activated_with_error_helper([$plugin]);
+                $this->LogActiveEvent('plugin', __METHOD__);
+            }
+        } else {
+            $this->alm_plugin_activated_with_error_helper($plugins);
+            $this->LogActiveEvent('plugin', __METHOD__);
+        }
+    }
+
+    /**
+     * Log selected plugins helper
+     * 
+     * @param int    $object_id     Specifies the plugin event object ID
+     * @param string $event_handler Specifies the event handler method name
+     * @param array  $plugins        List of selected plugins to log
+     */
+    private function _setupSelectedPluginsHelper($object_id, $event_handler, array $plugins)
+    {
+        $total_count   = '_ignore_';
+        $_count_object = 1;
+
+        foreach ($this->parseSelectedPluginsArray($plugins) as $plugin)
+        {
+            $plugin_info = $this->getPluginEventObjectInfo([$plugin]);
+            $plugin_name = $this->getPluginNameFromObj($this->getVar($this->current_plugin_data, $plugin));
+
+            // Event main message placeholder value(s)
+            $_placeholder_values = [$plugin_name];
+
+            $this->setupPluginEventArgs(compact(
+                'object_id',
+                'total_count',
+                '_count_object',
+                'plugin_info',
+                '_placeholder_values'
+            ));
+
+            $this->LogActiveEvent('plugin', $event_handler);
+        }
     }
 
     /**
@@ -87,6 +157,8 @@ trait PluginEvents
 
         if (!is_array($new_plugins) || empty($new_plugins))
             return;
+
+        $object_id          = $this->getPluginEventObjectId();
 
         // Setup the activated plugins list to bail out forward request 
         // to retrieve the activated plugins
@@ -108,18 +180,22 @@ trait PluginEvents
         $total_count   = '_ignore_';
         $_count_object = count($diff);
 
-        if ($_count_object > 1 ) {
+        if ($_count_object > 1 
+        && !( $this->isVerboseLoggingEnabled() || !$this->isLogAggregatable() ))
+        {
             $total_count = sprintf('Plugins Activation Count: %d', $_count_object);
 
             $this->overrideActiveEventData('title', 'Plugins Activated');
             $this->overrideActiveEventData('action', 'plugins_activated');
+
+            $plugin_info = $this->getPluginEventObjectInfo($diff);
+
+            $this->setupPluginEventArgs(compact('object_id', 'total_count', '_count_object', 'plugin_info'));
+            $this->LogActiveEvent('plugin', __METHOD__);
         }
-
-        $object_id   = $this->getPluginEventObjectId();
-        $plugin_info = $this->getPluginEventObjectInfo($diff);
-
-        $this->setupPluginEventArgs(compact('object_id', 'total_count', '_count_object', 'plugin_info'));
-        $this->LogActiveEvent('plugin', __METHOD__);
+        else {
+            $this->_setupSelectedPluginsHelper($object_id, __METHOD__, $diff);
+        }
     }
 
     /**
@@ -136,6 +212,13 @@ trait PluginEvents
         if (!is_array($old_plugins) || empty($old_plugins))
             return;
 
+        $object_id          = $this->getPluginEventObjectId();
+
+        $event_slug         = $this->getEventSlugByEventHandlerName(__FUNCTION__);
+        $event_id           = $this->getEventIdBySlug($event_slug, 'plugin');
+        $event_data         = $this->getEventData($event_id);
+        $event_msg_args     = $this->getVar($event_data, 'message', []);
+
         // Get the activated plugins
         $diff = $this->is_network_admin ? 
             $this->arrayDiffAssocRecursive($old_plugins, $new_plugins)
@@ -146,18 +229,26 @@ trait PluginEvents
         $total_count   = '_ignore_';
         $_count_object = count($diff);
 
-        if ($_count_object > 1) {
+        if ($_count_object > 1 
+        && !( $this->isVerboseLoggingEnabled() || !$this->isLogAggregatable() ))
+        {
             $total_count = sprintf('Plugins Deactivation Count: %d', $_count_object);
 
             $this->overrideActiveEventData('title', 'Plugins Deactivated');
             $this->overrideActiveEventData('action', 'plugins_deactivated');
+
+            // Event main message
+            $event_msg_args['_main'] = str_replace(' (%s)', '', $event_msg_args['_main']);
+            $this->overrideActiveEventData('message', $event_msg_args);
+
+            $plugin_info = $this->getPluginEventObjectInfo($diff);
+
+            $this->setupPluginEventArgs(compact('object_id', 'total_count', '_count_object', 'plugin_info'));
+            $this->LogActiveEvent('plugin', __METHOD__);
         }
-
-        $object_id   = $this->getPluginEventObjectId();
-        $plugin_info = $this->getPluginEventObjectInfo($diff);
-
-        $this->setupPluginEventArgs(compact('object_id', 'total_count', '_count_object', 'plugin_info'));
-        $this->LogActiveEvent('plugin', __METHOD__);
+        else {
+            $this->_setupSelectedPluginsHelper($object_id, __METHOD__, $diff, $event_msg_args);
+        }
     }
 
     /**
@@ -173,24 +264,30 @@ trait PluginEvents
         if (!is_array($plugins) || empty($plugins))
             $plugins = [];
 
-        $total_count   = '_ignore_';
-        $_count_object = count($plugins);
+        $object_id          = $this->getUninstalledPluginsOptionId();
 
-        if ($_count_object > 1) {
+        $total_count        = '_ignore_';
+        $_count_object      = count($plugins);
+
+        if ($_count_object > 1 
+        && !( $this->isVerboseLoggingEnabled() || !$this->isLogAggregatable() ))
+        {
             $total_count = sprintf('Plugins Deletion Count: %d', $_count_object);
 
             $this->overrideActiveEventData('title', 'Plugins Deleted');
             $this->overrideActiveEventData('action', 'plugins_deleted');
+
+            $plugin_info = $this->getPluginEventObjectInfo($plugins);
+
+            if (empty(trim($plugin_info)))
+                $plugin_info = 'Not available. No plugin information could be retrieved from the request';
+
+            $this->setupPluginEventArgs(compact('object_id', 'total_count', '_count_object', 'plugin_info'));
+            $this->LogActiveEvent('plugin', __METHOD__);
         }
-
-        $object_id   = $this->getUninstalledPluginsOptionId();
-        $plugin_info = $this->getPluginEventObjectInfo($plugins);
-
-        if (empty(trim($plugin_info)))
-            $plugin_info = 'Not available. No plugin information could be retrieved from the request';
-
-        $this->setupPluginEventArgs(compact('object_id', 'total_count', '_count_object', 'plugin_info'));
-        $this->LogActiveEvent('plugin', __METHOD__);
+        else {
+            $this->_setupSelectedPluginsHelper($object_id, __METHOD__, $plugins);
+        }
     }
 
     /**
@@ -206,24 +303,30 @@ trait PluginEvents
         if (!is_array($plugins) || empty($plugins))
             $plugins = [];
 
-        $total_count   = '_ignore_';
-        $_count_object = count($plugins);
+        $object_id          = $this->getUninstalledPluginsOptionId();
 
-        if ($_count_object > 1) {
+        $total_count        = '_ignore_';
+        $_count_object      = count($plugins);
+
+        if ($_count_object > 1 
+        && !( $this->isVerboseLoggingEnabled() || !$this->isLogAggregatable() ))
+        {
             $total_count = sprintf('Plugins Deletion Attempt Count: %d', $_count_object);
 
             $this->overrideActiveEventData('title', 'Plugins Deletion Failed');
             $this->overrideActiveEventData('action', 'plugins_deletion_failed');
+
+            $plugin_info = $this->getPluginEventObjectInfo($plugins);
+
+            if (empty(trim($plugin_info)))
+                $plugin_info = 'Not available. No plugin information could be retrieved from the request';
+
+            $this->setupPluginEventArgs(compact('object_id', 'total_count', '_count_object', 'plugin_info'));
+            $this->LogActiveEvent('plugin', __METHOD__);
         }
-
-        $object_id   = $this->getUninstalledPluginsOptionId();
-        $plugin_info = $this->getPluginEventObjectInfo($plugins);
-
-        if (empty(trim($plugin_info)))
-            $plugin_info = 'Not available. No plugin information could be retrieved from the request';
-
-        $this->setupPluginEventArgs(compact('object_id', 'total_count', '_count_object', 'plugin_info'));
-        $this->LogActiveEvent('plugin', __METHOD__);
+        else {
+            $this->_setupSelectedPluginsHelper($object_id, __METHOD__, $plugins);
+        }
     }
 
     /**
@@ -453,7 +556,7 @@ trait PluginEvents
      * @see PluginEvents::upgrader_process_complete_event()
      */
     public function alm_plugin_installed_event($hook_extra)
-    {
+    {   
         $alm_vars    = $this->getVar($hook_extra, '_alm_vars', []);
 
         $action      = $this->sanitizeOption(wp_unslash($this->getVar($_GET, 'action', '')));
@@ -465,40 +568,122 @@ trait PluginEvents
         if (!is_array($plugins) && is_string($plugins))
             $plugins = [$plugins];
 
-        // Allow this event to run even when no plugin is found
         if (!is_array($plugins) || empty($plugins))
             $plugins = [];
 
-        $total_count   = '_ignore_';
-        $_count_object = count($plugins);
+        /**
+         * Get the installed plugin data
+         */
+        if (empty($plugins)) {
+            $installed_plugin_data = $this->getPluginDataByRemoteDestination($destination);
+        }
+            
+        if (empty($plugins) && empty($installed_plugin_data))
+            return;
 
-        if ($_count_object > 1) {
+        $total_count        = '_ignore_';
+        $_count_object      = count($plugins);
+        
+        // Plugins installation not connected to any option in the database
+        $object_id          = 0;
+
+        $is_web_download    = 'web' === $type;
+        $installation_type  = $is_web_download ? 'Web Download' : 'File Upload';
+
+        $package_location   = $destination;
+
+        /**
+         * Bail the request here if the {@see $installed_plugin_data} is not empty
+         */
+        if (!empty($installed_plugin_data)) {
+            $_count_object = 1;
+
+            unset($installed_plugin_data['Description']);
+            $plugin_info = $this->joinValues($installed_plugin_data);
+
+            $plugin_alt_basename = $this->getVar($installed_plugin_data, 'Name', basename($destination));
+            $this->current_plugin_data[$plugin_alt_basename] = $installed_plugin_data;
+
+            $this->setupPluginEventArgs(compact(
+                'object_id',
+                'total_count',
+                '_count_object',
+                'plugin_info',
+                'installation_type',
+                'package_location',
+            ));
+
+            $this->LogActiveEvent('plugin', __METHOD__);
+            return;
+        }
+
+        $no_plugin_info = 
+        'Not available. No plugin information could be retrieved from the request';
+
+        $plugin_info = $this->getPluginEventObjectInfo($plugins, $destination);
+
+        if (empty(trim($plugin_info)))
+        {
+            $plugin_info = $no_plugin_info;
+            
+            $this->setupPluginEventArgs(compact(
+                'object_id',
+                'total_count',
+                '_count_object',
+                'plugin_info',
+                'installation_type',
+                'package_location',
+            ));
+
+            $this->LogActiveEvent('plugin', __METHOD__);
+            return;
+        }
+
+        if ($_count_object > 1 
+        && !( $this->isVerboseLoggingEnabled() || !$this->isLogAggregatable() ))
+        {
             $total_count = sprintf('Plugins Installation Count: %d', $_count_object);
 
             $this->overrideActiveEventData('title', 'Plugins Installed');
             $this->overrideActiveEventData('action', 'plugins_installed');
+
+            $this->setupPluginEventArgs(compact(
+                'object_id',
+                'total_count',
+                '_count_object',
+                'plugin_info',
+                'installation_type',
+                'package_location',
+            ));
+
+            $this->LogActiveEvent('plugin', __METHOD__);
         }
+        else {
+            foreach ($this->parseSelectedPluginsArray($plugins) as $plugin)
+            {
+                $plugin_info = $this->getPluginEventObjectInfo([$plugin], $destination);
+                if (empty($plugin_info)) {
+                    $plugin_info = $no_plugin_info;
+                }
 
-        $object_id   = 0; // Plugins installation not tide to any option in the database
-        $plugin_info = $this->getPluginEventObjectInfo($plugins, $destination);
+                $plugin_name = $this->getPluginNameFromObj($this->getVar($this->current_plugin_data, $plugin));
 
-        if (empty(trim($plugin_info)))
-            $plugin_info = 'Not available. No plugin information could be retrieved from the request';
+                // Event main message placeholder value(s)
+                $_placeholder_values = [$plugin_name];
 
-        $is_web_download   = 'web' === $type;
-        $installation_type = $is_web_download ? 'Web Download' : 'File Upload';
+                $this->setupPluginEventArgs(compact(
+                    'object_id',
+                    'total_count',
+                    '_count_object',
+                    'plugin_info',
+                    'installation_type',
+                    'package_location',
+                    '_placeholder_values'
+                ));
 
-        $package_location  = $destination;
-
-        $this->setupPluginEventArgs(compact(
-            'object_id',
-            'total_count',
-            '_count_object',
-            'plugin_info',
-            'installation_type',
-            'package_location',
-        ));
-        $this->LogActiveEvent('plugin', __METHOD__);
+                $this->LogActiveEvent('plugin', __METHOD__);
+            }
+        }
     }
 
     /**
@@ -506,10 +691,18 @@ trait PluginEvents
      * 
      * @since 1.0.0
      */
-    public function alm_plugin_installation_failed_event($api, $file_upload, $hook_extra)
+    public function alm_plugin_installation_failed_event($args)
     {
-        $type              = $this->getVar($hook_extra, 'type');
-        $is_web_download   = 'web' === $type || is_object($api);
+        $api                   = $args['api'];
+        $hook_extra            = $args['hook_extra'];
+        $error_info            = $args['error_info'];
+        $file_upload           = $args['file_upload'];
+        $new_plugin_data       = $args['new_plugin_data'];
+        $_placeholder_values   = $args['_placeholder_values'];
+        $installed_plugin_data = $args['installed_plugin_data'];
+
+        $type                  = $this->getVar($hook_extra, 'type');
+        $is_web_download       = 'web' === $type || is_object($api);
 
         // WordPress may support multiple files upload in the future.
         // Then we will have to count the plugins and update the $_count_object var
@@ -530,12 +723,67 @@ trait PluginEvents
         }
         
         $installation_request_url = $this->getPluginRequestUrl($hook_extra);
+
+        $attempted_plugin_data    = $new_plugin_data;
+
+        if (is_array($installed_plugin_data)) {
+            unset($installed_plugin_data['Description']);
+            $installed_plugin_data = $this->joinValues($installed_plugin_data);
+        }
+
+        if (is_array($attempted_plugin_data)) {
+            unset($attempted_plugin_data['Description']);
+            $attempted_plugin_data = $this->joinValues($attempted_plugin_data);
+        }
         
         $this->setupPluginEventArgs(compact(
-            'installation_request_url',
-            'installation_type',
-            'package_location',
+            'error_info',
             '_count_object',
+            'package_location',
+            'installation_type',
+            '_placeholder_values',
+            'attempted_plugin_data',
+            'installed_plugin_data',
+            'installation_request_url',
+        ));
+        $this->LogActiveEvent('plugin', __METHOD__);
+    }
+
+    /**
+     * Fires when the upgrader has successfully overwritten a currently installed
+     * plugin with an uploaded zip package.
+     */
+    public function upgrader_overwrote_package_event($package, $plugin_data, $package_type)
+    {
+        if ('plugin' !== $package_type) return;
+
+        $object_id                   = $this->getUninstalledPluginsOptionId();
+        $uploaded_package            = wp_normalize_path($package);
+        $_placeholder_values         = [ $this->getVar($plugin_data, 'Name', 'Unknown') ];
+
+        $plugin_alt_basename         = $this->getVar($plugin_data, 'Name', basename($package));
+
+        $this->current_plugin_data[$plugin_alt_basename] = $plugin_data;
+
+        $previous_plugin_data        = $this->getVar($this->previous_plugin_info, $plugin_alt_basename);
+        
+        if (!empty($previous_plugin_data) && is_array($previous_plugin_data)) {
+            unset($previous_plugin_data['Description']);
+
+            $previous_plugin_info = $this->joinValues($previous_plugin_data);
+        } else {
+            $previous_plugin_info = 'Not available';
+        }
+
+        unset($plugin_data['Description']);
+        $new_plugin_info = $this->joinValues($plugin_data);
+
+        $this->setupPluginEventArgs(compact(
+            'object_id',
+            'uploaded_package',
+            'new_plugin_info',
+            'previous_plugin_info',
+            '_placeholder_values'
         ));
         $this->LogActiveEvent('plugin', __METHOD__);
     }

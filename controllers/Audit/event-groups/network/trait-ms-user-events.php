@@ -3,6 +3,7 @@ namespace ALM\Controllers\Audit\Events\Groups\Network;
 
 // Prevent direct file access
 defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your own.' );
+
 /**
  * @package Multisite User Events
  * @since   1.0.0
@@ -37,13 +38,13 @@ trait UserEvents
             'make_spam_user' => [
                 'title'     => 'User marked as Spam',
                 'action'    => 'user_modified',
-                'event_id'  => 5049,
+                'event_id'  => 5151,
                 'severity'  => 'critical',
 
                 'screen'     => [ 'multisite' ],
 
                 'message'  => [
-                    '_main'                    => 'Marked the user as Spam.',
+                    '_main'                    => 'Marked the user (%s) as Spam.',
 
                     'user_id'                  => ['object_id'],
                     'user_login'               => ['user_login'],
@@ -72,13 +73,13 @@ trait UserEvents
             'make_ham_user' => [
                 'title'     => 'User marked as Ham',
                 'action'    => 'user_modified',
-                'event_id'  => 5050,
+                'event_id'  => 5052,
                 'severity'  => 'critical',
 
                 'screen'    => ['multisite'],
 
                 'message'  => [
-                    '_main'                    => 'Marked the user as Ham.',
+                    '_main'                    => 'Marked the user (%s) as Ham.',
 
                     'user_id'                  => ['object_id'],
                     'user_login'               => ['user_login'],
@@ -105,9 +106,9 @@ trait UserEvents
              * @see add_user_to_blog()
              */
             'can_add_user_to_blog' => [
-                'title'               => 'User cannot be added to the site',
+                'title'               => 'Unable to add the user to the site',
                 'action'              => 'add',
-                'event_id'            => 5051,
+                'event_id'            => 5053,
                 'severity'            => 'critical',
                 'error_flag'          => true,
                 'event_successor'     => ['user', 'add_user_to_blog'],
@@ -115,7 +116,7 @@ trait UserEvents
                 'screen'              => ['multisite'],
 
                 'message'  => [
-                    '_main'                    => 'Tried to add the user to the site but the attempt was unsuccessful.',
+                    '_main'                    => 'Tried to add the user (%s) to the site but the attempt was unsuccessful.',
 
                     '_space_start'             => '',
                     'failed_attempts'          => ['failed_attempts'],
@@ -159,13 +160,13 @@ trait UserEvents
             'add_user_to_blog' => [
                 'title'    => 'User added to the site',
                 'action'   => 'existing_user_added',
-                'event_id' => 5052,
+                'event_id' => 5154,
                 'severity' => 'critical',
                 
                 'screen'   => ['multisite'],
 
                 'message'  => [
-                    '_main'                    => 'Added the user to the site without email confirmation',
+                    '_main'                    => 'Added the user (%s) to the site without email confirmation',
 
                     '_space_start'             => '',
                     'site_id'                  => ['blog_id'],
@@ -206,7 +207,7 @@ trait UserEvents
             'invite_user' => [
                 'title'               => 'Invited the user to the site',
                 'action'              => 'user_invited',
-                'event_id'            => 5053,
+                'event_id'            => 5155,
                 'severity'            => 'notice',
                 
                 'screen'              => ['multisite'],
@@ -214,7 +215,7 @@ trait UserEvents
                 'logged_in_user_caps' => ['promote_users'],
 
                 'message'  => [
-                    '_main' => 'Invited the user to join the site with email confirmation',
+                    '_main' => 'Invited the user (%s) to join the site with email confirmation',
 
                     '_space_start'              => '',
                     'site_id'                   => ['blog_id'],
@@ -258,14 +259,14 @@ trait UserEvents
             'alm_add_new_user_to_blog_by_admin' => [
                 'title'               => 'New user created',
                 'action'              => 'new_user_added',
-                'event_id'            => 5054,
+                'event_id'            => 5156,
                 'severity'            => 'critical',
                 
                 'screen'              => ['multisite'],
                 'logged_in_user_caps' => ['create_users', 'manage_network_users'],
 
                 'message'             => [
-                    '_main' => 'Created a new user without sending an email confirmation to the user. The user has been activated and added to the site automatically.',
+                    '_main' => 'Created a new user (%s) without sending an email confirmation to the user. The user has been activated and added to the site automatically.',
 
                     '_space_start'             => '',
                     'site_id'                  => ['blog_id'],
@@ -305,12 +306,12 @@ trait UserEvents
             'alm_add_new_user_to_blog_by_self' => [
                 'title'               => 'New user registered',
                 'action'              => 'new_user_registered',
-                'event_id'            => 5055,
+                'event_id'            => 5157,
                 'severity'            => 'critical',
                 'screen'              => ['multisite'],
 
                 'message'             => [
-                    '_main' => 'New user registration successful.',
+                    '_main' => 'New user (%s) registration successful.',
 
                     '_space_start'             => '',
                     'site_id'                  => ['blog_id'],
@@ -354,12 +355,12 @@ trait UserEvents
                 // 'title'               => 'New user created',
                 'title'     => 'New user signup information recorded',
                 'action'    => 'new_user_recorded',
-                'event_id'  => 5056,
+                'event_id'  => 5158,
                 'severity'  => 'critical',
                 'screen'    => ['multisite'],
 
                 'message'   => [
-                    '_main' => 'Recorded a new user signup information for future activation. The user is not a member of the site until they confirm the request.',
+                    '_main' => 'Recorded a new user (%s) signup information for future activation. The user is not a member of the site until they confirm the request.',
                     // '_main' => 'Created a new user with email confirmation for future activation',
 
                     '_space_start'              => '',
@@ -401,12 +402,12 @@ trait UserEvents
             'alm_after_signup_user_by_self' => [
                 'title'               => 'New user signup information recorded',
                 'action'              => 'new_user_signup_recorded',
-                'event_id'            => 5057,
+                'event_id'            => 5159,
                 'severity'            => 'notice',
                 'screen'              => ['multisite'],
 
                 'message'             => [
-                    '_main' => 'A new user has recorded their signup information for future activation. The user is not a member of the site until they confirm the request.',
+                    '_main' => 'A new user (%s) signup information has been recorded for future activation. The user is not a member of the site until they confirm the request.',
                     // '_main' => 'Created a new user with email confirmation for future activation',
 
                     '_space_start'              => '',
@@ -448,12 +449,12 @@ trait UserEvents
             'wpmu_activate_user' => [
                 'title'               => 'New user activated',
                 'action'              => 'new_signup_user_activated',
-                'event_id'            => 5058,
+                'event_id'            => 5160,
                 'severity'            => 'notice',
                 'screen'              => ['multisite'],
 
                 'message'             => [
-                    '_main' => 'A new user has been activated successfully. The user is now a member of the site.',
+                    '_main' => 'A new user (%s) has been activated successfully. The user is now a member of the site.',
 
                     '_space_start'              => '',
                     'site_id'                   => ['blog_id'],
@@ -494,13 +495,13 @@ trait UserEvents
             'remove_user_from_blog' => [
                 'title'           => 'User removed from a site',
                 'action'          => 'Removed',
-                'event_id'        => 5059,
+                'event_id'        => 5161,
                 'severity'        => 'critical',
                 'screen'          => ['multisite'],
                 'user_state'      => 'logged_in',
 
                 'message'  => [
-                    '_main'                    => 'Removed a user from the site',
+                    '_main'                    => 'Removed a user (%s) from the site',
 
                     '_space_start'             => '',
                     'site_id'                  => ['blog_id'],
@@ -538,13 +539,13 @@ trait UserEvents
             'alm_deleted_user_from_network' => [
                 'title'               => 'User deleted',
                 'action'              => 'user_deleted',
-                'event_id'            => 5063,
+                'event_id'            => 5162,
                 'severity'            => 'critical',
                 'screen'              => ['multisite'],
                 'logged_in_user_caps' => ['delete_users'],
 
                 'message' => [
-                    '_main' => 'Deleted a user account from the network.',
+                    '_main' => 'Deleted a user account (%s) from the network.',
 
                     '_space_start'             => '',
                     'deleted_user_statistics'  => '',

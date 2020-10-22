@@ -3,8 +3,9 @@ namespace ALM\Controllers\Audit\Events\Groups;
 
 // Prevent direct file access
 defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your own.' );
+
 /**
- * @package User Events
+             * @package User Events
  * @since   1.0.0
  */
 
@@ -76,20 +77,6 @@ trait UserEvents
             'user_registered' => 'Registration Date',
         ];
     }
-
-    /**
-     * Get event field contexts.
-     * This is used to determine whether a field is created, updated, etc
-     * 
-     * @since 1.0.0
-     * 
-     * @return array
-     */
-    protected function getEventFieldContexts()
-    {
-        return ['new', 'previous', 'intended', 'current', 'requested'];
-    }
-
 
     /**
      * Init the user events
@@ -256,12 +243,12 @@ trait UserEvents
             $is_user_owner_of_account = 0;
         }
 
-        $nickname                             = isset( $user->nickname )     ? $user->nickname     : '';
-        $last_name                            = isset( $user->last_name )    ? $user->last_name    : '';
-        $first_name                           = isset( $user->first_name )   ? $user->first_name   : '';
-        $user_login                           = isset( $user->user_login )   ? $user->user_login   : '';
-        $user_email                           = isset( $user->user_email )   ? $user->user_email   : '';
-        $display_name                         = isset( $user->display_name ) ? $user->display_name : '';
+        $nickname                             = $this->getVar($user, 'nickname', '');
+        $last_name                            = $this->getVar($user, 'last_name', '');
+        $first_name                           = $this->getVar($user, 'first_name', '');
+        $user_login                           = $this->getVar($user, 'user_login', '');
+        $user_email                           = $this->getVar($user, 'user_email', '');
+        $display_name                         = $this->getVar($user, 'display_name', '');
         
         $arg_list['roles']                    = $user_role;
         $arg_list['nickname']                 = $this->sanitizeOption( $nickname );
@@ -349,7 +336,8 @@ trait UserEvents
      */
     protected function isUserProfileDataAggregationActive()
     {
-        return ( false != $this->getConstant('ALM_IS_USER_PROFILE_UPDATE_AGGREGATION') );
+        return !$this->isVerboseLoggingEnabled() 
+            && ( false != $this->getConstant('ALM_IS_USER_PROFILE_UPDATE_AGGREGATION') );
     }
 
     /**
@@ -369,7 +357,7 @@ trait UserEvents
     }
 
     /**
-     * We observed some user custom meta update behavior that were rather unusual,
+     * We observed some user custom meta update behaviors that were rather unusual,
      * noticeably the 'admin_color' user meta field. We couldn't retrieve the previous 
      * meta values for these fields during profile aggregation update, so we have to 
      * find a way to get the previous values.
@@ -622,7 +610,7 @@ trait UserEvents
                 'title'    => 'User profile update initiated',
                 'action'   => 'create',
                 'disable'  => false,
-                'event_id' => 5005, // Specific meta fields (keys) can override this
+                'event_id' => 5051, // Specific meta fields (keys) can override this
                 'severity' => 'notice',
 
                 /**
@@ -645,7 +633,7 @@ trait UserEvents
                  * the message argument has a special meaning and should be treated as such.
                  */
                 'message' => [
-                    '_main' => 'Tried to add a new custom field to a user profile, but the request was unsuccessful.',
+                    '_main' => 'Tried to add a new custom field to a user profile (%s), but the request was unsuccessful.',
 
                     '_space_start'             => '',
                     'meta_key'                 => ['meta_key'],
@@ -676,11 +664,11 @@ trait UserEvents
             'added_user_meta' => [
                 'title'    => 'User profile updated',
                 'action'   => 'created',
-                'event_id' => 5006, // Specific meta fields (keys) can override this
+                'event_id' => 5052, // Specific meta fields (keys) can override this
                 'severity' => 'notice',
 
                 'message' => [
-                    '_main'                    => 'Added a new custom field to a user profile.',
+                    '_main'                    => 'Added a new custom field to a user profile (%s).',
 
                     '_space_start'             => '',
                     'meta_key'                 => ['meta_key'],
@@ -713,12 +701,12 @@ trait UserEvents
             'update_user_meta' => [
                 'title'    => 'User profile update triggered',
                 'action'   => 'failed',
-                'event_id' => 5007, // Specific meta fields (keys) can override this
+                'event_id' => 5053, // Specific meta fields (keys) can override this
                 'disable'  => false,
                 'severity' => 'notice',
 
                 'message'  => [
-                    '_main' => 'Tried to update a custom field on a user profile, but the request was unsuccessful.',
+                    '_main' => 'Tried to update a custom field on a user profile (%s), but the request was unsuccessful.',
 
                     '_space_start'             => '',
                     'meta_key'                 => [ 'meta_key' ],
@@ -750,11 +738,11 @@ trait UserEvents
             'updated_user_meta' => [
                 'title'    => 'User profile updated',
                 'action'   => 'modified',
-                'event_id' => 5008, // Specific meta fields (keys) can override this
+                'event_id' => 5054, // Specific meta fields (keys) can override this
                 'severity' => 'notice',
 
                 'message'  => [
-                    '_main'                    => 'Updated a custom field on a user profile.',
+                    '_main'                    => 'Updated a custom field on a user profile (%s).',
 
                     '_space_start'             => '',
                     'meta_key'                 => ['meta_key'],
@@ -789,12 +777,12 @@ trait UserEvents
             'delete_user_meta' => [
                 'title'    => 'User profile modification triggered',
                 'action'   => 'delete',
-                'event_id' => 5009, // Specific meta fields (keys) can override this
+                'event_id' => 5055, // Specific meta fields (keys) can override this
                 'disable'  => false,
                 'severity' => 'notice',
 
                 'message'  => [
-                    '_main' => 'Tried to delete a custom field from a user profile, but the request was unsuccessful.',
+                    '_main' => 'Tried to delete a custom field from a user profile (%s), but the request was unsuccessful.',
 
                     '_space_start'             => '',
                     'meta_key'                 => ['meta_key'],
@@ -825,11 +813,11 @@ trait UserEvents
             'deleted_user_meta' => [
                 'title'    => 'User profile modified',
                 'action'   => 'deleted',
-                'event_id' => 5010, // Specific meta fields (keys) can override this
+                'event_id' => 5056, // Specific meta fields (keys) can override this
                 'severity' => 'notice',
 
                 'message'  => [
-                    '_main'                    => 'Deleted a custom field from a user profile.',
+                    '_main'                    => 'Deleted a custom field from a user profile (%s).',
 
                     '_space_start'             => '',
                     'meta_key'                 => ['meta_key'],
@@ -858,15 +846,85 @@ trait UserEvents
             ],
 
             /**
-             * Opened the 'Edit User' screen
+             * Fires after the 'About the User' settings table on the 'Edit User' screen.
+             * 
+             * @since 1.0.0
+             * @todo
+             */
+            'edit_user_profile' => [
+                'title'               => 'Viewed another user profile',
+                'action'              => 'viewed',
+                'event_id'            => 5057,
+                'severity'            => 'info',
+
+                'screen'              => ['admin', 'network',],
+                'user_state'          => 'logged_in',
+                'logged_in_user_caps' => ['edit_user', 'edit_users'],
+
+                'message'  => [
+                    '_main' => 'Viewed another user profile (%s).',
+
+                    'user_id'                  => ['object_id'],
+                    'user_login'               => ['user_login'],
+                    'display_name'             => ['display_name'],
+                    'roles'                    => ['roles'],
+                    'first_name'               => ['first_name'],
+                    'last_name'                => ['last_name'],
+                    'user_email'               => ['user_email'],
+                    'is_user_owner_of_account' => ['is_user_owner_of_account'],
+                    'profile_url'              => ['profile_url'],
+                    'user_primary_site'        => ['primary_blog'],
+                    'primary_site_name'        => ['primary_blog_name'],
+                    'primary_site_url'         => ['primary_blog_url'],
+                    'source_domain'            => ['source_domain'],
+                ],
+            ],
+
+            /**
+             * Fires after the 'About the User' settings table on the 'Edit User' screen.
+             * The action only fires if the current user is editing their own profile.
+             * 
+             * @since 1.0.0
+             */
+            'show_user_profile' => [
+                'title'               => 'Viewed own user profile',
+                'action'              => 'viewed',
+                'event_id'            => 5058,
+                'severity'            => 'info',
+
+                'screen'              => ['admin', 'network',],
+                'user_state'          => 'logged_in',
+                'logged_in_user_caps' => ['edit_user', 'edit_users'],
+
+                'message'  => [
+                    '_main' => 'Viewed own user profile (%s).',
+
+                    'user_id'                  => ['object_id'],
+                    'user_login'               => ['user_login'],
+                    'display_name'             => ['display_name'],
+                    'roles'                    => ['roles'],
+                    'first_name'               => ['first_name'],
+                    'last_name'                => ['last_name'],
+                    'user_email'               => ['user_email'],
+                    'is_user_owner_of_account' => ['is_user_owner_of_account'],
+                    'profile_url'              => ['profile_url'],
+                    'user_primary_site'        => ['primary_blog'],
+                    'primary_site_name'        => ['primary_blog_name'],
+                    'primary_site_url'         => ['primary_blog_url'],
+                    'source_domain'            => ['source_domain'],
+                ],
+            ],
+
+            /**
+             * Opened the 'Edit User' screen and triggered the profile update
              * Fires when a user is editing another user
              * 
              * @since 1.0.0
              */
             'edit_user_profile_update' => [
-                'title'              => 'Opened the edit user screen',
-                'action'             => 'opened',
-                'event_id'           => 5025,
+                'title'              => 'User profile update triggered',
+                'action'             => 'triggered',
+                'event_id'           => 5059,
                 'severity'           => 'notice',
 
                 'screen'              => [ 'admin', 'network', ],
@@ -874,7 +932,7 @@ trait UserEvents
                 'logged_in_user_caps' => ['edit_user', 'edit_users'],
 
                 'message'  => [
-                    '_main' => 'Opened the Edit User screen of the user and triggered the user profile update.' . $this->explainEventMsg(
+                    '_main' => 'Triggered the user profile (%s) update by using the edit user screen.' . $this->explainEventMsg(
                         ' (The Edit User screen is accessible and used by a user who has the <strong>edit_users or edit_user</strong> capability to be able to edit other users on the site. This event occurs when a user is editing the profile of another user.)'
                     ),
                     
@@ -902,7 +960,7 @@ trait UserEvents
             'user_profile_update_errors' => [
                 'title'           => 'User profile update error',
                 'action'          => 'update',
-                'event_id'        => 5026,
+                'event_id'        => 5060,
                 'severity'        => 'notice',
                 'error_flag'      => true,
                 'event_successor' => ['user', 'profile_update'],
@@ -910,7 +968,7 @@ trait UserEvents
                 'user_state' => 'logged_in',
 
                 'message'  => [
-                    '_main' => 'Tried to update the user profile but it was unsuccessful due to errors that occurred while processing the request.',
+                    '_main' => 'Tried to update the user profile (%s) but it was unsuccessful due to errors that occurred while processing the request.',
                     
                     '_space_start'             => '',
                     '_error_msg'               => '',
@@ -949,7 +1007,7 @@ trait UserEvents
             'alm_user_profile_update_errors' => [
                 'title'               => 'New user creation error',
                 'action'              => 'user_creation',
-                'event_id'            => 5027,
+                'event_id'            => 5061,
                 'severity'            => 'notice',
                 'error_flag'          => true,
                 'event_successor'     => ['user', 'edit_user_created_user'],
@@ -960,9 +1018,9 @@ trait UserEvents
                 'message'  => [
                     '_main' => 'Tried to create a new user but it was unsuccessful due to errors that occurred while processing the request.',
                     
-                    '_space_start'             => '',
-                    '_error_msg'               => '',
-                    '_space_end'               => '',
+                    '_space_start'     => '',
+                    '_error_msg'       => '',
+                    '_space_end'       => '',
                 ],
 
                 'event_handler' => [
@@ -979,7 +1037,7 @@ trait UserEvents
             'edit_user_created_user' => [
                 'title'               => 'Created a new user',
                 'action'              => 'user_created',
-                'event_id'            => 5028,
+                'event_id'            => 5062,
                 'severity'            => 'critical',
 
                 'screen'              => [ 'admin', 'network', ],
@@ -987,7 +1045,7 @@ trait UserEvents
                 'logged_in_user_caps' => [ 'edit_users' ],
 
                 'message'  => [
-                    '_main' => 'Created a new user.',
+                    '_main' => 'Created a new user (%s).',
                     
                     '_space_start'             => '',
 
@@ -1021,13 +1079,13 @@ trait UserEvents
             'register_new_user' => [
                 'title'    => 'New user registration',
                 'action'   => 'user_registered',
-                'event_id' => 5029,
+                'event_id' => 5063,
                 'severity' => 'notice',
 
                 'user_state' => 'both',
 
                 'message'  => [
-                    '_main' => 'New user registration successful',
+                    '_main' => 'New user (%s) registration successful',
                     
                     '_space_start'             => '',
 
@@ -1056,7 +1114,7 @@ trait UserEvents
             'register_post' => [
                 'title'    => 'New user registration error',
                 'action'   => 'user_registration',
-                'event_id' => 5030,
+                'event_id' => 5064,
                 'severity' => 'notice',
 
                 'user_state' => 'both',
@@ -1082,13 +1140,13 @@ trait UserEvents
             'profile_update' => [
                 'title'    => 'User profile updated',
                 'action'   => 'modified',
-                'event_id' => 5031,
+                'event_id' => 5065,
                 'severity' => 'notice',
 
                 'user_state' => 'logged_in',
 
                 'message'  => [
-                    '_main' => 'Updated the user profile. See the changes below:',
+                    '_main' => 'Updated the user profile (%s). See the changes below:',
                     
                     '_space_start'             => '',
 
@@ -1126,13 +1184,13 @@ trait UserEvents
             'alm_profile_update_display_name' => [
                 'title'    => 'User display name updated',
                 'action'   => 'modified',
-                'event_id' => 5032,
+                'event_id' => 5066,
                 'severity' => 'notice',
 
                 'user_state' => 'logged_in',
 
                 'message'  => [
-                    '_main' => 'Changed the display name of the user',
+                    '_main' => 'Changed the display name of the user (%s)',
                     
                     '_space_start'             => '',
                     'display_name_previous'    => ['display_name', 'previous'],
@@ -1170,13 +1228,13 @@ trait UserEvents
             'alm_profile_update_pre_user_email' => [
                 'title'    => 'User email address update requested',
                 'action'   => 'requested',
-                'event_id' => 5034,
+                'event_id' => 5067,
                 'severity' => 'critical',
 
                 'user_state' => 'logged_in',
 
                 'message'  => [
-                    '_main' => 'Requested a change of email address',
+                    '_main' => 'Requested a change of the user (%s) email address (%s)',
 
                     '_space_start'             => '',
                     'user_email_requested'     => ['user_email', 'requested'],
@@ -1211,13 +1269,13 @@ trait UserEvents
             'alm_profile_update_user_email' => [
                 'title'    => 'User email updated',
                 'action'   => 'modified',
-                'event_id' => 5035,
+                'event_id' => 5068,
                 'severity' => 'critical',
 
                 'user_state' => 'logged_in',
 
                 'message'  => [
-                    '_main' => 'Changed the user email address',
+                    '_main' => 'Changed the user (%s) email address',
 
                     '_space_start'             => '',
                     'user_email_previous'      => ['user_email', 'previous'],
@@ -1254,13 +1312,13 @@ trait UserEvents
             'alm_profile_update_cancelled_user_email' => [
                 'title'    => 'User email address update request cancelled',
                 'action'   => 'cancelled',
-                'event_id' => 5036,
+                'event_id' => 5069,
                 'severity' => 'notice',
 
                 'user_state' => 'logged_in',
 
                 'message'  => [
-                    '_main' => 'Cancelled the request to change the email address of the user',
+                    '_main' => 'Cancelled the request to change the email address of the user (%s)',
 
                     '_space_start'             => '',
                     'user_email_requested'     => ['user_email', 'requested'],
@@ -1296,13 +1354,13 @@ trait UserEvents
             'alm_profile_update_user_nicename' => [
                 'title'    => 'User nice name updated',
                 'action'   => 'modified',
-                'event_id' => 5037,
+                'event_id' => 5070,
                 'severity' => 'notice',
 
                 'user_state' => 'logged_in',
 
                 'message'  => [
-                    '_main' => 'Changed the nice name of th user',
+                    '_main' => 'Changed the nice name of th user (%s)',
 
                     '_space_start'             => '',
                     'user_nice_name_previous'  => ['user_nicename', 'previous'],
@@ -1336,19 +1394,19 @@ trait UserEvents
              * @since 1.0.0
              */
             'alm_profile_update_user_url' => [
-                'title'    => 'User url updated',
+                'title'    => 'User website url updated',
                 'action'   => 'modified',
-                'event_id' => 5038,
+                'event_id' => 5071,
                 'severity' => 'notice',
 
                 'user_state' => 'logged_in',
 
                 'message'  => [
-                    '_main' => 'Changed the URL of the user',
+                    '_main' => 'Changed the website URL of the user (%s)',
 
                     '_space_start'             => '',
-                    'user_url_previous'        => ['user_url', 'previous'],
-                    'user_url_new'             => ['user_url', 'new'],
+                    'user_url_previous'        => ['user_url_previous'],
+                    'user_url_new'             => ['user_url_new'],
                     '_space_end'               => '',
 
                     'user_id'                  => ['object_id'],
@@ -1380,13 +1438,13 @@ trait UserEvents
             'alm_profile_update_user_status' => [
                 'title'    => 'User status updated',
                 'action'   => 'modified',
-                'event_id' => 5039,
+                'event_id' => 5072,
                 'severity' => 'notice',
 
                 'user_state' => 'logged_in',
 
                 'message'  => [
-                    '_main' => 'Changed the status of the user',
+                    '_main' => 'Changed the status of the user (%s)',
 
                     '_space_start'             => '',
                     'user_status_previous'     => ['user_status', 'previous'],
@@ -1425,13 +1483,13 @@ trait UserEvents
             'alm_profile_update_user_pass' => [
                 'title'    => 'User password updated',
                 'action'   => 'modified',
-                'event_id' => 5040,
+                'event_id' => 5073,
                 'severity' => 'critical',
 
                 'logged_in_user_caps' => [ 'edit_users' ],
 
                 'message'  => [
-                    '_main' => 'Changed the password of the user',
+                    '_main' => 'Changed the password of the user (%s)',
 
                     'user_id'                  => ['object_id'],
                     'user_login'               => ['user_login'],
@@ -1466,13 +1524,13 @@ trait UserEvents
             'lostpassword_post' => [
                 'title'           => 'User password reset request failed',
                 'action'          => 'password_reset_failed',
-                'event_id'        => 5041,
+                'event_id'        => 5074,
                 'severity'        => 'critical',
                 'error_flag'      => true,
                 'event_successor' => ['user', 'alm_retrieve_password_successfully'],
 
                 'message'  => [
-                    '_main' => 'Tried to initiate the request for resetting the user password but failed.',
+                    '_main' => 'Tried to initiate a request for resetting the user (%s) password but failed.',
 
                     '_space_start'             => '',
                     '_error_msg'               => '',
@@ -1514,13 +1572,13 @@ trait UserEvents
             'allow_password_reset' => [
                 'title'           => 'User password reset not allowed',
                 'action'          => 'password_reset_failed',
-                'event_id'        => 5042,
+                'event_id'        => 5075,
                 'severity'        => 'critical',
                 'error_flag'      => true,
                 'event_successor' => ['user', 'alm_retrieve_password_successfully'],
 
                 'message'  => [
-                    '_main' => 'Tried to initiate the request for resetting the user password but failed because password reset is disabled on the user account',
+                    '_main' => 'Tried to initiate a request for resetting the user (%s) password but failed because password reset is disabled on the user account',
 
                     'user_id'                  => ['object_id'],
                     'user_login'               => ['user_login'],
@@ -1569,11 +1627,11 @@ trait UserEvents
             'alm_retrieve_password_successfully' => [
                 'title'    => 'User password reset request initiated',
                 'action'   => 'password_reset_initiated',
-                'event_id' => 5043,
+                'event_id' => 5076,
                 'severity' => 'critical',
 
                 'message'  => [
-                    '_main' => 'Initiated a password reset request successfully',
+                    '_main' => 'Initiated a password reset request on the user account (%s)',
 
                     '_space_start'             => '',
 
@@ -1615,13 +1673,13 @@ trait UserEvents
             'alm_retrieve_password_unsuccessful' => [
                 'title'           => 'User password reset request unsuccessful',
                 'action'          => 'password_reset_failed',
-                'event_id'        => 5044,
+                'event_id'        => 5077,
                 'severity'        => 'critical',
                 'error_flag'      => true,
                 'event_successor' => ['user', 'alm_retrieve_password_successfully'],
 
                 'message'  => [
-                    '_main' => 'Initiated a password reset request which could not be completed because the system was unable to save the generated password reset key.',
+                    '_main' => 'Initiated a password reset request which could not be completed because the system was unable to save the generated password reset key on the user account (%s).',
 
                     '_space_start'                 => '',
                     // Holds the user_activation_key
@@ -1660,12 +1718,12 @@ trait UserEvents
             'after_password_reset' => [
                 'title'    => 'User password reset successfully',
                 'action'   => 'password_reset',
-                'event_id' => 5045,
+                'event_id' => 5078,
                 'severity' => 'critical',
 
                 
                 'message'  => [
-                    '_main' => 'Reset the user password successfully.',
+                    '_main' => 'Reset the user (%s) password successfully.',
                     
                     '_space_start'             => '',
                     'password_reset_url'       => ['password_reset_url'],
@@ -1698,9 +1756,9 @@ trait UserEvents
              * @see wp_authenticate()
              */
             'wp_login_failed' => [
-                'title'           => 'User login failed',
+                'title'           => 'Login attempt failed',
                 'action'          => 'login_failed',
-                'event_id'        => 5046,
+                'event_id'        => 5079,
                 'severity'        => 'critical',
                 'error_flag'      => true,
                 'event_successor' => ['user', 'wp_login'],
@@ -1745,7 +1803,7 @@ trait UserEvents
             'wp_login' => [
                 'title'    => 'User logged in',
                 'action'   => 'logged_in',
-                'event_id' => 5047,
+                'event_id' => 5080,
                 'severity' => 'notice',
 
                 'message'  => [
@@ -1785,7 +1843,7 @@ trait UserEvents
             'wp_logout' => [
                 'title'      => 'User logged out',
                 'action'     => 'logged_out',
-                'event_id'   => 5048,
+                'event_id'   => 5081,
                 'severity'   => 'notice',
 
                 'user_state' => 'logged_in',
@@ -1816,12 +1874,12 @@ trait UserEvents
             'deleted_user' => [
                 'title'               => 'User deleted',
                 'action'              => 'user_deleted',
-                'event_id'            => 5062,
+                'event_id'            => 5082,
                 'severity'            => 'critical',
                 'logged_in_user_caps' => ['delete_users'],
 
                 'message' => [
-                    '_main' => 'Deleted a user account from the site.',
+                    '_main' => 'Deleted a user account (%s) from the site.',
 
                     '_space_start'             => '',
                     'deleted_user_statistics'  => '',
@@ -1859,7 +1917,7 @@ trait UserEvents
             'set_user_role' => [
                 'title'    => 'User role changed',
                 'action'   => 'user_role_modified',
-                'event_id' => 5064,
+                'event_id' => 5083,
                 'severity' => 'critical',
 
                 /**
@@ -1889,7 +1947,7 @@ trait UserEvents
                 ],
 
                 'message'  => [
-                    '_main'                    => 'Changed the role of the user.',
+                    '_main'                    => 'Changed the role of the user (%s).',
 
                     '_space_start'             => '',
                     'all_previous_role'        => ['role_previous'],
@@ -1922,9 +1980,9 @@ trait UserEvents
              * @since 1.0.0
              */
             'add_user_role' => [
-                'title'    => 'New user role added',
+                'title'    => 'User given a new role',
                 'action'   => 'user_role_modified',
-                'event_id' => 5065,
+                'event_id' => 5084,
                 'severity' => 'critical',
 
                 /**
@@ -1949,7 +2007,7 @@ trait UserEvents
                 ],
 
                 'message'  => [
-                    '_main'                    => 'Added a new role to the user',
+                    '_main'                    => 'Added a new role to the user (%s)',
 
                     '_space_start'             => '',
                     'added_role'               => ['added_role'],
@@ -1984,9 +2042,9 @@ trait UserEvents
              * @since 1.0.0
              */
             'remove_user_role' => [
-                'title'    => 'User role removed',
+                'title'    => 'Role removed from user',
                 'action'   => 'user_role_modified',
-                'event_id' => 5066,
+                'event_id' => 5085,
                 'severity' => 'critical',
 
                 /**
@@ -2011,7 +2069,7 @@ trait UserEvents
                 ],
 
                 'message'  => [
-                    '_main'                    => 'Removed a role from the user',
+                    '_main'                    => 'Removed a role from the user (%s)',
 
                     '_space_start'             => '',
                     'removed_role'             => ['removed_role'],
@@ -2041,13 +2099,13 @@ trait UserEvents
 
             /**
              * Fires immediately after the user has been given a new capability.
-             * 
+             *
              * @since 1.0.0
              */
             'alm_add_user_cap_event' => [
-                'title'    => 'New user capability added',
+                'title'    => 'User given a new capability',
                 'action'   => 'user_capability_modified',
-                'event_id' => 5067,
+                'event_id' => 5086,
                 'severity' => 'critical',
 
                 /**
@@ -2076,7 +2134,7 @@ trait UserEvents
                 ],
 
                 'message'  => [
-                    '_main' => 'Added a new capability to the user and granted the user access to use it',
+                    '_main' => 'Added a new capability to the user (%s) and granted the user access to use it',
 
                     '_space_start'             => '',
                     'added_capability'         => ['added_capability'],
@@ -2112,9 +2170,9 @@ trait UserEvents
              * @since 1.0.0
              */
             'alm_add_user_cap_denied_event' => [
-                'title'    => 'New user capability added but access denied',
+                'title'    => 'User given new capability but grant access denied',
                 'action'   => 'user_capability_modified',
-                'event_id' => 5068,
+                'event_id' => 5087,
                 'severity' => 'critical',
 
                 /**
@@ -2143,7 +2201,7 @@ trait UserEvents
                 ],
 
                 'message'  => [
-                    '_main' => 'Added a new capability to the user and denied the user access from using it.' . $this->explainEventMsg(
+                    '_main' => 'Added a new capability to the user (%s) but denied the user access from using it.' . $this->explainEventMsg(
                         ' (This means that the capability exists on the user account but the user cannot use it just yet because grant access was denied).'
                     ),
 
@@ -2182,7 +2240,7 @@ trait UserEvents
             'alm_remove_user_cap_event' => [
                 'title'    => 'User capability removed',
                 'action'   => 'user_capability_modified',
-                'event_id' => 5069,
+                'event_id' => 5088,
                 'severity' => 'critical',
 
                 /**
@@ -2211,7 +2269,7 @@ trait UserEvents
                 ],
 
                 'message'  => [
-                    '_main'                    => 'Removed a capability from the user',
+                    '_main'                    => 'Removed a capability from the user (%s)',
 
                     '_space_start'             => '',
                     'removed_capability'       => ['removed_capability'],
@@ -2248,7 +2306,7 @@ trait UserEvents
             'alm_remove_all_user_cap_event' => [
                 'title'    => 'All capabilities removed from user',
                 'action'   => 'user_capability_modified',
-                'event_id' => 5070,
+                'event_id' => 5089,
                 'severity' => 'critical',
 
                 /**
@@ -2269,7 +2327,7 @@ trait UserEvents
                 ],
 
                 'message'  => [
-                    '_main'                    => 'Removed all capabilities from the user',
+                    '_main'                    => 'Removed all capabilities from the user (%s)',
 
                     '_space_start'             => '',
                     'all_previous_capability'  => ['capability_previous'],
@@ -2326,64 +2384,64 @@ trait UserEvents
         return [
             'use_ssl' => [
                 '_title'      => 'Use SSL',
-                '_event_id'   => 5011,
+                '_event_id'   => 5101,
                 'description' => alm__('Specifies whether to force SSL (Secure Socket Layer) on the user&#8217;s admin area. If enabled, the user admin area will be loaded on https.'),
             ],
             'locale' => [
-                '_event_id' => 5012,
+                '_event_id' => 5102,
             ],
             'nickname' => [
-                '_event_id' => 5013,
+                '_event_id' => 5103,
             ],
             'last_name' => [
-                '_event_id' => 5014,
+                '_event_id' => 5104,
             ],
             'first_name' => [
-                '_event_id'  => 5015,
+                '_event_id'  => 5105,
             ],
             $admin_color => [
                 '_title'      => 'Admin color',
-                '_event_id'   => 5016,
+                '_event_id'   => 5106,
                 'description' => alm__('Specifies the color scheme for a user&#8217;s admin screen'),
             ],
             'description' => [
-                '_event_id' => 5017,
+                '_event_id' => 5107,
             ],
             'rich_editing' => [
-                '_event_id'   => 5018,
+                '_event_id'   => 5108,
                 'description' => alm__('Specifies whether to enable the rich-editor for the user.'),
             ],
             $user_capabilities => [
                 '_title'          => 'Capabilities',
-                '_event_id'       => 5019,
+                '_event_id'       => 5109,
                 '_title_singular' => 'Capability',
             ],
             $user_settings => [
                 '_title'          => 'User settings',
-                '_event_id'       => 5020,
+                '_event_id'       => 5110,
                 '_title_singular' => 'User setting',
             ],
             'comment_shortcuts' => [
-                '_event_id'   => 5021,
+                '_event_id'   => 5111,
                 'description' => alm__('Specifies whether to enable keyboard shortcuts for the user.'),
             ],
             'show_welcome_panel' => [
-                '_event_id' => 5022,
+                '_event_id' => 5112,
             ],
             'syntax_highlighting' => [
-                '_event_id'   => 5023,
+                '_event_id'   => 5113,
                 'description' => alm__('Specifies whether to enable the rich code editor for the user.'),
             ],
             'show_admin_bar_front' => [
-                '_event_id'   => 5024,
+                '_event_id'   => 5114,
                 'description' => alm__('Specifies whether to show the admin bar on the front end for the user.'),
             ],
             'primary_blog' => [
-                '_event_id'   => 5060,
+                '_event_id'   => 5115,
                 'description' => alm__('Specifies the user primary blog on a multisite installation'),
             ],
             'source_domain' => [
-                '_event_id'   => 5061,
+                '_event_id'   => 5116,
                 'description' => alm__('Specifies the user primary blog domain on a multisite installation'),
             ],
         ];
@@ -2443,7 +2501,7 @@ trait UserEvents
         }
         else {
             switch ( $field )
-            {   
+            {
                 case 'first_name':
                 case 'last_name':
                     $format_field = ucfirst( str_replace( [ '_', '-' ], ' ', $field ) );
@@ -2598,12 +2656,20 @@ trait UserEvents
     }
 
     /**
-     * Create list of user meta fields to ignore
+     * Create list of user meta fields to ignore.
+     * 
+     * This is not applicable when verbose logging (@see PluginFactory::isVerboseLoggingEnabled()) 
+     * is enabled.
      * 
      * @since 1.0.0
      */
     public function __ignorableUserMetaFields( $ignore, $meta_id, $meta_key )
     {
+        /**
+         * Disable this functionalify if verbose logging is enabled
+         */
+        if ($this->isVerboseLoggingEnabled()) return false;
+
         /**
          * Bail the user metadata field if we are currently aggregating user metadata
          */
@@ -2619,7 +2685,8 @@ trait UserEvents
         /**
          * We have to make sure already aggregated user metadata are not fired individually.
          * 
-         * However, will we limit the log aggregation on the user profile for now.
+         * However, will we be specific about what admin screen locations to perform the 
+         * log aggregation on.
          */
         $user_screens = [
             '/wp-admin/users.php',
@@ -2649,6 +2716,11 @@ trait UserEvents
      */
     public function canIgnoreUserMetaStrictly( $meta_key )
     {
+        /**
+         * Disable this functionalify if verbose logging is enabled
+         */
+        if ($this->isVerboseLoggingEnabled()) return false;
+
         return in_array( $meta_key, $this->getIgnorableUserMetaFields(), true );
     }
 
@@ -2773,24 +2845,24 @@ trait UserEvents
 
         if ( 'create' == $action )
         {
-            $msg = "Tried to add the $field_target field to a user, but the request was unsuccessful.";
+            $msg = "Tried to add the $field_target field to a user (%s), but the request was unsuccessful.";
         }
         elseif ( 'created' == $action )
         {
-            $msg = "Added the $field_target field to a user.";
+            $msg = "Added the $field_target field to a user (%s).";
         }
         elseif ( 'modify' == $action )
         {
-            $msg   = "Tried to update a user $field_target field value, but the request was unsuccessful.";
+            $msg   = "Tried to update a user (%s) $field_target field value, but the request was unsuccessful.";
             $context = [ 'intended', 'current' ];
         }
         elseif ( 'modified' == $action )
         {
-            $msg     = "Changed the user $field_target field.";
+            $msg     = "Changed the user (%s) $field_target field.";
             $context = [ 'previous', 'new' ];
 
             if ( $is_user_settings_field && '' === $user_settings_state  ) {
-                $msg  = 'Updated the user settings custom field without making any changes.';
+                $msg  = 'Triggered an update on the user (%s) settings custom field without making any changes.';
 
                 $msg .= $this->explainEventMsg(
                     ' (The update was triggered without modifying the previous user settings value).'
@@ -2798,16 +2870,16 @@ trait UserEvents
             }
 
             if ( $is_user_settings_field && 'deleted' == $user_settings_state ) {
-                $msg = 'Deleted the user settings custom field from the user.';
+                $msg = 'Deleted the user-settings custom field from the user (%s).';
             }
         }
         elseif ( 'delete' == $action )
         {
-            $msg = "Tried to delete the $field_target field from a user, but the request was unsuccessful.";
+            $msg = "Tried to delete the $field_target field from a user (%s), but the request was unsuccessful.";
         }
         elseif ( 'deleted' == $action )
         {
-            $msg = "Deleted the $field_target field from a user.";
+            $msg = "Deleted the $field_target field from a user (%s).";
         }
         else {
             // Do nothing
@@ -2857,7 +2929,7 @@ trait UserEvents
     }
 
     /**
-     * Aggregate user meta fields (new created or updated)
+     * Aggregate user meta fields (newly created or updated)
      * @return string Aggregated user meta fields
      */
     protected function __aggregateUserMetaFields()
@@ -3151,21 +3223,6 @@ trait UserEvents
                  * Both Gutenberg and Classic Editor
                  */
                 'post_opened_in_editor',
-            ],
-
-            'menus' => [
-                'menu_moved',
-                'menu_order',
-                'menu_created',
-
-                /**
-                 * Will lookup fo new menu items that was added.
-                 */
-                'menu_updated',
-
-                'menu_deleted',
-                'menu_location',
-                'menu_auto_add_page',
             ],
 
             'themes' => [

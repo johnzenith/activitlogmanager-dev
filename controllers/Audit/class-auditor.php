@@ -17,7 +17,8 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
      * Add the Event List template
      */
     use ALM_EventTraits\AuditableEvents,
-        ALM_EventTraits\EventHandlers;
+        ALM_EventTraits\EventHandlers,
+        \ALM\Models\Traits\ActivityLogTableSql;
 
     /**
      * @var \SplObjectStorage
@@ -115,38 +116,49 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
 
         add_action('init', function()
         {
-        // echo '<pre>';
-        // global $wp_roles;
-        // print_r($wp_roles->role_names);
-        // $caps = get_user_meta(8, $this->wpdb->prefix . 'capabilities', true);
-        // $user_data = get_userdata(4);
-        // $user_data->add_cap('edit_posts');
-        // $user_data->add_role('blogger');
-        // $user_data->remove_role('author');
-        // $user_data->set_role('editor'); 
-        // // print_r( $caps);
-        // print_r( $user_data->get_role_caps());
-        // echo '<hr>';
-        // print_r( $user_data->roles );
-        // echo '<hr>';
-        // print_r( $user_data->caps );
-        // echo '<hr>';
-        // var_dump( $user_data->role );
+            // echo '<pre>';
+            // global $wp_roles;
+            // print_r($wp_roles->role_names);
+            // $caps = get_user_meta(8, $this->wpdb->prefix . 'capabilities', true);
+            // $user_data = get_userdata(4);
+            // $user_data->add_cap('edit_posts');
+            // $user_data->add_role('blogger');
+            // $user_data->remove_role('author');
+            // $user_data->set_role('editor'); 
+            // // print_r( $caps);
+            // print_r( $user_data->get_role_caps());
+            // echo '<hr>';
+            // print_r( $user_data->roles );
+            // echo '<hr>';
+            // print_r( $user_data->caps );
+            // echo '<hr>';
+            // var_dump( $user_data->role );
 
-        // $this->appendUpdatedUserProfileData('test_field1', [
-        //     'new' => 'first term',
-        //     'previous' => 'last term',
+            // $this->appendUpdatedUserProfileData('test_field1', [
+            //     'new' => 'first term',
+            //     'previous' => 'last term',
+
+            // ]);
+            // var_dump( $this->__aggregateUserMetaFields() );
+
+            //     update_user_meta($this->User->current_user_ID, 'alm_ms_dashboard_quick_press_last_post_id', 4);
+
+            // var_dump($this->maybe_trigger_failed_events);
+
+            // var_dump($this->network_data);
+
+            // $menu_objects = get_objects_in_term( 17, 'nav_menu' );
+            // var_dump($menu_objects);
+
+            // echo '<pre>';
+            // print_r(wp_get_nav_menu_items(123));
+            // var_dump(wp_get_nav_menu_object(129));
+            // echo '</pre>';
             
-        // ]);
-        // var_dump( $this->__aggregateUserMetaFields() );
-        
-        //     update_user_meta($this->User->current_user_ID, 'alm_ms_dashboard_quick_press_last_post_id', 4);
-
-        // var_dump($this->maybe_trigger_failed_events);
-
-        // var_dump($this->network_data);
-        // wp_die();
-        
+            // var_dump(get_nav_menu_locations());
+            // wp_die();
+            
+            // exit;
         });
     }
 
@@ -371,11 +383,11 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
 
     /**
      * @todo
-     * Check whether or not the active loggable event can trigger notification
+     * Check whether or not the active logged event can trigger notification
      * 
      * @see \ALM\Controllers\Audit\Traits\EventList::LogActiveEvent()
      * 
-     * @return bool True if the logged active event can send notification. Otherwise false.
+     * @return bool True if the active loggeed event can send notification. Otherwise false.
      */
     protected function isActiveEventNotifiable()
     {
@@ -492,7 +504,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
 
         /**
          * This specifies whether or not the active event data can be updated 
-         * rather than creating a new one (insert a new row)
+         * rather than creating a new one.
          */
         $this->is_active_log_updatable = $this->isActiveEventLogIncrementValid(
             $_user_id,
@@ -619,7 +631,8 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         }
         elseif ('term' == $event_object) {
         }
-        elseif ('widget' == $event_object) {
+        elseif (in_array($event_object, ['widget', 'nav_menu'], true)) {
+            $object_data = $this->getEventMsgArg($event_group, 'obj_data', []);
         }
         elseif ('theme' == $event_object) {
         }
