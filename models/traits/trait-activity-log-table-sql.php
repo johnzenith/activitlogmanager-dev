@@ -16,7 +16,7 @@ defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your ow
 trait ActivityLogTableSql
 {
     /**
-     * Get the last activty log data
+     * Get the last activity log data
      * 
      * @param array $fields Specifies list of table columns to returned in the result set
 

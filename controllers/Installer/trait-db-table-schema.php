@@ -101,6 +101,7 @@ trait TableSchema
             $site_columns 
             user_id bigint(20) UNSIGNED NOT NULL DEFAULT 0,
             object_id bigint(20) UNSIGNED NOT NULL DEFAULT 0,
+            affected_db_table varchar(191) NOT NULL DEFAULT '',
             user_data longtext NOT NULL DEFAULT '',
             object_data longtext NOT NULL DEFAULT '',
             user_login varchar(60) NOT NULL DEFAULT '',

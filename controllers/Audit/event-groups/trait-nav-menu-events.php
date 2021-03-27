@@ -80,6 +80,11 @@ trait NavMenuEvents
      */
     protected function setupNavMenuEvents()
     {
+        $bail_term_event = [
+            'event_group' => 'term',
+            'event_type'  => 'nav_menu', // term type [taxonomy]
+        ];
+
         $this->event_list['nav_menus'] = [
             'title'           => 'Menus Events',
             'group'           => 'nav_menu',
@@ -105,10 +110,7 @@ trait NavMenuEvents
                     'user_state'           => 'logged_in',
                     'logged_in_user_caps'  => ['edit_theme_options'],
 
-                    'bail_event_handler' => [
-                        'event_group' => 'term',
-                        'event_type'  => 'nav_menu', // term type
-                    ],
+                    'bail_event_handler'  => $bail_term_event,
 
                     'message' => [
                         '_main'              => 'Created a new menu: %s',
@@ -142,6 +144,8 @@ trait NavMenuEvents
                     'user_state'          => 'logged_in',
                     'logged_in_user_caps' => ['edit_theme_options'],
 
+                    'bail_event_handler'  => $bail_term_event,
+
                     'message' => [
                         '_main'              => 'Changed the %s menu',
 
@@ -170,6 +174,8 @@ trait NavMenuEvents
                     'screen'              => ['admin', 'network'],
                     'user_state'          => 'logged_in',
                     'logged_in_user_caps' => ['edit_theme_options'],
+
+                    'bail_event_handler'  => $bail_term_event,
 
                     'message' => [
                         '_main'              => 'Deleted the %s menu',
@@ -200,6 +206,8 @@ trait NavMenuEvents
                     'screen'              => ['admin', 'network'],
                     'user_state'          => 'logged_in',
                     'logged_in_user_caps' => ['edit_theme_options'],
+
+                    'bail_event_handler'  => $bail_term_event,
 
                     'message' => [
                         '_main'                   => 'Added a new menu item (%s) to the %s menu',
@@ -234,7 +242,7 @@ trait NavMenuEvents
                  */
                 'wp_update_nav_menu_item' => [
                     'title'               => 'Menu item updated',
-                    'action'              => 'nav_menu_item_updated',
+                    'action'              => 'nav_menu_item_modified',
                     'event_id'            => 5675,
                     'severity'            => 'notice',
 
@@ -243,6 +251,8 @@ trait NavMenuEvents
                     'logged_in_user_caps' => ['edit_theme_options'],
 
                     'wp_post_meta' => $this->_getNavMenuItemPostMetaFields(),
+
+                    'bail_event_handler'  => $bail_term_event,
 
                     '_translate' => [
                         '_main' => [
@@ -292,6 +302,8 @@ trait NavMenuEvents
 
                     'wp_post_meta' => $this->_getNavMenuItemPostMetaFields(),
 
+                    'bail_event_handler' => $bail_term_event,
+
                     '_translate' => [
                         '_main' => [
                             'plural' => 'Deleted the following %s menu items from the %s menu',
@@ -325,7 +337,7 @@ trait NavMenuEvents
 
                 'alm_menu_location_updated' => [
                     'title'                => 'Menu location updated',
-                    'action'               => 'nav_menu_location_updated',
+                    'action'               => 'nav_menu_location_modified',
                     'event_id'             => 5677,
                     'severity'             => 'notice',
 
@@ -339,19 +351,21 @@ trait NavMenuEvents
                     ],
 
                     'message' => [
-                        '_main'              => 'Changed the %s menu display location',
+                        '_main'                     => 'Changed the %s menu display location',
 
-                        '_space_start'       => '',
-                        'menu_ID'            => ['object_id'],
-                        'menu_name'          => ['menu_name'],
-                        'menu_slug'          => ['menu_slug'],
-                        'taxonomy'           => ['taxonomy'],
-                        'display_location'   => ['display_location'],
-                        '_space_end'         => '',
+                        '_space_start'              => '',
+                        'menu_ID'                   => ['object_id'],
+                        'menu_name'                 => ['menu_name'],
+                        'menu_slug'                 => ['menu_slug'],
+                        'taxonomy'                  => ['taxonomy'],
+                        '_space_line'               => '',
+                        'previous_display_location' => ['previous_display_location'],
+                        'new_display_location'      => ['new_display_location'],
+                        '_space_end'                => '',
                     ],
 
                     'event_handler' => [
-                        'num_args' => 2,
+                        'num_args' => 3,
                     ],
                 ],
             ]
@@ -453,11 +467,55 @@ trait NavMenuEvents
         /**
          * Register the nav menu location update event
          */
-        $theme_mods_option = 'theme_mods_' . $this->current_theme;
-        add_action($theme_mods_option, function()
+        $theme_mods_option = 'update_option_theme_mods_' . $this->current_theme;
+        add_action($theme_mods_option, function($old_value, $value, $option)
         {
+            $self                 = $this;
+            $option_name          = 'nav_menu_locations';
+            $new_location         = $this->getVar($value, $option_name, []);
+            $previous_location    = $this->getVar($old_value, $option_name, []);
+            $nav_menu_selected_id = $this->sanitizeOption($this->getVar($_REQUEST, 'menu', 0), 'int');
 
-        });
+            // Using a closure to normalize the nav menu location(s)
+            $normalize_location = function($locations) use (&$self, &$nav_menu_selected_id)
+            {
+                $valid_location       = [];
+                $registered_locations = get_registered_nav_menus();
+
+                foreach ( $locations as $location => $menu_id ) {
+                    $_menu_id = $self->sanitizeOption($menu_id, 'int');
+
+                    if ($_menu_id === $nav_menu_selected_id) {
+                        $description      = $this->getVar($registered_locations, $location, $location);
+                        $valid_location[] = empty($description) ? $location : $description;
+                    }
+                }
+
+                if (empty($valid_location)) {
+                    $set_location = [];
+                } else {
+                    $set_location = $valid_location;
+                }
+                return $set_location;
+            };
+
+            $_new_location      = $normalize_location($new_location);
+            $_previous_location = $normalize_location($previous_location);
+
+            /**
+             * Fires immediately after updating the nav menu location
+             * 
+             * @param int $nav_menu_selected_id Specifies the nav menu ID
+             * @param array $new_location Specifies the new menu location
+             * @param array $old_location Specifies the old menu location
+             */
+            do_action(
+                'alm_menu_location_updated',
+                $nav_menu_selected_id,
+                $_new_location,
+                $_previous_location, 
+            );
+        }, 10, 3);
     }
 
     /**
@@ -492,7 +550,6 @@ trait NavMenuEvents
         $break_line         = $this->getEventMsgLineBreak();
         $break_line_2       = str_repeat($break_line, 2);
         $menu_settings      = '';
-        $location_info      = '';
         $menu_locations     = get_nav_menu_locations();
         $_menu_locations    = $this->previous_menu_locations;
         $display_locations  = '';
@@ -541,9 +598,8 @@ trait NavMenuEvents
         }
 
         // Previous display location
+        $previous_display_location = '';
         if ($is_update) {
-            $previous_display_location = '';
-
             foreach ($locations as $location => $description) {
                 $_menu_location = $this->getVar($_menu_locations, $location);
                 $checked        = $menu_id === $_menu_location;
@@ -554,73 +610,18 @@ trait NavMenuEvents
                 $previous_display_location .= $description . ', ';
             }
 
-            $previous_display_location = rtrim($previous_display_location, ', ');
+            $previous_display_location = $this->rtrim($previous_display_location, ', ');
         }
 
-        // New display location setting
-        $new_display_location = '';
-        foreach ( $locations as $location => $description )
-        {
-            $menu_location  = $this->getVar($menu_locations, $location);
-            $checked        = $menu_id === $menu_location;
+        $display_locations = sprintf(
+            'Display location: %s',
+            empty($previous_display_location) ? 'None' : $previous_display_location,
+        );
 
-            if (!$checked || empty($menu_location))
-                continue;
-                
-            if ($is_update && isset($this->previous_menu_locations[$location])) {
-                $menu              = $this->previous_menu_locations[$location];
-                $new_location      = $this->getVar(wp_get_nav_menu_object($menu_id), 'name');
-                $previous_location = $this->getVar(wp_get_nav_menu_object($menu), 'name');
-
-                if ($new_location !== $previous_location && !empty($previous_location)) {
-                    $location_info .= sprintf(
-                        '%s menu location was previously set to: %s%s',
-                        $location,
-                        $previous_location,
-                        $break_line_2
-                    );
-                }
-            }
-
-            $new_display_location .= $description . ', ';
-        }
-
-        $new_display_location = rtrim($new_display_location, ', ');
-
-        if ($is_update)
-        {
-            if ($this->is_menu_locations_updated 
-            && $previous_display_location !== $new_display_location)
-            {
-                $display_locations .= sprintf(
-                    'Previous display location: %s%s',
-                    empty($previous_display_location) ? 'None' : $previous_display_location,
-                    $break_line_2
-                );
-
-                $display_locations .= sprintf(
-                    'New display location: %s%s',
-                    empty($new_display_location) ? 'None' : $new_display_location,
-                    $break_line_2
-                );
-
-                if (!empty($location_info)) {
-                    $display_locations .= sprintf(
-                        'Menu location info: %s%s',
-                        $location_info, $break_line_2
-                    );
-                }
-            }
-        }
-        else {
-            $display_locations = sprintf(
-                'Display location: %s',
-                empty($new_display_location) ? 'None' : $new_display_location
-            );
-        }
+        if (empty($menu_settings)) return '';
 
         $menu_settings .= $display_locations;
-        $menu_settings  = rtrim($menu_settings, $break_line_2);
+        $menu_settings  = $this->rtrim($menu_settings, $break_line_2);
 
         return $menu_settings;
     }

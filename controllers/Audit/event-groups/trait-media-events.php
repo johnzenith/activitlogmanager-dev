@@ -82,7 +82,7 @@ trait MediaEvents
                     // 'logged_in_user_caps' => ['edit_post'], // Only possible when post is active
 
                     'message' => [
-                        '_main'                     => 'Detached a media (%s) from a post (%s)',
+                        '_main'                     => 'Tried to render an attachment (%s) from a post (%s) but the operation failed',
 
                         '_space_start'              => '',
                         'attachment_id'             => ['object_id'],
@@ -98,6 +98,39 @@ trait MediaEvents
 
                     'event_handler' => [
                         'hook' => 'callback',
+                    ],
+                ],
+
+                /**
+                 * @todo
+                 * 
+                 * Fires when an attachment type can't be rendered in the edit form.
+                 * 
+                 * @see wp_media_attach_action()
+                 */
+                'wp_edit_form_attachment_display' => [
+                    'title'               => 'Attachment rendering failed',
+                    'action'              => 'post_modify',
+                    'event_id'            => 5603,
+                    'severity'            => 'notice',
+
+                    'screen'              => ['admin', 'network'],
+                    'user_state'          => 'logged_in',
+                    // 'logged_in_user_caps' => ['edit_post'], // Only possible when post is active
+
+                    'message' => [
+                        '_main'                     => 'Detached a media (%s) from a post (%s)',
+
+                        '_space_start'              => '',
+                        'attachment_id'             => ['object_id'],
+                        'attachment_filename'       => ['attachment_filename'],
+                        'post_id'                   => ['post_id'],
+                        'post_title'                => ['post_title'],
+                        'view_attachment'           => ['view_attachment'],
+                        'view_attachment_in_editor' => ['view_attachment_in_editor'],
+                        'view_post'                 => ['view_post'],
+                        'view_post_in_editor'       => ['view_post_in_editor'],
+                        '_space_end'                => '',
                     ],
                 ],
             ]

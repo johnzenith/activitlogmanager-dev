@@ -434,7 +434,7 @@ class UserManager extends \ALM\Controllers\Base\PluginFactory
      */
     public function getSuperAdminRoleNames()
     {
-        // / Fallback role names for super admin
+        // Fallback role names for super admin
         $roles = array_flip([
             'super_admin',
             'super-admin', 
@@ -458,7 +458,7 @@ class UserManager extends \ALM\Controllers\Base\PluginFactory
      * @see $wp_roles
      * 
      * @param  array   $roles        Specifies the user roles to get the highest role from
-     * @param  bool    $unknown_role Specifies unknown roles should be ignored or not
+     * @param  bool    $unknown_role Specifies whether unknown roles should be ignored or not
      * @return string 		         The highest user role if found. Otherwise empty string
      */
     public function getUserHighestRole( $user_id, $unknown_role = false )

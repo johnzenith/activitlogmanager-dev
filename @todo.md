@@ -1,3 +1,27 @@
+# MAIN
+    - Only use the [term-events] when on super mode
+    - Use Specific event [category, tag] on simple mode
+
+    ----------------------------------------------------
+
+    - [User Events]
+    - Simplified the result too
+
+    -----------------------------------------------------
+    - [Widgets]
+    - [Nav Menu]
+
+
+-------------------------------------
+# Statistics
+
+1. Each log should have a statistics
+2. when a log is inserted, update the log statistics
+3. when a log is deleted, update the statistics as well
+-----------------------------------------
+
+
+
 # 1.
 **Verify the menu pages**
     Check base controller PluginFactory::isPluginMenuPage()

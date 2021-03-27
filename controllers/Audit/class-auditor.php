@@ -156,6 +156,10 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
             // echo '</pre>';
             
             // var_dump(get_nav_menu_locations());
+
+            // var_dump(get_taxonomy('category'));
+            // var_dump(get_taxonomy('post_format'));
+            // var_dump(get_taxonomy('tag'));
             // wp_die();
             
             // exit;
@@ -387,7 +391,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
      * 
      * @see \ALM\Controllers\Audit\Traits\EventList::LogActiveEvent()
      * 
-     * @return bool True if the active loggeed event can send notification. Otherwise false.
+     * @return bool True if the active logged event can send notification. Otherwise false.
      */
     protected function isActiveEventNotifiable()
     {
@@ -575,6 +579,11 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         );
 
         /**
+         * @todo
+         * Set the affected object database table
+         */
+
+        /**
          * User data
          * 
          * For event data integrity, we don't want scenario where a change to the user data will
@@ -618,7 +627,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
                         if (!isset($user_obj->email_address)) {
                             $user_obj->email_address = $user_obj->user_email;
                         }
-                        unset($user_obj->email_address);
+                        unset($user_obj->user_email);
                     }
                     unset($user_obj->comment_shortcuts);
                     $object_data = (array) $user_obj;
@@ -629,9 +638,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
             if (taxonomy_exists($event_object)) {
             }
         }
-        elseif ('term' == $event_object) {
-        }
-        elseif (in_array($event_object, ['widget', 'nav_menu'], true)) {
+        elseif (in_array($event_object, ['widget', 'nav_menu', 'term', 'term_taxonomy',], true)) {
             $object_data = $this->getEventMsgArg($event_group, 'obj_data', []);
         }
         elseif ('theme' == $event_object) {

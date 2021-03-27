@@ -2666,7 +2666,7 @@ trait UserEvents
     public function __ignorableUserMetaFields( $ignore, $meta_id, $meta_key )
     {
         /**
-         * Disable this functionalify if verbose logging is enabled
+         * Disable this functionality if verbose logging is enabled
          */
         if ($this->isVerboseLoggingEnabled()) return false;
 
@@ -2717,7 +2717,7 @@ trait UserEvents
     public function canIgnoreUserMetaStrictly( $meta_key )
     {
         /**
-         * Disable this functionalify if verbose logging is enabled
+         * Disable this functionality if verbose logging is enabled
          */
         if ($this->isVerboseLoggingEnabled()) return false;
 
@@ -3190,7 +3190,7 @@ trait UserEvents
              * 
              * @link https://developer.wordpress.org/reference/functions/get_the_tags/
              */
-            'terms' => [
+            'terms' => [ // done
                 'term_created',
                 'term_updated',
                 'term_moved',
@@ -3319,7 +3319,7 @@ trait UserEvents
             /**
              * @link https://developer.wordpress.org/reference/functions/get_taxonomies/
              */
-            'taxonomies' => [
+            'taxonomies' => [ // done
                 'taxonomy_created',
                 'taxonomy_updated',
                 'taxonomy_deleted',
@@ -3409,7 +3409,12 @@ trait UserEvents
             'links_manager' => [],
             'link_manager_enabled' => [
 
-            ]
+            ],
+
+            /**
+             * @todo set_theme_mod()
+             */
+            'theme_mod' => [],
         ];
     }
 }

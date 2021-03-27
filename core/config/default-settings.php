@@ -16,7 +16,7 @@ function alm_get_default_running_modes()
 {
 	return [
 		'normal'  => 1,
-		'super'   => 1,
+		'super'   => 1, // developer
 		'stealth' => 1,
 	];
 }
@@ -42,7 +42,7 @@ function alm_parse_running_modes( array $custom_modes = [] )
     $default_modes       = alm_get_default_running_modes();
     $count_default_modes = count( $default_modes );
     
-    // Total modes = default mode +  3 custom modes
+    // Total modes = default mode + 3 custom modes
     $total_modes = ALM_CUSTOM_MODE_LIMIT + $count_default_modes;
     
     if ( ($count_modes + $count_default_modes) > $total_modes )
@@ -162,7 +162,7 @@ function alm_get_global_settings()
  * 
  * 		'example_value' => [
  * 			'normal'  => 1,
- * 			'super'  => 1,
+ * 			'super'   => 1,
  * 			'stealth' => 0,
  * 		];
  * 
@@ -182,7 +182,7 @@ function alm_get_default_settings()
 	// Specifies whether the settings is refreshed (reset)
 	$settings['is_settings_refreshed'] = 0;
 
-	// Set the plugin user for specific blogs
+	// Set the plugin user with admin privileges for specific blogs
 	$settings['plugin_admin_user'] = [];
 
 	// Specifies whether internal IP address can be filter or not
@@ -220,7 +220,7 @@ function alm_get_default_settings()
 
 	// Specifies whether to allow verbose logging or not
 	// However, some event object log cannot be simplified.
-	// For example, the posts, comments, terms, taxomies events are logged in 
+	// For example, the posts, comments, terms, taxonomies events are logged in 
 	// verbose form.
 	$settings['verbose_logging'] = alm_set_running_modes([]);
 
@@ -335,7 +335,7 @@ function alm_get_default_settings()
 
 	// Whether the real time notification popup should be disable when the 
 	// notification is disabled as well
-	$settings['log_notification_excluded_affect_real_time_popup'] = alm_set_running_modes([], []);
+	$settings['log_notification_excluded_affect_real_time_popup'] = alm_set_running_modes([]);
 
 
 	/**
@@ -439,7 +439,7 @@ function alm_get_default_settings()
 	$settings['log_plugin_events'] = alm_set_running_modes();
 
 	/**
-	 * Blok editor and Post editor
+	 * Block editor and Post editor
 	 */
 	$settings['log_post_editor']  = alm_set_running_modes();
 	$settings['log_block_editor'] = alm_set_running_modes();

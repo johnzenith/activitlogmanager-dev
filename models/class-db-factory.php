@@ -114,7 +114,7 @@ class DB_Factory
      * 
      * @since 1.0.0
      * 
-     * @param array $vars Specifies an array containing the query variable ame 
+     * @param array $vars Specifies an array containing the query variable name 
      * as array key and query variable value as array value.
      */
     public function setVar( array $vars )
@@ -225,7 +225,7 @@ class DB_Factory
     }
 
     /**
-     * Add the blog filter on multisite
+     * Add the main blog filter on multisite
      */
     public function isMainSite( $site_id = 0 )
     {
@@ -637,7 +637,7 @@ class DB_Factory
     }
 
     /**
-     * The quey IN() clause
+     * The query IN() clause
      * 
      * @since 1.0.0
      * 

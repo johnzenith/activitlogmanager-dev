@@ -1034,12 +1034,13 @@ trait SettingsFactory
      * If enabled, we will explicitly log all events that are triggered,
      * no matter the context.
      * 
-     * Note: This is the recommended behevior for audit logs
+     * Note: This is the recommended behavior for audit logs
      * 
      * @return bool
      */
     public function isVerboseLoggingEnabled()
     {
+        return false;
         return $this->isSettingEnabled('verbose_logging');
     }
 

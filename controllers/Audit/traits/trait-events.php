@@ -26,8 +26,11 @@ trait AuditableEvents_SS
         ALM_EventGroups\MediaEvents,
         ALM_EventGroups\WidgetEvents,
         ALM_EventGroups\NavMenuEvents,
+        ALM_EventGroups\TermEvents,
+        ALM_EventGroups\TermTaxonomyEvents,
         ALM_EventGroups\WP_CoreSettingsEvents,
         ALM_Events\EventConditionalParser,
+        ALM_Events\EventGlobalHelpers,
         ALM_Events\EventList;
 }
 

@@ -26,8 +26,8 @@ define( 'ALM_UPDATE_SETTINGS_SLUG', 'alm-update-settings' );
 define( 'ALM_CUSTOM_MODE_LIMIT', 3 );
 
 $plugin_file = wp_normalize_path( ALM_PLUGIN_FILE );
-define( 'ALM_PLUGIN_DIR', 		plugin_dir_path( $plugin_file ) );
-define( 'ALM_PLUGIN_URL', 		plugin_dir_url( $plugin_file ) );
+define( 'ALM_PLUGIN_DIR', 	   plugin_dir_path( $plugin_file ) );
+define( 'ALM_PLUGIN_URL',      plugin_dir_url( $plugin_file ) );
 define( 'ALM_PLUGIN_BASENAME', plugin_basename( $plugin_file ) );
 
 define( 'ALM_CORE_DIR',        ALM_PLUGIN_DIR . 'core/' );

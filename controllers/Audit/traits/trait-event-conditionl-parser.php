@@ -575,7 +575,7 @@ trait EventConditionalParser
                 /**
                  * Filters the event conditional helper.
                  * The filter hook name is the same with the event conditional query parameter 
-                 * as used during when the event is being registered.
+                 * as used when the event is being registered.
                  * 
                  * It accepts 5 arguments.
                  * 

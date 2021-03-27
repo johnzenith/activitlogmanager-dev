@@ -374,7 +374,6 @@ trait EventList
         $event_type  = $this->getVar($custom_event_handler, 'event_type');
         $event_group = $this->getVar($custom_event_handler, 'event_group');
 
-
         if (empty($event_type) 
         || empty($event_group) 
         || !is_string($event_type) 
@@ -784,7 +783,9 @@ trait EventList
      */
     public function isEventMsgFieldInfoIgnorable($info)
     {
-        return is_string($info) && 'ignore' === $info;
+        if (!is_string($info)) return false;
+
+        return ('_ignore_' === $info || $this->strEndsWith($info, '_ignore_'));
     }
 
     /**
@@ -871,7 +872,7 @@ trait EventList
                 }
             }
 
-            // Ignored the message if $message_arg var is set to '_ignore_'
+            // Ignore the message if $message_arg var is set to '_ignore_'
             if ( $this->isEventMsgFieldInfoIgnorable($message_arg) )
                 continue;
             
@@ -954,6 +955,13 @@ trait EventList
 
             // Properly parse object and array values
             $info = $this->parseValueForDb($info);
+
+            /**
+             * If the info is equal '_ignore_', then we should ignore it.
+             */
+            if (!is_serialized($info, true) 
+            && $this->isEventMsgFieldInfoIgnorable($info))
+                continue;
 
             /**
              * Pluralize the event message name if needed.
@@ -1152,7 +1160,7 @@ trait EventList
      * @param  string  $event     Specifies the event the field argument belongs to
      * @param  string  $arg       Specifies the event message field argument to get
      * @param  mixed   $default   Specifies default value to use if the event argument is not set
-     * @param string   $to_scalar Specifies whether to properly parse array/object values
+     * @param  string  $to_scalar Specifies whether to properly parse array/object values
      * @return mixed              The customized event argument value
      */
     protected function getEventMsgArg( $event, $arg, $default = '', $to_scalar = false )
@@ -1177,7 +1185,7 @@ trait EventList
      */
     protected function getEventMsgObjectId( $event )
     {
-        return (int) $this->getEventMsgArg( $event, 'object_id' );
+        return $this->sanitizeOption($this->getEventMsgArg( $event, 'object_id' ), 'int');
     }
 
     /**
@@ -1376,9 +1384,9 @@ trait EventList
 
     /**
      * Create the main event list
-     * @param string $group     Specifies the event group
-     * @param array  $events    Specifies the events associated with the group
-     * @param array $group_args Specifies associated arguments for the given event group
+     * @param string $group      Specifies the event group
+     * @param array  $events     Specifies the events associated with the group
+     * @param array  $group_args Specifies associated arguments for the given event group
      * 
      * @todo
      * 1. check if event is disabled
@@ -1388,12 +1396,13 @@ trait EventList
      * ------------------------------------------------------------------------------
      * 1. Get all excluded events
      * 2. Check if the event is in any exclude event list
-     * 3. If event is listed in the exclude event list, then set the event 'disable' argument to true
+     * 3. If event is listed in the exclude event list, 
+     *    then set the event 'disable' argument to true
      * 
      * ------------------------------------------------------------------------------
      * How disabled events are treated
      * ------------------------------------------------------------------------------
-     * All registered events are passed to the Auditor Observer controller, 
+     * All registered events are passed to the {@see Auditor Observer Controller}, 
      * which will then perform the  final step, whether to watch the event or not.
      * If the [disable] event argument is set and evaluates to true, then the 
      * Auditor watcher will ignore such event. Simple!
@@ -1402,10 +1411,10 @@ trait EventList
      * How event notifications are turned off
      * ------------------------------------------------------------------------------
      * 1. Get all event IDs with disabled notifications turned on
-     * 2. Set the 'notification' argument for those events to false;
+     * 2. Set the 'notification' argument for those events to false
      * 3. The Event Notification Handler will then ignore sending notifications if the event 
      *    'notification' argument is set to false.
-     * 4. If the notification argument is an array, then it will contain just too fields:
+     * 4. If the notification argument is an array, then it will contain just 2 fields:
      *      'sms'   => true|false,
      *      'email' => true|false,
      * 5. If the 'sms' or 'email' field is set to false, then the notification for such
@@ -1644,110 +1653,6 @@ trait EventList
     }
 
     /**
-     * Get metadata previous value helper
-     * @see get_metadata()
-     */
-    private function _doMetadataPreviousValueHelper( $meta_type )
-    {
-        $self = $this;
-
-        add_action("update_{$meta_type}_meta", function( $meta_id, $object_id, $meta_key, $meta_value ) use (&$self, &$meta_type)
-        {
-            // Get the previous value
-            $prev_value = get_metadata_raw( $meta_type, $object_id, $meta_key );
-            if ( is_countable($prev_value ) && count( $prev_value ) === 1 ) {
-                if ($prev_value[0] === $meta_value ) {
-                    return;
-                }
-                $prev_value = $prev_value[0];
-            }
-
-            if ($prev_value != $meta_value) {
-                $self->_pre_event_data[$object_id][$meta_key] = $prev_value;
-            }
-        }, 10, 4);
-    }
-
-    /**
-     * Register global event helpers.
-     * This is used to retrieve an event data before it is updated.
-     * By event data, we mean things such as: post data, comment data, menu data, etc.
-     * 
-     * -------------------
-     * Naming conventions:
-     * -------------------
-     * 
-     * For any previous event data, it will be named the corresponding 
-     * object slug. For example: the post event object before update will be named as 'post', 
-     * also 'comment', 'term', etc.
-     * 
-     * While for event related data, it will be named the corresponding hook name like so:
-     * the {@see wp_insert_post} action hook will be named 'wp_insert_post' and vice versa.
-     */
-    private function _registerGlobalEventHelpers()
-    {
-        $self = $this;
-
-        /**
-         * Get the insert post object.
-         * This is useful for event handlers that is connected with the wp_post table 
-         * so that the handlers can retrieve its corresponding post data.
-         * 
-         * @see wp_insert_post()
-         * 
-         * @todo - maybe this should be removed
-         */
-        add_action('wp_insert_post', function($post_ID, $post, $update) use (&$self) {
-            $self->_pre_event_data['wp_insert_post'] = [
-                'ID'     => $post_ID,
-                'post'   => $post,
-                'update' => $update,
-            ];
-        }, 10, 3);
-
-        /**
-         * Get the post data before an update.
-         * 
-         * Note: This uses the {@see post_updated} action hook to retrieve the post data 
-         * before it is updated.
-         */
-        add_action('post_updated', function($post_ID, $post_after, $post_before) use (&$self) {
-            $self->_pre_event_data['post'] = $post_before;
-        }, 10, 3);
-
-        /**
-         * Get metadata values before they are updated
-         */
-        $meta_types = ['post', 'comment', 'term', 'user'];
-
-        foreach ($meta_types as $meta_type)
-        {
-            $this->_doMetadataPreviousValueHelper($meta_type);
-        }
-
-        /**
-         * Get the nav menu previous location before it is updated
-         */
-        if (!empty($this->current_theme_mods) && is_array($this->current_theme_mods)) {
-            foreach ($this->current_theme_mods as $name => $value) {
-                
-            }
-        }
-        add_filter('pre_set_theme_mod_nav_menu_locations', function ($value, $old_value) {
-        }, 10, 3);
-    }
-
-    /**
-     * Get the event data before to update
-     * @param  string     $name Specifies the type of event
-     * @return mixed|null       The pre-event data on success. Otherwise null.
-     */
-    protected function _getPreEventData($name)
-    {
-        return $this->getVar($this->_pre_event_data, $name, null);
-    }
-
-    /**
      * Setup the active event data override
      * 
      * @since 1.0.0
@@ -1843,13 +1748,13 @@ trait EventList
             $event_ID = $this->getEventIdBySlug( $event_successor_slug, $event_successor_group );
         }
         else {
-            $event_ID = (int) $this->getVar( $this->active_event, 'event_successor' );
+            $event_ID = $this->sanitizeOption($this->getVar( $this->active_event, 'event_successor'), 'int');
         }
 
         if ($event_ID < 1)
             return false;
 
-        if ($event_ID == $this->active_event_ID)
+        if ($event_ID === $this->active_event_ID)
             return false;
 
         /**
@@ -2135,9 +2040,9 @@ trait EventList
 
         /**
          * We can now successfully log the event if allowed to.
-         * This is used to automatically log the prepared active event data.
+         * This is used to automatically log the prepared (active) event data.
          * 
-         * The Log() method can be called manually, without specifying the 
+         * The {@see EventList::Log()} method can be called manually, without specifying the 
          * {@see $is_active_event_loggable} property.
          * 
          * Note: {@see $is_active_event_loggable} property is set to false by default,

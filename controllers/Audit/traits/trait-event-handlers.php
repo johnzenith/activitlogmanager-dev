@@ -25,6 +25,8 @@ trait EventHandlers_SS
         ALM_EventHandlers\MediaEvents,
         ALM_EventHandlers\WidgetEvents,
         ALM_EventHandlers\NavMenuEvents,
+        ALM_EventHandlers\TermEvents,
+        ALM_EventHandlers\TermTaxonomyEvents,
         ALM_EventHandlers\WP_CoreSettingsEvents;
 }
 

@@ -203,7 +203,7 @@ trait NavMenuEvents
     }
 
     /**
-     * Update the nav menu item args if the supplied default is emtpy
+     * Update the nav menu item args if the supplied default is empty
      * @param  array $args The nav menu item data
      * @return array       The updated nav menu item data
      */
@@ -698,6 +698,51 @@ trait NavMenuEvents
         $event_msg_args['_main'] = sprintf($event_msg_args['_main'], $menu_item_title, $menu_name);
 
         $this->overrideActiveEventData('message', $event_msg_args);
+
+        $this->setupEventMsgData('nav_menu', $setup_event_data);
+        $this->LogActiveEvent('nav_menu', __METHOD__);
+    }
+
+    /**
+     * Fires immediately after the nav menu location is updated
+     */
+    public function alm_menu_location_updated_event($menu_id, $new_location, $old_location)
+    {
+        $event_slug                = $this->getEventSlugByEventHandlerName(__FUNCTION__);
+        $event_id                  = $this->getEventIdBySlug($event_slug, 'nav_menu');
+        $event_data                = $this->getEventData($event_id);
+        $event_msg_args            = $this->getVar($event_data, 'message', []);
+
+        $object_id                 = $menu_id;
+        $nav_menu_obj              = wp_get_nav_menu_object($menu_id);
+
+        $taxonomy                  = $this->getVar($nav_menu_obj, 'taxonomy');
+        $menu_name                 = $this->getVar($nav_menu_obj, 'name');
+        $menu_slug                 = $this->getVar($nav_menu_obj, 'slug');
+        $menu_parent               = $this->getVar($nav_menu_obj, 'parent');
+
+        $new_display_location      = empty($new_location) ? 'None' : implode(', ', $new_location);
+        $previous_display_location = empty($old_location) ? 'None' : implode(', ', $old_location);
+
+        // Event main message
+        $event_msg_args['_main'] = sprintf($event_msg_args['_main'], $menu_name);
+
+        $this->overrideActiveEventData('message', $event_msg_args);
+
+        $setup_event_data = compact(
+            'object_id',
+            'taxonomy',
+            'menu_name',
+            'menu_slug',
+            'menu_parent',
+            'previous_display_location',
+            'new_display_location'
+        );
+
+        $event_obj_data = $setup_event_data;
+        unset($event_obj_data['object_id']);
+
+        $setup_event_data['obj_data'] = $event_obj_data;
 
         $this->setupEventMsgData('nav_menu', $setup_event_data);
         $this->LogActiveEvent('nav_menu', __METHOD__);
