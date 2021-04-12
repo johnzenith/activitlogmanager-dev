@@ -3,7 +3,7 @@
  * @package   Activity Log Manager
  * @version   1.0
  * @author    ViewPact
- * @copyright 2020 ViewPact Team 
+ * @copyright 2021 ViewPact Team 
  * @license   GPL-2.0+ [http://www.gnu.org/licenses/gpl-2.0.txt]
  * @link      https://activitylogmanager.com
  *
@@ -26,5 +26,5 @@ if ( !defined('ABSPATH') || !function_exists('add_action') ) {
  * @todo - use the 'ALM_PRO' constant to specify a pro version of the plugin 
  */
 
-define( 'ALM_PLUGIN_FILE',__FILE__);
-require_once plugin_dir_path(__FILE__) . 'core/bootstrap.php';
+define( 'ALM_PLUGIN_FILE', __FILE__);
+require_once plugin_dir_path(ALM_PLUGIN_FILE) . 'core/bootstrap.php';

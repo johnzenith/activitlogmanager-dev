@@ -84,6 +84,8 @@ trait PluginEvents
          */
         add_action('add_option_active_plugins', function($option, $value) use (&$self)
         {
+            // exit(var_dump($option));
+
             $new_plugins = $self->unserialize($value);
             if (empty($new_plugins) || !is_countable($new_plugins))
                 return;
@@ -252,7 +254,7 @@ trait PluginEvents
                 do_action('alm_plugin_activated_with_error', $plugin);
             }
 
-            // Check whether the plugin has been activated successfully
+            // Check whether the plugin could not be activated successfully
             if ( 0 === (int) did_action('alm_plugin_activation_failed') 
             && (
                     !in_array($plugin, $self->activated_plugins_list, true)
@@ -468,7 +470,7 @@ trait PluginEvents
 
             $error_info = implode( $this->getEventMsgErrorChar(), $error_list );
 
-            // Replace occurrencies of multiple periods '..'
+            // Replace occurrences of multiple periods '..'
             $error_info = str_replace('..', '.', $error_info);
 
             if (strlen($error_info) <= 6) {
@@ -502,19 +504,26 @@ trait PluginEvents
 
         if ($old_plugins < $new_plugins) {
             $plugin_event                 = 'alm_plugin_activated';
-            $this->activated_plugins_list = array_merge($this->activated_plugins_list, $new_plugins);
+            $activated_plugins            = array_merge($this->activated_plugins_list, $new_plugins);
+            $this->activated_plugins_list = $activated_plugins;
 
-            /**
-             * Setup the plugin activation event args
-             */
-            $this->plugin_activation_event = [
-                'args'  => [$new_plugins, $old_plugins],
-                'event' => $plugin_event,
-            ];
-        } else {
-            $plugin_event = 'alm_plugin_deactivated';
-            do_action($plugin_event, $new_plugins, $old_plugins);
+            if (!empty($this->getVar($_POST, 'checked', []))) {
+                /**
+                 * Setup the plugin activation event args
+                 */
+                $this->plugin_activation_event = [
+                    'args'  => [$new_plugins, $old_plugins],
+                    'event' => $plugin_event,
+                ];
+
+                return;
+            }            
         }
+        else {
+            $plugin_event = 'alm_plugin_deactivated';
+        }
+
+        do_action($plugin_event, $new_plugins, $old_plugins);
     }
 
     /**
@@ -525,22 +534,30 @@ trait PluginEvents
         if (empty($this->plugin_activation_event))
             return;
 
-        $plugins     = isset($_POST['checked']) ? (array) wp_unslash($_POST['checked']) : array();
-        $last_plugin = '';
+        $args             = $this->getVar($this->plugin_activation_event, 'args', []);
+        $plugins          = isset($_POST['checked']) ? (array) wp_unslash($_POST['checked']) : array();
+        $new_plugins      = [];
+        $old_plugins      = [];
+        $last_plugin      = '';
+        $activation_event = $this->getVar($this->plugin_activation_event, 'event', '_alm_no_action');
+
+        // Bail out if the {args} variable which contains the new plugin data is empty
+        if (empty($args)) 
+            return;
 
         if (!empty($plugins)) {
             $last_plugin = end($plugins);
         }
 
         // When activating list of selected plugins, make sure the plugin activation 
-        // event is run just once
+        // event is fired just once
         if (empty($last_plugin)) {
-            do_action_ref_array(
-                $this->getVar($this->plugin_activation_event, 'event', '_alm_no_action'),
-                $this->getVar($this->plugin_activation_event, 'args', [])
-            );
-        } else {
-            $args         = $this->getVar($this->plugin_activation_event, 'args', []);
+            if (0 === did_action($activation_event)) {
+                $new_plugins = $this->getVar($args, 0, []);
+                $old_plugins = $this->getVar($args, 1, []);
+            }
+        }
+        else {            
             $last_plugin  = urldecode($last_plugin);
             $old_plugins  = $this->getVar($args, 1, []);
 
@@ -549,9 +566,11 @@ trait PluginEvents
             {
                 // Get the newly activated plugins
                 $new_plugins = [];
-                foreach ($plugins as $plugin) {
+                foreach ($plugins as $plugin)
+                {
                     if (isset($this->activated_plugins_list[$plugin]) 
-                    || in_array($plugin, $this->activated_plugins_list, true)) {
+                    || in_array($plugin, $this->activated_plugins_list, true))
+                    {
                         if ($this->is_network_admin) {
                             $new_plugins[$plugin] = $this->getVar($this->activated_plugins_list, $plugin, 1);
 
@@ -566,13 +585,13 @@ trait PluginEvents
                         }
                     }
                 }
-
-                do_action(
-                    $this->getVar($this->plugin_activation_event, 'event', '_alm_no_action'),
-                    $new_plugins, $old_plugins
-                );
             }
         }
+
+        // Only fire new plugin activation event when a new plugin is available
+        if (empty($new_plugins)) return;
+
+        do_action( $activation_event, $new_plugins, $old_plugins );
     }
 
     /**
@@ -582,7 +601,13 @@ trait PluginEvents
      */
     public function pluginEventActions()
     {
-        return ['update-selected', 'upgrade-plugin', 'activate-plugin', 'install-plugin', 'upload-plugin'];
+        return [
+            'update-selected',
+            'upgrade-plugin',
+            'activate-plugin',
+            'install-plugin',
+            'upload-plugin',
+        ];
     }
 
     /**
@@ -789,6 +814,11 @@ trait PluginEvents
 
                     '_translate' => [
                         '_main' => [
+                            /**
+                             * @todo Add context string to the site (the site name/title)
+                             * 
+                             * Example: 'Activated a plugin (%s) on the site [(%s)], see details below:'
+                             */
                             'plural'           => 'Activated the following plugins on the site, see details below:',
                             'plural_network'   => 'Activated the following plugins on all sites on the network, see details below:',
                             'singular_network' => 'Activated a plugin (%s) on all sites on the network, see details below:',
@@ -1384,7 +1414,7 @@ trait PluginEvents
     }
 
     /**
-     * Check whether the plugin is being upgrader/updated
+     * Check whether the plugin is being upgraded/updated
      * @param  string $action Specifies the action to check for
      * @return bool
      */
@@ -1426,7 +1456,7 @@ trait PluginEvents
     /**
      * Get the Plugin Title or Name given the plugin data object
      * @param  object $plugin_data Specifies the plugin data object
-     * @return string              The plugin Title or Name. Unknow is returned on failure.
+     * @return string              The plugin Title or Name. Unknown is returned on failure.
      */
     public function getPluginNameFromObj($plugin_data)
     {

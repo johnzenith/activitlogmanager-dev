@@ -347,7 +347,8 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
     }
 
     /**
-     * Add the Event. This could be a WordPress Action or Filter Hook.
+     * Add the Event.
+     * This could be a WordPress Action or Filter Hook, or customized function.
      */
     public function addEvent()
     {
@@ -399,7 +400,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
     }
 
     /**
-     * Get the active event prepared data
+     * Get the active event prepared data.
      * 
      * Notice the usage of isset(), we have to avoid undefined index at all cost!
      * 
@@ -601,6 +602,9 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
          * we are referencing the original event data at the time the event was logged. 
          * So even if the user data is modified after the logged event, the changes doesn't 
          * affect the logged event data.
+         * 
+         * Note: We set the user ID to 0 because we've properly setup the current user data
+         * @see {$this->User->refreshCurrentUserData($current_user_id)}
          */
         $this->log_data['user_data'] = $this->_getActiveEventUserData(0, false);
 

@@ -6,7 +6,7 @@ defined('ALM_PLUGIN_FILE') || exit('You are not allowed to do this on your own.'
 
 /**
  * @package Database Factory
- * @since 1.0.0
+ * @since   1.0.0
  * 
  * This class requires the following traits:
  *  - {@see \ALM\Models\Template\DatabaseMetaData} 

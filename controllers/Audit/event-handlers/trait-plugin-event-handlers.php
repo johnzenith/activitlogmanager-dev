@@ -158,7 +158,7 @@ trait PluginEvents
         if (!is_array($new_plugins) || empty($new_plugins))
             return;
 
-        $object_id          = $this->getPluginEventObjectId();
+        $object_id = $this->getPluginEventObjectId();
 
         // Setup the activated plugins list to bail out forward request 
         // to retrieve the activated plugins
@@ -687,7 +687,7 @@ trait PluginEvents
     }
 
     /**
-     * Fires after a plugin installation failed
+     * Fires after plugin installation failed
      * 
      * @since 1.0.0
      */

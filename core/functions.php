@@ -9,6 +9,22 @@ defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your ow
  */
 
 /**
+ * A small error inspector
+ */
+function alm__error_inspector(array $args, $error_file_location = '/errors/error.html') {
+    ob_start();
+    ?>
+<pre>
+<?php var_dump( $args ); ?>
+</pre>
+    <?php
+    $content = ob_get_contents();
+    ob_end_clean();
+
+    file_put_contents( $error_file_location, $content );
+}
+
+/**
  * Register a new event group or add an event to an existing event group.
  * 
  * This should be called within the {@see alm/event/group/register action hook}, 

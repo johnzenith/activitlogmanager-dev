@@ -465,7 +465,7 @@ trait EventList
          */
         $user_roles = [];
         if ('user' === $event_group) {
-            $user_id    = $this->getEventMsgArg($event_group, 'object_id', 0);
+            $user_id    = $this->User->current_user_ID || $object_id;
             $user_roles = $this->User->getUserRoles($user_id, true);
         }
 
@@ -513,10 +513,15 @@ trait EventList
             return sprintf('A user without a role %s', $msg);
         }
 
-        // If the message starts with 'A ' or 'An ' or 'User ',
+        // If the message starts with 'A ' or 'An,
         // then let's replace it with an empty string
-        if ($this->strStartsWith($msg, ['a ', 'an ', 'user '], true))
-            $msg = substr($msg, 2);
+        if ($this->strStartsWith($msg, ['a ', 'an '], true))
+            $msg = trim(substr($msg, 2));
+
+        // If the message starts with 'User ',
+        // then let's replace it with an empty string
+        if ($this->strStartsWith($msg, ['user '], true))
+            $msg = trim(substr($msg, 4));
         
         // Transform the first message character to lowercase
         $first_char = strtolower(substr($msg, 0, 1));
@@ -587,7 +592,7 @@ trait EventList
             'wp_post_meta'    => [],
 
             /**
-             * Specifies enabled/disabled notifications
+             * Specifies whether to enabled/disabled notifications
              * notification => [
              *     'sms'   => false,
              *     'email' => true,
@@ -608,7 +613,7 @@ trait EventList
              * request, etc.
              * 
              * Note: Post, Page, etc. cannot be aggregated because of data type length,
-             * an overflow error can be raised.
+             * an overflow error maybe be raised.
              * 
              * ------------------------------------------------------------------------
              *                      Aggregation Algorithm
@@ -1719,6 +1724,21 @@ trait EventList
     }
 
     /**
+     * Determine whether the active event has an an aggregation flag.
+     * The aggregation flag is used to check if we can increment the log counter 
+     * based on the event context.
+     * 
+     * Ths is useful for things like page views, download counter, ect.`
+     */
+    public function activeEventHasAggregationFlag()
+    {
+        return (bool) (
+            $this->getVar( $this->active_event, 'is_aggregatable' )
+            && $this->isLogAggregatable()
+        );
+    }
+
+    /**
      * Determine whether we need to update the active event log counter rather 
      * than creating a new log.
      * 
@@ -1736,26 +1756,46 @@ trait EventList
      */
     protected function isActiveEventLogIncrementValid( $user_id = 0, $object_id = 0 )
     {
-        if (!$this->activeEventHasErrorFlag() || !$this->isLogAggregatable()) 
+        if (
+            !($this->activeEventHasErrorFlag() || $this->isLogAggregatable()) 
+            && !$this->activeEventHasAggregationFlag()
+        ) {
             return false;
-
-        $event_successor = $this->getVar( $this->active_event, 'event_successor' );
-        if ( is_array( $event_successor ) ) {
-            $event_successor_slug  = $event_successor[1];
-            $event_successor_group = $event_successor[0];
-
-            // Lookup the event successor ID
-            $event_ID = $this->getEventIdBySlug( $event_successor_slug, $event_successor_group );
-        }
-        else {
-            $event_ID = $this->sanitizeOption($this->getVar( $this->active_event, 'event_successor'), 'int');
         }
 
-        if ($event_ID < 1)
-            return false;
+        // Check the error event successor
+        // This is only applicable to event having the error flag
+        $event_ID                   = $this->active_event_ID;
+        $failed_log_increment_limit = 0;
 
-        if ($event_ID === $this->active_event_ID)
-            return false;
+        if (!$this->activeEventHasAggregationFlag())
+        {
+            $event_successor = $this->getVar( $this->active_event, 'event_successor' );
+            if ( is_array( $event_successor ) ) {
+                $event_successor_slug  = $event_successor[1];
+                $event_successor_group = $event_successor[0];
+
+                // Lookup the event successor ID
+                $event_ID = $this->getEventIdBySlug( $event_successor_slug, $event_successor_group );
+            }
+            else {
+                $event_ID = $this->sanitizeOption($this->getVar( $this->active_event, 'event_successor' ), 'int');
+            }
+
+            if ($event_ID < 1)
+                return false;
+
+            if ($event_ID === $this->active_event_ID)
+                return false;
+
+            /**
+             * @todo
+             * For failed login attempts, create a button to allow admins to reset the log 
+             * counter. If the attempted login request is made on a non-existing user account, 
+             * specify it and let the admin user take an action.
+             */
+            $failed_log_increment_limit = $this->getEventFailedLogIncrementLimit(false);
+        }
 
         /**
          * Get the most recent (last inserted) error log data for the 
@@ -1763,7 +1803,7 @@ trait EventList
          */
 
         /**
-         * Filters the active event error log data fields to return from the query.
+         * Filters the active event error/aggregatable log data fields to return from the query.
          * 
          * The filtered fields list is expected to contain the 'event_id' and 
          * 'log_counter' fields
@@ -1775,7 +1815,7 @@ trait EventList
          * @param int    $user_id         Specifies the user ID
          * @param string $object_id       Specifies the event object ID
          */
-        $selected_active_event_error_fields = apply_filters(
+        $selected_active_event_aggregatable_fields = apply_filters(
             'alm/event/log/update/selected_fields',
             [
                 'log_id', 'event_id', 'log_status', 'log_counter', 'event_action_trigger', 'user_data', 'object_data', 'metadata', 'message',
@@ -1784,19 +1824,11 @@ trait EventList
             $user_id,
             $object_id
         );
-
-        /**
-         * @todo
-         * For failed login attempts, create a button to allow admins to reset the log 
-         * counter. If the attempted login request is made on a non-existing user account, 
-         * specify it and let the admin user take an action.
-         */
-        $failed_log_increment_limit = $this->getEventFailedLogIncrementLimit(false);
         
-        // Start building the failed log increment query
+        // Start building the failed log or aggregatable log increment query
         $this->DB
             ->reset()
-            ->select( $selected_active_event_error_fields )
+            ->select( $selected_active_event_aggregatable_fields )
             ->from( $this->tables->activity_logs )
             ->where()
             ->isBlog( $this->current_blog_ID                )
@@ -1824,6 +1856,9 @@ trait EventList
 
         if (empty( $this->active_event_error_log_data ))
             return false;
+
+        if ($this->activeEventHasAggregationFlag()) 
+            return true;
 
         // Get the event ID for the most recent event successor
         // error log counter

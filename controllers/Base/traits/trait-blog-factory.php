@@ -291,7 +291,7 @@ trait BlogFactory
      * Get blog option by ID
      * @see BlogFactory::getBlogOption()
      */
-    protected function getBlogOptionById( $blog_id = null, $option, $default = null, $escape = false )
+    protected function getBlogOptionById( $blog_id = null, $option = '', $default = null, $escape = false )
     {
         if ( 
             ! $this->is_multisite 

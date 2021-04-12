@@ -758,7 +758,7 @@ trait EventConditionalParser
 
         $found     = [];
         $screens   = $this->getEventConditionalData( __METHOD__, $event );
-        $site_type = '';
+        $site_type = $this->is_multisite ? 'multisite' : 'not-multisite';
 
         // Bail out if screen is not defined
         if (empty($screens))  return true;
@@ -782,10 +782,11 @@ trait EventConditionalParser
                     
                 case 'network':
                     $found[] = (int) $this->is_network_admin;
+                    
+                    break;
 
                 case 'multisite':
-                    $found[]   = (int) $this->is_multisite;
-                    $site_type = 'multisite';
+                    $found[] = (int) $this->is_multisite;
                     break;
 
                 case 'not-multisite':

@@ -72,13 +72,41 @@ class AuditObserver implements \SplObserver
     public function registerEvents()
     {
         if (!$this->_events instanceof \SplFixedArray) return;
-        
-        do 
-        {
-            $this->prepareEventData($this->_events->current())->watch();
-            $this->_events->next();
-        } 
-        while ($this->_events->valid());
+
+        /**
+         * Use the correct SplIterator Object based on the installed PHP version
+         */
+        if (!method_exists($this->_events, 'getIterator')) {
+            do 
+            {
+                // Avoid call to undefined methods
+                if (method_exists($this->_events, 'current')) {
+                    $this->prepareEventData($this->_events->current())->watch();
+                    $this->_events->next();
+                }
+            }
+            while (
+                method_exists($this->_events, 'valid') 
+                && $this->_events->valid()
+            );
+        }
+        // PHP 8+
+        else {
+            $eventSplIterator = $this->_events->getIterator();
+
+            do 
+            {
+                // Avoid call to undefined methods
+                if (method_exists($eventSplIterator, 'current')) {
+                    $this->prepareEventData($eventSplIterator->current())->watch();
+                    $eventSplIterator->next();
+                }
+            }
+            while (
+                method_exists($eventSplIterator, 'valid') 
+                && $eventSplIterator->valid()
+            );
+        }
     }
 
     /**

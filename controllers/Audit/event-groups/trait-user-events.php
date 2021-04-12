@@ -186,7 +186,7 @@ trait UserEvents
         extract($user_args);
 
         // Use the $_current_user_id variable if set
-        if (isset($__current_user_id) && $_current_user_id > 0) {
+        if (isset($_current_user_id) && $_current_user_id > 0) {
             $current_user_id = $_current_user_id;
         } else {
             $current_user_id = $this->User->getCurrentUserId();
@@ -381,7 +381,7 @@ trait UserEvents
         echo sprintf(
             '<input type="hidden" name="%s" value="%s">',
             $this->user_profile_meta_field_name,
-            rtrim( $values, $split )
+            rtrim( esc_attr($values), $split )
         );
     }
 
@@ -624,8 +624,9 @@ trait UserEvents
                  * 
                  * Message can auto set a standalone event code by using the '_event_id' argument:
                  *     [
-                 *         // this will override the global group event code
-                 *         // useful for custom fields such as: first name, last name, etc.
+                 *         ** this will override the global group event code
+                 *         ** useful for custom fields such as: first name, last name, etc.
+                 * 
                  *         '_event_id' => 1001,
                  *     ]
                  * 
@@ -856,6 +857,7 @@ trait UserEvents
                 'action'              => 'viewed',
                 'event_id'            => 5057,
                 'severity'            => 'info',
+                'is_aggregatable'     => true,
 
                 'screen'              => ['admin', 'network',],
                 'user_state'          => 'logged_in',
@@ -891,6 +893,7 @@ trait UserEvents
                 'action'              => 'viewed',
                 'event_id'            => 5058,
                 'severity'            => 'info',
+                'is_aggregatable'     => true,
 
                 'screen'              => ['admin', 'network',],
                 'user_state'          => 'logged_in',
@@ -926,6 +929,7 @@ trait UserEvents
                 'action'             => 'triggered',
                 'event_id'           => 5059,
                 'severity'           => 'notice',
+                'is_aggregatable'    => true,
 
                 'screen'              => [ 'admin', 'network', ],
                 'user_state'          => 'logged_in',
@@ -1000,7 +1004,7 @@ trait UserEvents
              * action hook.
              * 
              * It is triggered when it has been confirmed that the user profile 
-             * errors is not for updating the new, but creating a new user request
+             * errors is not for updating the new user, but creating a new user request
              * 
              * @since 1.0.0
              */
@@ -1138,14 +1142,15 @@ trait UserEvents
              * @since 1.0.0
              */
             'profile_update' => [
-                'title'    => 'User profile updated',
-                'action'   => 'modified',
-                'event_id' => 5065,
-                'severity' => 'notice',
+                'title'           => 'User profile updated',
+                'action'          => 'modified',
+                'event_id'        => 5065,
+                'severity'        => 'notice',
+                'is_aggregatable' => true,
 
-                'user_state' => 'logged_in',
+                'user_state'      => 'logged_in',
 
-                'message'  => [
+                'message' => [
                     '_main' => 'Updated the user profile (%s). See the changes below:',
                     
                     '_space_start'             => '',

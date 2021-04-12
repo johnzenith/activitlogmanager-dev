@@ -657,14 +657,18 @@ trait SettingsFactory
             $blog_id = ( 0 >= $this->current_blog_ID ) ? 
             get_current_blog_id() : $this->current_blog_ID;
         }
+
+        $data = [
+            'option_name'  => $option,
+            'option_value' => $this->serialize( $value ),
+        ];
+
+        if ( $this->is_multisite ) {
+            $data['blog_id'] = $blog_id;
+        }
             
         return (bool) $this->wpdb->insert(
-            $this->tables->settings,
-            [
-                'blog_id'      => $blog_id,
-                'option_name'  => $option,
-                'option_value' => $this->serialize( $value ),
-            ]
+            $this->tables->settings, $data
         );
     }
 

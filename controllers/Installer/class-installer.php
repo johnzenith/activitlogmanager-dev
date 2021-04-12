@@ -174,8 +174,8 @@ class Installer
 
         $helper_message .= sprintf(
 			alm__( 'Please follow this link to <a href="%s">Upgrade WordPress</a> to a current or supported version. <hr>Want to reach %s, feel free to contact our <a href="%s">Support Team</a>.' ),
-			ALM_PLUGIN_PRODUCT_NAME,
             'https://codex.wordpress.org/Upgrading_WordPress',
+			ALM_PLUGIN_PRODUCT_NAME,
             __alm_support_team_url()
         );
 
@@ -220,10 +220,13 @@ class Installer
 		];
 
 		$global_settings_data = [
-			'blog_id'      => $this->main_site_ID,
 			'option_name'  => $this->__getGlobalOptionName(),
 			'option_value' => $this->serialize( $global_settings ),
 		];
+
+		if ( $this->is_multisite ) {
+			$global_settings_data['blog_id'] = $this->main_site_ID;
+		}
 
 		$this->wpdb->insert(
 			$this->tables->settings,
