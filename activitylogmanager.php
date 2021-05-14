@@ -14,7 +14,7 @@
  * Author:      ViewPact Team
  * Author URI:  https://viewpact.com
  * Text Domain: activitylogmanager
- * Domain Path: /languages/
+ * Domain Path: /assets/languages/
  */
 
 // Make sure this plugin file is not accessed directly

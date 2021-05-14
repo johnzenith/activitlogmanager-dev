@@ -2,7 +2,7 @@
 namespace ALM\Controllers\Audit\Events\Handlers;
 
 // Prevent direct file access
-defined('ALM_PLUGIN_FILE') || exit('You are not allowed to do this on your own.');
+defined('ALM_PLUGIN_FILE') || exit('!!!');
 
 /**
  * @package Widget Event Handlers
@@ -379,7 +379,7 @@ trait WidgetEvents
     }
 
     /**
-     * Fires immediately after the list of inactive widgets has beeen cleared
+     * Fires immediately after the list of inactive widgets has been cleared
      */
     public function alm_inactive_widgets_cleared_event($widget_ids)
     {

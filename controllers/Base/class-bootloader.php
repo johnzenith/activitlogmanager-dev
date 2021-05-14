@@ -2,7 +2,7 @@
 namespace ALM\Controllers\Base;
 
 // Prevent direct file access
-defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your own.' );
+defined('ALM_PLUGIN_FILE') || exit('!!!');
 
 /**
  * Class: BootLoader
@@ -50,7 +50,7 @@ class BootLoader
     protected $controllers_engine = null;
 
     /**
-     * Specifies whether the plugin fiels has been loaded and ready to run
+     * Specifies whether the plugin files have been loaded and ready to run
      * @var bool
      * @since 1.0.0
      */
@@ -181,9 +181,10 @@ class BootLoader
     }
 
     /**
-     * Load plugin file early.
-     * This is used to resolve issues where some hooks are not reachable when using the 
-     * 'plugins_loaded' action hook to initialize the plugin.
+     * Load plugin files early.
+     * 
+     * This is used to resolve issues where some hooks are not reachable
+     *  when using the  'plugins_loaded' action hook to initialize the plugin.
      * 
      * So to fix this, the 'plugin_loaded' action hook will be used instead to load the plugin 
      * files and then initialize all controllers and in the 'plugins_loaded' action hook.
@@ -194,7 +195,7 @@ class BootLoader
         $plugin_basename = plugin_basename( $plugin_full_path );
 
         /**
-         * Only load the plugin files when its base file has been loaded
+         * Only load the plugin files when its base files have been loaded
          * {@see ./activitylogmanager/activitylogmanager.php}
          */
         if (ALM_PLUGIN_BASENAME === $plugin_basename)
@@ -278,7 +279,8 @@ class BootLoader
     }
 
     /**
-     * Check whether we are doing installation
+     * Check whether we are doing installation.
+     * 
      * @return bool   True if the Activity Log Manager BootLoader has been halted.
      *                Although this should never happen, but we are good citizen,
      *                So let's avoid the risk.
@@ -291,7 +293,9 @@ class BootLoader
 
     /**
      * Check whether we are doing installation
-     * @return bool  True if the Activity Log Manager plugin is being activated. Otherwise false.
+     * 
+     * @return bool  True if the Activity Log Manager plugin is being activated. 
+     *               Otherwise false.
      */
     public function __isActivation()
     {
@@ -299,8 +303,10 @@ class BootLoader
     }
 
     /**
-     * Check whether we are doing installation
-     * @return bool True if the Activity Log Manager plugin is being deactivated. Otherwise false.
+     * Check whether we are doing installation.
+     * 
+     * @return bool True if the Activity Log Manager plugin is being deactivated.
+     *              Otherwise false.
      */
     public function __isDeactivation()
     {
@@ -308,8 +314,10 @@ class BootLoader
     }
     
     /**
-     * Check whether we are doing installation
-     * @return bool True if the Activity Log Manager plugin is being uninstalled. Otherwise false.
+     * Check whether we are doing installation.
+     * 
+     * @return bool True if the Activity Log Manager plugin is being uninstalled.
+     *              Otherwise false.
      */
     public function __isUninstallation()
     {
@@ -362,6 +370,7 @@ class BootLoader
 
     /**
      * Parse the file arguments with supplied defaults
+     * 
      * @see BootLoader::defaultFileArgs()
      * @param array  $file_args List of file arguments to used in creating the full file path
      * @return array The merged file arguments
@@ -380,8 +389,8 @@ class BootLoader
 
         /**
          * File sequence signatures:
-         * - Array keys are the signature ID
-         * - Array values are the methods used to load necessary files
+         * - Array keys are the signature ID.
+         * - Array values are the class methods used to load the necessary files.
          */
         $file_sequences = [
             'config'          => 'Config',
@@ -484,7 +493,7 @@ class BootLoader
                      * Inform the administrator about the error.
                      * 
                      * Maybe send email to admin or maybe WordPress has already 
-                     * sent a critical error to the site admin
+                     * sent a critical site error message to the site admin
                      */
                 }
             }
@@ -492,7 +501,8 @@ class BootLoader
     }
 
     /**
-     * Check whether or not a specific file sequence exists for loading
+     * Check whether or not a specific file sequence exists for loading.
+     * 
      * @param  string $file_sequence Specify the file sequence to check for
      * @return bool                  Returns true if the file sequence exists. Otherwise false.
      */
@@ -623,7 +633,7 @@ class BootLoader
                         }
                     }
                     else {
-                        // Check whether the {$dir . $file } exists
+                        // Check whether the {$dir . $file} exists
                         if ( file_exists( $dir . $file ) ) {
                             $pathinfo = pathinfo( $dir . $file );
                         } else {
@@ -710,7 +720,12 @@ class BootLoader
     }
 
     /**
-     * Free Package Controllers
+     * Free Package Controllers.
+     * 
+     * This method is called automatically.
+     * 
+     * @since 1.0.0
+     * @see   \ALM\Controllers\Base\BootLoader::createBootSequence()
      */
     private function FreePackage()
     {

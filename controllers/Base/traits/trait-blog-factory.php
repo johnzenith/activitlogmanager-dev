@@ -2,7 +2,7 @@
 namespace ALM\Controllers\Base\Traits;
 
 // Prevent direct file access
-defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your own.' );
+defined('ALM_PLUGIN_FILE') || exit('!!!');
 /**
  * Blog Factory Template for the Plugin Factory Controller
  * @see \ALM\Controllers\Base\PluginFactory

@@ -2,7 +2,7 @@
 namespace ALM\Controllers\User;
 
 // Prevent direct file access
-defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your own.' );
+defined('ALM_PLUGIN_FILE') || exit('!!!');
 
 /**
  * User Base Template for the Plugin Factory Controller
@@ -391,7 +391,6 @@ class UserManager extends \ALM\Controllers\Base\PluginFactory
             if ( $user === $this->current_user_ID && !$refresh ) {
                 $roles = $this->current_user_data->roles;
             } else {
-                $_roles = get_userdata( $user );
                 $roles  = $this->getVar(get_userdata($user), 'roles', []);
             }
         }

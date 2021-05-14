@@ -1,13 +1,8 @@
 /**
- * User Explorer Main Script
+ * Main JS
  *
- * @since  1.1.0
+ * @since  1.0.0
  */
 
-( function( $ )
-{
-    $(document).ready( function ()
-    {
-        
-    })
-}(jQuery));
+(function($) {
+})(jQuery);

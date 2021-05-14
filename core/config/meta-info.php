@@ -1,6 +1,6 @@
 <?php
 // Prevent direct file access
-defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your own.' );
+defined('ALM_PLUGIN_FILE') || exit('!!!');
 
 /**
  * @package     Activity Log Manager
@@ -10,6 +10,8 @@ defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your ow
 
 /**
  * Get the Activity Log Manager plugin site url
+ * 
+ * @since 1.0.0
  */
 function __alm_plugin_site_url( $path = '' )
 {
@@ -18,6 +20,8 @@ function __alm_plugin_site_url( $path = '' )
 
 /**
  * Get plugin support team url
+ * 
+ * @since 1.0.0
  */
 function __alm_support_team_url()
 {

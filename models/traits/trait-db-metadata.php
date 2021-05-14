@@ -2,7 +2,7 @@
 namespace ALM\Models\Traits;
 
 // Prevent direct file access
-defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your own.' );
+defined('ALM_PLUGIN_FILE') || exit('!!!');
 
 /**
  * @package     Models
@@ -173,7 +173,7 @@ trait DatabaseMetaData
      * 
      * @since 1.0.0
      * 
-     * @param int $blog_id Specifies the blog apply the sql filter on 
+     * @param int $blog_id Specifies the blog to apply the sql filter on.
      * 
      * @return string
      */

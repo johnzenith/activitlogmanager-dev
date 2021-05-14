@@ -2,7 +2,7 @@
 namespace ALM\Controllers\Audit\Events\Groups;
 
 // Prevent direct file access
-defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your own.' );
+defined('ALM_PLUGIN_FILE') || exit('!!!');
 
 /**
              * @package User Events
@@ -357,6 +357,10 @@ trait UserEvents
     }
 
     /**
+     * @todo - Remove this [the admin color is saved using ajax, thats why it's value is not present]
+     * 
+     * 
+     * 
      * We observed some user custom meta update behaviors that were rather unusual,
      * noticeably the 'admin_color' user meta field. We couldn't retrieve the previous 
      * meta values for these fields during profile aggregation update, so we have to 
@@ -366,7 +370,7 @@ trait UserEvents
      */
     public function setupUserProfileMetadataFields( $user )
     {
-        $fields = [ 'admin_color', ] ;
+        $fields = [ 'admin_color', ];
         $values = '';
         $split  = $this->user_profile_meta_field_val_splitter;
 
@@ -395,11 +399,14 @@ trait UserEvents
     public function setupUserDashboardPageConstant( $user_id )
     {
         /**
-         * If the site is using a customized user dashboard and IS_PROFILE_PAGE 
+         * If the site is using a customized user dashboard and IS_PROFILE_PAGE
          * constant is not defined, we have to set it up
          */
         if ( ! $this->getConstant('IS_PROFILE_PAGE') )
             $this->setConstant('ALM_IS_PROFILE_PAGE');
+
+        // Setup the page constant
+        $this->setConstant('ALM_IS_USER_PROFILE_UPDATE_AGGREGATION', 'update');
     }
 
     /**
@@ -513,7 +520,8 @@ trait UserEvents
          */
         $user_data = $this->User->getUserData($user_id);
 
-        if ( empty($this->getVar($user_data, 'ID')) ) return;
+        if ( empty($this->getVar($user_data, 'ID')) ) 
+            return;
 
         $this->user_data_ref = (object) [
             'roles'        => (array) $user_data->roles,
@@ -527,7 +535,7 @@ trait UserEvents
 
         /**
          * Get a summary of all deleted user posts, links, metadata
-         */
+         */ 
         $reassign = (int) $reassign;
 
         /**
@@ -963,7 +971,7 @@ trait UserEvents
              */
             'user_profile_update_errors' => [
                 'title'           => 'User profile update error',
-                'action'          => 'update',
+                'action'          => 'user_update_failed',
                 'event_id'        => 5060,
                 'severity'        => 'notice',
                 'error_flag'      => true,
@@ -1010,7 +1018,7 @@ trait UserEvents
              */
             'alm_user_profile_update_errors' => [
                 'title'               => 'New user creation error',
-                'action'              => 'user_creation',
+                'action'              => 'user_creation_failed',
                 'event_id'            => 5061,
                 'severity'            => 'notice',
                 'error_flag'          => true,
@@ -1117,7 +1125,7 @@ trait UserEvents
              */
             'register_post' => [
                 'title'    => 'New user registration error',
-                'action'   => 'user_registration',
+                'action'   => 'user_registration_failed',
                 'event_id' => 5064,
                 'severity' => 'notice',
 

@@ -2,7 +2,7 @@
 namespace ALM\Controllers\Base;
 
 // Prevent direct file access
-defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your own.' );
+defined('ALM_PLUGIN_FILE') || exit('!!!');
 
 /**
  * @package ControllersEngine
@@ -270,13 +270,13 @@ class ControllersEngine
     }
 
     /**
-     * Check whether or not a controller is a dependency for another controller
+     * Check whether or not a controller is a dependency of another controller
      * 
      * @param string $controller    Specifies the controller to check for in the dependency list.
      * @param array  $controllers   Specifies the controller(s) dependency list
      * 
      * @return bool                 True if the controller is in the controllers dependency list.
-     *                                Otherwise false.
+     *                              Otherwise false.
      */
     protected function hasDependency( $controller, $controllers )
     {

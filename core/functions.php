@@ -1,6 +1,6 @@
 <?php
 // Prevent direct file access
-defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your own.' );
+defined('ALM_PLUGIN_FILE') || exit('!!!');
 
 /**
  * @package    Activity Log Manager
@@ -18,8 +18,7 @@ function alm__error_inspector(array $args, $error_file_location = '/errors/error
 <?php var_dump( $args ); ?>
 </pre>
     <?php
-    $content = ob_get_contents();
-    ob_end_clean();
+    $content = ob_end_clean();
 
     file_put_contents( $error_file_location, $content );
 }
@@ -38,8 +37,7 @@ function alm__error_inspector(array $args, $error_file_location = '/errors/error
  */
 function alm_register_event_group( array $args = [] )
 {
-    if ( empty( $args ) ) 
-        return;
+    if (empty($args)) return;
 
     static $auditor = null;
     

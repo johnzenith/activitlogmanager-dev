@@ -3,7 +3,7 @@
 namespace ALM\Controllers\Audit\Events\Groups;
 
 // Prevent direct file access
-defined('ALM_PLUGIN_FILE') || exit('You are not allowed to do this on your own.');
+defined('ALM_PLUGIN_FILE') || exit('!!!');
 
 /**
  * @package Posts Events
@@ -68,7 +68,7 @@ trait PostEvents
                 ],
 
                 /**
-                 * Fires once a post has been removed to the sticky list
+                 * Fires once a post has been removed from the sticky list
                  * 
                  * @see unstick_post()
                  */

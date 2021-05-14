@@ -1,6 +1,6 @@
 <?php
 // Prevent direct file access
-defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your own.' );
+defined('ALM_PLUGIN_FILE') || exit('!!!');
 
 /**
  * @package     Activity Log Manager
@@ -9,7 +9,7 @@ defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your ow
  */
 
 define( 'ALM_PLUGIN_PRODUCT_NAME', 'Activity Log Manager' );
-define( 'ALM_PACKAGE',             'package_enterprise' );
+define( 'ALM_PACKAGE',             'package_enterprise' ); // Change this according to the package
 
 define( 'ALM_VERSION',             '1.0.0' );
 define( 'ALM_DB_VERSION',          '1.0.0' );
@@ -48,7 +48,7 @@ define( 'ALM_ASSETS_DIR',      ALM_PLUGIN_DIR . 'assets/' );
 define( 'ALM_ASSETS_URL',      ALM_PLUGIN_URL . 'assets/' );
 
 // Time constants
-define( 'ALM_MONTH_IN_SECONDS', WEEK_IN_SECONDS * 4.345 );
-define( 'ALM_YEAR_IN_SECONDS',  WEEK_IN_SECONDS * 52.143 );
+define( 'ALM_MONTH_IN_SECONDS', 2628000  ); // WEEK_IN_SECONDS * 4.345
+define( 'ALM_YEAR_IN_SECONDS',  31536000 ); // WEEK_IN_SECONDS * 52.143
 
 unset( $plugin_file );

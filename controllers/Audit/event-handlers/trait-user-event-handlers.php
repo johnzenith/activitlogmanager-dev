@@ -2,7 +2,7 @@
 namespace ALM\Controllers\Audit\Events\Handlers;
 
 // Prevent direct file access
-defined('ALM_PLUGIN_FILE') || exit('You are not allowed to do this on your own.');
+defined('ALM_PLUGIN_FILE') || exit('!!!');
 
 /**
  * @package User Event Handlers
@@ -293,13 +293,13 @@ trait UserEvents
         /**
          * Set the user meta deleted flag.
          * 
-         * This is used by handle custom events like monitoring when the 
+         * This is used to handle custom events like monitoring when the 
          * change of user email request has been cancelled
          */
         $this->setConstant( 'ALM_USER_META_DELETED', $meta_key );
 
         /**
-         * Handles the user email update request cancellation which is determine by 
+         * Handles the user email update request cancellation which is determined by 
          * deleting the '_new_email' user meta field and the user is not updating 
          * their profile
          */

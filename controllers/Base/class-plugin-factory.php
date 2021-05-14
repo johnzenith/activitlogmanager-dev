@@ -2,7 +2,7 @@
 namespace ALM\Controllers\Base;
 
 // Prevent direct file access
-defined( 'ALM_PLUGIN_FILE' ) || exit( 'You are not allowed to do this on your own.' );
+defined('ALM_PLUGIN_FILE') || exit('!!!');
 
 /**
  * @package Plugin Factory
@@ -1063,7 +1063,7 @@ abstract class PluginFactory
         $this->_load_process_total_time = timer_stop();
 
         if ( empty( $timeend ) )
-            return '';strtotime('');
+            return '';
 
         return @gmdate( $this->getPluginTimeFormat(), $timeend );
     }

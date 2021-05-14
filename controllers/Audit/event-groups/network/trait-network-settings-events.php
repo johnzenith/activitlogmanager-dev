@@ -2,7 +2,7 @@
 namespace ALM\Controllers\Audit\Events\Groups\Network;
 
 // Prevent direct file access
-defined('ALM_PLUGIN_FILE') || exit('You are not allowed to do this on your own.');
+defined('ALM_PLUGIN_FILE') || exit('!!!');
 
 /**
  * @package Network Settings Events
@@ -22,7 +22,7 @@ trait NetworkSettingsEvents
     protected function initNetworkSettingsEvents()
     {
         // ---------------------------------------------------------------------
-        //                         Network Settings >>> Operational Settings
+        //                Network Settings >>> Operational Settings
         // ---------------------------------------------------------------------
         $this->wp_core_settings_events['operational_settings'] = [
             'group'       => 'operational_settings',
@@ -51,7 +51,7 @@ trait NetworkSettingsEvents
         ];
 
         // ---------------------------------------------------------------------
-        //                         Network Settings >>> Registration Settings
+        //             Network Settings >>> Registration Settings
         // ---------------------------------------------------------------------
         $this->wp_core_settings_events['registration_settings'] = [
             'group'       => 'registration_settings',
@@ -112,7 +112,7 @@ trait NetworkSettingsEvents
         ];
 
         // ---------------------------------------------------------------------
-        //                         Network Settings >>> New Site Settings
+        //              Network Settings >>> New Site Settings
         // ---------------------------------------------------------------------
         $this->wp_core_settings_events['new_site_settings'] = [
             'group'       => 'new_site_settings',
@@ -169,7 +169,7 @@ trait NetworkSettingsEvents
         ];
 
         // ---------------------------------------------------------------------
-        //                         Network Settings >>> Upload Settings
+        //              Network Settings >>> Upload Settings
         // ---------------------------------------------------------------------
         $this->wp_core_settings_events['upload_settings'] = [
             'group'       => 'upload_settings',
@@ -204,7 +204,7 @@ trait NetworkSettingsEvents
         ];
 
         // ---------------------------------------------------------------------
-        //                         Network Settings >>> Menu Settings
+        //                 Network Settings >>> Menu Settings
         // ---------------------------------------------------------------------
         $this->wp_core_settings_events['menu_settings'] = [
             'group'       => 'menu_settings',
@@ -220,7 +220,7 @@ trait NetworkSettingsEvents
         ];
 
         // ---------------------------------------------------------------------
-        //                         Network Settings >>> Language Settings
+        //                Network Settings >>> Language Settings
         // ---------------------------------------------------------------------
         $this->wp_core_settings_events['language_settings'] = [
             'group'       => 'language_settings',

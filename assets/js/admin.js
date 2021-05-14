@@ -1,11 +1,11 @@
 /**
- * Stack Auth Admin JS Script
+ * Admin JS 
+ *
  * @since  1.0
  */
 "strict";
 
-( function( $, document, undefined )
-{
+(function( $, document, undefined ) {
     var Handler    = {},
         pageWindow = $(window);
 
@@ -266,4 +266,4 @@
     });
 
     $('.stackauth-current-loaded-draft-cb').parents('tr').addClass('stackauth-current-loaded-draft-tr');
-}( jQuery, document, undefined ));
+})( jQuery, document, undefined );
