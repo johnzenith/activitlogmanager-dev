@@ -18,6 +18,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
      */
     use ALM_EventTraits\AuditableEvents,
         ALM_EventTraits\EventHandlers,
+        \ALM\Controllers\Base\Traits\BrowserFactory,
         \ALM\Models\Traits\ActivityLogTableSql;
 
     /**

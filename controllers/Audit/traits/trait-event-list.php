@@ -1724,11 +1724,11 @@ trait EventList
     }
 
     /**
-     * Determine whether the active event has an an aggregation flag.
+     * Determine whether the active event has an aggregation flag.
      * The aggregation flag is used to check if we can increment the log counter 
      * based on the event context.
      * 
-     * Ths is useful for things like page views, download counter, ect.`
+     * Ths is useful for things like page views, download counter, etc.`
      */
     public function activeEventHasAggregationFlag()
     {

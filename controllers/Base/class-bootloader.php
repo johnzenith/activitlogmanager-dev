@@ -93,7 +93,7 @@ class BootLoader
     }
 
     /**
-     * Monitor and handles activation, deactivation, uninstallation request
+     * Monitor and handles activation, deactivation, uninstallation requests
      */
     private function igniteInstaller()
     {
@@ -132,7 +132,7 @@ class BootLoader
         {
             if (defined('ALM_IS_NETWORK_ACTIVATION')) return;
 
-            if (ALM_PLUGIN_BASENAME == plugin_basename($plugin_full_path)) {
+            if (ALM_PLUGIN_BASENAME === plugin_basename($plugin_full_path)) {
                 define('ALM_IS_NETWORK_ACTIVATION', true);
                 \ALM\Controllers\Base\BootLoader::loadRunningProcessEarly($plugin_full_path);
             }

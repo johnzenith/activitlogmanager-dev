@@ -110,7 +110,7 @@ class ControllersEngine
                 $package_method = $this->parsePackageName( $package );
                 $this->__NewInstance( $this->$package_method() );
             }
-
+            
             if ( ALM_PACKAGE === $package_slug ) break;
         }
 
@@ -159,7 +159,10 @@ class ControllersEngine
 
             // Update all registered controllers if in current controller dependency list
             $this->updateRegisteredControllers(
-                $controllers, $dependencies, $controller, $this->$controller
+                $controllers,
+                $dependencies,
+                $controller,
+                $this->$controller
             );
             
             /**

@@ -36,6 +36,8 @@ trait AuditableEvents_SS
 
 /**
  * Multisite Events
+ *
+ * MS => Multi Site
  */
 if ( is_multisite() ) {
 

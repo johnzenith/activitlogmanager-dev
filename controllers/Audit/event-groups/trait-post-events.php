@@ -73,7 +73,7 @@ trait PostEvents
                  * @see unstick_post()
                  */
                 'post_unstuck' => [
-                    // Added the [post title] [post type] to the sticky list
+                    // Added the [post title] [post type] from the sticky list
                     'title'               => 'Removed the %s %s from the sticky list',
 
                     'action'              => 'post_modified',
@@ -88,7 +88,7 @@ trait PostEvents
                     'wp_site_options'     => ['sticky_posts'],
 
                     'message' => [
-                        // Added the [post title] [post_type] to the sticky list
+                        // Added the [post title] [post_type] from the sticky list
                         '_main'                     => 'Removed the %s %s from the sticky list',
 
                         '_space_start'              => '',

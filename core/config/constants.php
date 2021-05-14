@@ -13,7 +13,7 @@ define( 'ALM_PACKAGE',             'package_enterprise' ); // Change this accord
 
 define( 'ALM_VERSION',             '1.0.0' );
 define( 'ALM_DB_VERSION',          '1.0.0' );
-define( 'ALM_MINIMUM_WP_VERSION',  '5.0' );
+define( 'ALM_MINIMUM_WP_VERSION',  '5.7' );
 define( 'ALM_MINIMUM_PHP_VERSION', '5.6' );
 
 define( 'ALM_DEFAULT_RUNNING_MODE',       'normal' );

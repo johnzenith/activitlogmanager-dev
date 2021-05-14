@@ -19,6 +19,7 @@ class Installer
 	use ALM_Base_Traits\SettingsFactory,
 		ALM_Base_Traits\BlogFactory,
 		ALM_Base_Traits\FileUtility,
+		ALM_Base_Traits\DateFactory,
 		\ALM\Models\Traits\DatabaseMetaData,
 		\ALM\Models\Traits\DatabaseQueryMetaData,
 		\ALM\Controllers\Installer\DB\TableSchema;
@@ -220,6 +221,7 @@ class Installer
 		];
 
 		$global_settings_data = [
+			'created_at'   => $this->getDate(),
 			'option_name'  => $this->__getGlobalOptionName(),
 			'option_value' => $this->serialize( $global_settings ),
 		];
