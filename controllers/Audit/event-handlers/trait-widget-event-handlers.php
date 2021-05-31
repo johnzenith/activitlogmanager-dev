@@ -18,10 +18,7 @@ trait WidgetEvents
     {
         global $wp_registered_widgets, $wp_registered_sidebars;
 
-        $event_slug       = $this->getEventSlugByEventHandlerName(__FUNCTION__);
-        $event_id         = $this->getEventIdBySlug($event_slug, 'widget');
-        $event_data       = $this->getEventData($event_id);
-        $event_msg_args   = $this->getVar($event_data, 'message', []);
+        $event_msg_args   = $this->getEventMsgArgs(__FUNCTION__, 'widget');
 
         $widget_id        = $this->getVar($widget_args, 'widget_id', '');
         $sidebar_id       = $this->getVar($widget_args, 'sidebar_id', '');
@@ -220,10 +217,7 @@ trait WidgetEvents
     {
         global $wp_registered_widgets, $wp_registered_sidebars;
 
-        $event_slug         = $this->getEventSlugByEventHandlerName(__FUNCTION__);
-        $event_id           = $this->getEventIdBySlug($event_slug, 'widget');
-        $event_data         = $this->getEventData($event_id);
-        $event_msg_args     = $this->getVar($event_data, 'message', []);
+        $event_msg_args     = $this->getEventMsgArgs(__FUNCTION__, 'widget');
 
         $object_id          = $this->getWpOptionId($this->sidebar_widgets_option_name);
 
@@ -237,17 +231,21 @@ trait WidgetEvents
             case $this->wp_inactive_widgets_key:
                 $sidebar_name = 'Inactive Widgets';
                 break;
+
+            default:
+                // Nothing
+                break;
         }
 
-        $custom_title       = ucwords(preg_replace('/\-[\d]+$/', '', $widget_id), '-');
-        $widget_title       = $this->getVar($widget_data, 'name', $custom_title);
+        $custom_title = ucwords(preg_replace('/\-[\d]+$/', '', $widget_id), '-');
+        $widget_title = $this->getVar($widget_data, 'name', $custom_title);
 
         // Event main message
         $event_msg_args['_main'] = sprintf($event_msg_args['_main'], $sidebar_name);
 
         $this->overrideActiveEventData('message', $event_msg_args);
 
-        $setup_event_data   = compact(
+        $setup_event_data = compact(
             'object_id',
             'widget_id',
             'sidebar_id',
@@ -353,10 +351,10 @@ trait WidgetEvents
 
         $widget_info = rtrim($widget_info, $break_line_2);
 
-        // Setup the main message
-        $pluralize_main_msg = $this->getVar($event_translations, '_main', '');
-
+        
         if (count($obj_data) > 1) {
+            // Setup the main message
+            $pluralize_main_msg      = $this->getVar($event_translations, '_main', '');
             $event_msg_args['_main'] = $this->getVar($pluralize_main_msg, 'plural');
         }
 
@@ -394,10 +392,7 @@ trait WidgetEvents
     {
         global $wp_registered_widgets, $wp_registered_sidebars;
 
-        $event_slug         = $this->getEventSlugByEventHandlerName(__FUNCTION__);
-        $event_id           = $this->getEventIdBySlug($event_slug, 'widget');
-        $event_data         = $this->getEventData($event_id);
-        $event_msg_args     = $this->getVar($event_data, 'message', []);
+        $event_msg_args     = $this->getEventMsgArgs(__FUNCTION__, 'widget');
 
         $widget_id          = $this->getVar($widget_args, 'widget_id');
         $sidebar_id         = $this->getVar($widget_args, 'sidebar_id');

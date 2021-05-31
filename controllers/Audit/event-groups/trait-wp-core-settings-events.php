@@ -702,64 +702,6 @@ trait WP_CoreSettingsEvents
     }
 
     /**
-     * Get the WP core settings page for the registered settings
-     * 
-     * @param  string $setting_group Specifies the registered settings name.
-     * 
-     * @param  string $option_name   Specifies the option name fo the setting group.
-     *                               This is optional, but useful on multisite so that 
-     *                               the given option can be mapped to the correct settings 
-     *                               page on the network admin dashboard.
-     * 
-     * @return string                The corresponding settings page for the given option.
-     */
-    protected function getWpCoreSettingsPage($setting_group, $option_name = '')
-    {
-        $setting_group = str_replace('_', '-', $setting_group);
-        $setting_page  = "{$setting_group}.php";
-        $option_target = empty($option_name) ? '' : '#' . $this->sanitizeOption($option_name);
-
-        if (!$this->is_multisite)
-            return sprintf(
-                '%s%s',
-                esc_url_raw(self_admin_url($setting_page)),
-                $option_target
-            );
-
-        $event_handler    = $this->getWpCoreSettingEventHandler($option_name);
-
-        $event_id         = $this->getEventIdBySlug($event_handler, $this->wp_core_settings_slug);
-        $event_data       = $this->getEventData($event_id);
-
-        if (!$event_data) return '#';
-        
-        $is_network_setting = $this->getVar($event_data, 'network', false);
-        
-        $setting_page_url   = $is_network_setting 
-            ? network_admin_url('settings.php') 
-            : self_admin_url($setting_page);
-
-        return $setting_page_url;
-    }
-
-    /**
-     * Get the WP core setting (option) ID.
-     * 
-     * Thi is basically a wrapper around the {@see ALM/Controllers/Base/PluginFactory::getWpOptionId()}.
-     * 
-     * @param string $option_name  Specifies the setting (option) name whose ID should be retrieved.
-     * 
-     * @return int                 Returns the given option ID if found. Otherwise 0.
-     */
-    protected function getWpCoreOptionId($option_name = '')
-    {
-        if (empty($option_name))
-            return 0;
-
-        return $this->getWpOptionId($option_name);
-    }
-
-    /**
      * Get the WP core setting handler
      * 
      * @param  string $option_name Specifies the option name for the setting

@@ -97,9 +97,12 @@ class BootLoader
      */
     private function igniteInstaller()
     {
+        if (!is_admin()) return;
+        
         require_once ALM_CONTROLLERS_DIR . 'base/traits/trait-file-utility-factory.php';
         require_once ALM_CONTROLLERS_DIR . 'base/traits/trait-settings-factory.php';
         require_once ALM_CONTROLLERS_DIR . 'base/traits/trait-blog-factory.php';
+        require_once ALM_CONTROLLERS_DIR . 'base/traits/trait-date-factory.php';
         require_once ALM_CONTROLLERS_DIR . 'Installer/trait-db-table-schema.php';
         require_once ALM_CONTROLLERS_DIR . 'installer/class-installer.php';
         

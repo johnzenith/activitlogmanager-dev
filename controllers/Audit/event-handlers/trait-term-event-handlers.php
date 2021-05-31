@@ -116,7 +116,7 @@ trait TermEvents
                                     );
                                     
                                     // Ignore the specific term field in the event message
-                                    $kk = '_ignore_';
+                                    $$k = '_ignore_';
                                 }
                             }
                         }

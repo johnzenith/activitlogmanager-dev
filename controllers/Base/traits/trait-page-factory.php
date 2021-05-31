@@ -490,4 +490,47 @@ trait PageFactory
         return isset( $error_pages[ $error_page_code ] ) ? 
             $error_pages[ $error_page_code ] : $error_pages;
     }
+
+    /**
+     * Get the WP core settings page for the registered settings
+     * 
+     * @param  string $setting_group Specifies the registered settings name.
+     * 
+     * @param  string $option_name   Specifies the option name fo the setting group.
+     *                               This is optional, but useful on multisite so that 
+     *                               the given option can be mapped to the correct settings 
+     *                               page on the network admin dashboard.
+     * 
+     * @return string                The corresponding settings page for the given option.
+     */
+    protected function getWpCoreSettingsPage($setting_group, $option_name = '')
+    {
+        $setting_group = str_replace('_', '-', $setting_group);
+        $setting_page  = "{$setting_group}.php";
+        $option_target = empty($option_name) ? '' : '#' . $this->sanitizeOption($option_name);
+
+        if (!$this->is_multisite)
+            return sprintf(
+                '%s%s',
+                esc_url_raw(self_admin_url($setting_page)),
+                $option_target
+            );
+
+        $event_handler    = $this->getWpCoreSettingEventHandler($option_name);
+
+        $event_id         = $this->getEventIdBySlug($event_handler, $this->wp_core_settings_slug);
+        $event_data       = $this->getEventData($event_id);
+
+        // if (!$event_data) return '#';
+        
+        $is_network_setting = (
+            $this->getVar($event_data, 'network', false) || is_network_admin()
+        );
+        
+        $setting_page_url   = $is_network_setting 
+            ? network_admin_url($setting_page) 
+            : self_admin_url($setting_page);
+
+        return esc_url_raw($setting_page_url);
+    }
 }

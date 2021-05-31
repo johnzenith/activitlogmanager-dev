@@ -122,4 +122,40 @@ trait ArrayFactory
 
         return false;
     }
+
+    /**
+     * Add new elements to array
+     * 
+     * @since 1.0.0
+     * 
+     * @param array $array          Specifies the array to add new elements into
+     * @param array $new_elements   Specifies the new elements to add
+     * @param mixed $offset         Specifies the array offset to start adding new elements.
+     *                              If omitted, the new elements will be added to end of the array.
+     * @param bool  $replace_offset Specifies whether to replace the given offset with the new elements.
+     * 
+     * @return array The array with new elements added.
+     */
+    public function addNewElementsToArray( array $array, array $new_elements, $offset = null, $replace_offset = false )
+    {
+        $slice_array   = [];
+        $offset_found = false;
+
+        foreach ($array as $k => $v) {
+            if (!$offset_found && !is_null($offset) && $k === $offset) {
+                $offset_found = true;
+            }
+
+            if ($offset_found) {
+                $slice_array = $slice_array + $new_elements;
+            }
+
+            if ($replace_offset) continue;
+
+            $slice_array[ $k ] = $v;
+        }
+
+        $new_array = $slice_array + $new_elements;
+        return $new_array;
+    }
 }

@@ -4,7 +4,7 @@ namespace ALM\Controllers\Audit;
 // Prevent direct file access
 defined('ALM_PLUGIN_FILE') || exit('!!!');
 
-/**
+/*
  * Class: Auditor
  * @since 1.0.0
  */
@@ -13,7 +13,7 @@ use \ALM\Controllers\Audit\Traits as ALM_EventTraits;
 
 class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
 {
-    /**
+    /*
      * Add the Event List template
      */
     use ALM_EventTraits\AuditableEvents,
@@ -21,27 +21,27 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         \ALM\Controllers\Base\Traits\BrowserFactory,
         \ALM\Models\Traits\ActivityLogTableSql;
 
-    /**
+    /*
      * @var \SplObjectStorage
      * @since 1.0.0
      */
     private $_observers;
 
-    /**
+    /*
      * Audit Observer Object
      * @var object
      * @since 1.0.0
      */
     protected $AuditObserver;
 
-    /**
+    /*
      * Event ID (Event Code)
      * @var int
      * @since 1.0.0
      */
     protected $event_ID = 0;
 
-    /**
+    /*
      * Event data for setting up action and filter hook.
      * @var string
      * @since 1.0.0
@@ -52,14 +52,14 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
     protected $event_priority = '';
     protected $event_num_args = '';
 
-    /**
+    /*
      * Auditable event list
      * @var array
      * @since 1.0.0
      */
     protected $auditable_event_list = [];
 
-    /**
+    /*
      * Audit log data
      * @var array
      * @since 1.0.0
@@ -67,14 +67,14 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
     protected $log_data     = [];
     protected $log_data_raw = [];
 
-    /**
+    /*
      * Audit log data type format
      * @var array
      * @since 1.0.0
      */
     protected $log_data_format = [];
 
-    /**
+    /*
      * Specifies whether we need to update the active event log data
      * or just create a new one
      * @var bool
@@ -82,14 +82,14 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
      */
     protected $is_active_log_updatable = false;
 
-    /**
+    /*
      * Specifies the active event error log data for the event successor
      * @var object|array
      * @since 1.0.0
      */
     protected $active_event_error_log_data = false;
 
-    /**
+    /*
      * Setup the Auditor
      */
     public function __runSetup()
@@ -117,6 +117,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
 
         add_action('init', function()
         {
+            // delete_option('new_admin_email');
             // echo '<pre>';
             // global $wp_roles;
             // print_r($wp_roles->role_names);
@@ -125,7 +126,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
             // $user_data->add_cap('edit_posts');
             // $user_data->add_role('blogger');
             // $user_data->remove_role('author');
-            // $user_data->set_role('editor'); 
+            // $user_data->set_role('editor');
             // // print_r( $caps);
             // print_r( $user_data->get_role_caps());
             // echo '<hr>';
@@ -167,7 +168,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         });
     }
 
-    /**
+    /*
      * Run when the Auditor has been setup completely
      */
     public function __runAfterSetup()
@@ -175,14 +176,14 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         // Attach the Audit Observer
         $this->attach( $this->AuditObserver );
 
-        /**
+        /*
          * Run the Audit Object Storage.
          * Start Auditing - log activities and send notifications
          */
         $this->notify();
     }
 
-    /**
+    /*
      * Attach any available observer (SplObserver)
      */
     public function attach(\SplObserver $observer)
@@ -190,7 +191,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         $this->_observers->attach($observer);
     }
 
-    /**
+    /*
      * Detach any attached observer (SplObserver)
      */
     public function detach(\SplObserver $observer)
@@ -198,12 +199,12 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         $this->_observers->attach($observer);
     }
 
-    /**
+    /*
      * Register the auditable events and watch activities as they happen
      */
     public function notify()
     {
-        /**
+        /*
          * @var \SplObserver $observer
          */
         foreach ($this->_observers as $observer) {
@@ -211,7 +212,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         }
     }
 
-    /**
+    /*
      * Setup the event arguments
      * @param array $event_args Specifies list of event arguments 
      */
@@ -221,7 +222,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         return $this;
     }
 
-    /**
+    /*
      * Load all auditable events
      * @return array The registered auditable events
      */
@@ -247,14 +248,14 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         return $this->auditable_event_list;
     }
 
-    /**
+    /*
      * Get the event view columns
      * @return array
      */
     public function getLogViewerColumns()
     {
-        /**
-         * The '#' before the column key specifies that column does not exists in the activity log table.
+        /*
+         * The '#' before the column key specifies that the column does not exists in the activity log table.
          * 
          * So you can use an array to specify the real targeted table column 
          * if needed, like so:
@@ -274,9 +275,9 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
             'message'     	 => 'Message',
             'created'     	 => 'Date',
             'browser'     	 => 'Browser',
-            'platform'    	 => 'platform',
+            'platform'    	 => 'Platform',
             'event_id'    	 => 'Code',
-            'severity'    	 => 'severity',
+            'severity'    	 => 'Severity',
             'metadata' 	     => 'Log Info',
             'is_mobile'      => 'Mobile',
             'source_ip'  	 => 'Source IP',
@@ -290,7 +291,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
             $args['#site'] = 'Site';
         }
 
-        /**
+        /*
          * Filter the event columns
          * 
          * @param $args Specifies list of event columns to disable/enable. 
@@ -303,7 +304,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         return apply_filters( 'alm/event/viewer/columns', $args );
     }
 
-    /**
+    /*
      * Get the event hooks
      */
     public function getEventHooks()
@@ -311,7 +312,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         return ['action', 'filter', 'callback'];
     }
 
-    /**
+    /*
      * Prepare the audit log event data
      * @see Auditor::loadEvents()
      * @see Auditor::setupObserver()
@@ -331,7 +332,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         return $this;
     }
 
-    /**
+    /*
      * Build the audit event callback
      * @see \ALM\Controllers\Audit\Traits\EventHandlers
      */
@@ -347,7 +348,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         }
     }
 
-    /**
+    /*
      * Add the Event.
      * This could be a WordPress Action or Filter Hook, or customized function.
      */
@@ -356,7 +357,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         // WordPress Action or Filter Hook, or any customized callback
         if ( is_callable($this->event_callback, true) )
         {
-            /**
+            /*
              * If the event callback is a normal PHP function or class method,
              * let's just ignore it silently.
              * 
@@ -369,7 +370,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         }
     }
 
-    /**
+    /*
      * Add Action Hook Event
      * @see add_action()
      */
@@ -378,7 +379,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         add_action($this->event_slug, $this->event_callback, $this->event_priority, $this->event_num_args);
     }
 
-    /**
+    /*
      * Add Filter Hook Event
      * @see add_filter()
      */
@@ -387,7 +388,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         add_filter($this->event_slug, $this->event_callback, $this->event_priority, $this->event_num_args);
     }
 
-    /**
+    /*
      * @todo
      * Check whether or not the active logged event can trigger notification
      * 
@@ -400,7 +401,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         return false;
     }
 
-    /**
+    /*
      * Get the active event prepared data.
      * 
      * Notice the usage of isset(), we have to avoid undefined index at all cost!
@@ -426,7 +427,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         return $data;
     }
 
-    /**
+    /*
      * Get the user event data
      * 
      * @since 1.0.0
@@ -464,7 +465,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         return $user_data;
     }
 
-    /**
+    /*
      * Prepare the audit event log data
      * 
      * Important: When in update mode, that is performing event log update such as:
@@ -501,14 +502,14 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         // Object ID: this can either be a user ID, post ID, comment ID, meta_id, etc.
         $object_id = $this->getEventMsgArg($event_group, 'object_id', 0);
 
-        /**
+        /*
          * Refresh the current user data
          */
         $this->User->refreshCurrentUserData($current_user_id);
 
         $_user_id = $this->User->getUserInfo(0, 'ID', 'int');
 
-        /**
+        /*
          * This specifies whether or not the active event data can be updated 
          * rather than creating a new one.
          */
@@ -522,7 +523,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         $event_object         = $this->_getActiveEventData('object');
         $event_data_separator = $this->getEventMetadataSeparatorChar();
 
-        /**
+        /*
          * There's no need to re-run all the log data setup process
          */
         if (!$this->is_active_log_updatable) {
@@ -543,6 +544,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
             $this->log_data['source_ip']     = $client_ip;
             $this->log_data['object_id']     = $object_id;
             $this->log_data['user_login']    = $this->User->getUserInfo(0, 'user_login', 'username');
+            $this->log_data['user_email']    = $this->User->getUserInfo(0, 'user_email', false);
             $this->log_data['event_group']   = $event_group;
             $this->log_data['event_title']   = $this->_getActiveEventData('title');
             $this->log_data['referer_url']   = $referer_url;
@@ -551,6 +553,10 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
 
             $this->log_data['last_name']     = $this->User->getUserInfo(0, 'last_name', false);
             $this->log_data['first_name']    = $this->User->getUserInfo(0, 'first_name', false);
+
+            $this->log_data['user_role'] = $this->parseValueForDb(
+                $this->User->getUserRoleLabels($this->User->getUserRoles($_user_id))
+            );
 
             $this->log_data['browser']       = $device_data['browser'];
             $this->log_data['platform']      = $device_data['platform'];
@@ -580,12 +586,12 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
             $this->active_event
         );
 
-        /**
+        /*
          * @todo
          * Set the affected object database table
          */
 
-        /**
+        /*
          * User data
          * 
          * For event data integrity, we don't want scenario where a change to the user data will
@@ -609,7 +615,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
          */
         $this->log_data['user_data'] = $this->_getActiveEventUserData(0, false);
 
-        /**
+        /*
          * Object metadata
          * 
          * Refresh the event user target data
@@ -665,6 +671,15 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
                 // Update the event object
                 $this->log_data['event_object'] = $post_type_name;
             }
+
+            $object_data = $this->getEventMsgArg($event_group, 'obj_data', []);
+            if (empty($object_data)) {
+                $object_data = $this->getEventMsgArg($event_group, 'post_data', []);
+            }
+
+            // Remove the 'post_content' from the object data
+            $object_data['post_content'] = '';
+            unset($object_data['post_content']);
         }
         else {
             // Unknown object type
@@ -672,7 +687,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
 
         $this->log_data['object_data'] = $object_data;
 
-        /**
+        /*
          * Event metadata
          */
         $event_metadata = [
@@ -687,7 +702,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
                 $event_data_separator
             ),
 
-            /**
+            /*
              * Always escape during display
              * @todo
              */
@@ -709,7 +724,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
             'http_upgrade_insecure_requests' => $this->getServerVar('HTTP_UPGRADE_INSECURE_REQUESTS'),
         ];
 
-        /**
+        /*
          * The referer url may not be the same as the first one,
          * let's keep a reference
          */
@@ -718,13 +733,13 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
 
         $this->log_data['metadata'] = $event_metadata;
 
-        /**
+        /*
          * Log date
          */
         if (!$this->is_active_log_updatable)
             $this->log_data['created_at'] = $this->getDate();
 
-        /**
+        /*
          * If we are not going to insert a new log record in the log table,
          * then we have to update some existing fields
          */
@@ -742,7 +757,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
             $this->log_data['message'] = preg_replace('/failed_attempts\=1/', $attempts, $event_msg);
         }
 
-        /**
+        /*
          * Here is our event conditional flag check point.
          * We have to ignore all excluded event entities
          */
@@ -753,7 +768,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
             $this->log_data
         );
 
-        /**
+        /*
          * As a final paradigm, let's allow the event ignorable state to be filtered
          * 
          * Filter: alm/event/log/ignorable
@@ -790,7 +805,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         // Keep the untransformed log data
         $this->log_data_raw = $this->log_data;
 
-        /**
+        /*
          * Filters the log data before array values are transformed to string 
          * 
          * @since 1.0.0
@@ -805,7 +820,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
             [$this->log_data, &$this]
         );
 
-        /**
+        /*
          * Transform all non-scalar log data to string
          */
         if (!$this->is_active_log_updatable) {
@@ -822,7 +837,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
                 $event_data_separator
             );
         }
-        /**
+        /*
          * We have to aggregate existing log data
          */
         else {
@@ -854,7 +869,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
             $existing_object_data .= empty($existing_object_data) ?
                 '' : $this->getEventLogUpdateIdentifier();
 
-            /**
+            /*
              * Merge new and existing data together
              */
             $this->log_data['message'] = $existing_message . $this->log_data['message'];
@@ -875,7 +890,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
             );
         }
 
-        /**
+        /*
          * Setup up the log data format
          */
         $integer_fields = ['user_id', 'blog_id', 'event_id', 'object_id', 'is_robot', 'is_mobile', 'log_counter',];
@@ -888,19 +903,19 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
             }
         }
 
-        /**
+        /*
          * Reset the user data
          */
         $this->User->refreshCurrentUserData();
     }
 
-    /**
+    /*
      * Log the active event data
      * @return bool True if the active event data was logged successfully. Otherwise false.
      */
     protected function _saveLog()
     {
-        /**
+        /*
          * Prepare the log data
          */
         $this->prepareLogData();
@@ -910,6 +925,22 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
             $this->is_active_event_loggable = false;
             return false;
         }
+
+        /*
+         * Fires before the active event is logged
+         * 
+         * @since 1.0.0
+         * 
+         * Passed 3 arguments:
+         * 
+         * @param bool    $is_update    Specifies whether the active event log is updatable or not                            new log will be inserted.
+         * @param array   $log_data     Specifies the transformed log data for the active event
+         * @param Auditor $auditor      The Auditor object
+         */
+        do_action_ref_array(
+            'alm/event/log/save',
+            [$this->is_active_log_updatable, $this->log_data, &$this]
+        );
 
         if ($this->is_active_log_updatable) {
             $log_id   = (int) $this->getVar($this->active_event_error_log_data, 'log_id');
@@ -929,7 +960,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         }
 
         if (!$save_log) {
-            /**
+            /*
              * Fires after an attempt to save the log data for the active event failed
              * 
              * @since 1.0.0
@@ -947,7 +978,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
             return false;
         }
 
-        /**
+        /*
          * Fires after the active event has been logged (saved) successfully
          * 
          * @since 1.0.0
@@ -963,13 +994,13 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
             [$this->log_data, $this->log_data_raw, &$this]
         );
 
-        /**
+        /*
          * Trigger notification for the event
          */
         if ($this->isActiveEventNotifiable())
             $this->Notification->trigger();
 
-        /**
+        /*
          * @todo
          * Run the audit log statistics update
          */
@@ -980,7 +1011,7 @@ class Auditor extends \ALM\Controllers\Base\PluginFactory implements \SplSubject
         return $save_log;
     }
 
-    /**
+    /*
      * Wrapper for auto saving the audit log
      * @see \Stack_Auth\Controllers\Audit\Auditor::_saveLog()
      */

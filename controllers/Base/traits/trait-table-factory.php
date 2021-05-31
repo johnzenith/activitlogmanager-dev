@@ -53,6 +53,23 @@ trait TableFactory
     }
 
     /**
+     * Get the WP core setting (option) ID.
+     * 
+     * This is basically a wrapper around the {@see ALM/Controllers/Base/PluginFactory::getWpOptionId()}.
+     * 
+     * @param string $option_name  Specifies the setting (option) name whose ID should be retrieved.
+     * 
+     * @return int                 Returns the given option ID if found. Otherwise 0.
+     */
+    protected function getWpCoreOptionId($option_name = '')
+    {
+        if (empty($option_name))
+            return 0;
+
+        return $this->getWpOptionId($option_name);
+    }
+
+    /**
      * Get the term taxonomy ID
      * @param int    $term_id  Term ID.
      * @param string $taxonomy Taxonomy slug.
@@ -92,21 +109,23 @@ trait TableFactory
                 "SELECT description, parent  
                     FROM {$this->wpdb->term_taxonomy} 
                     WHERE term_taxonomy_id = %d",
-                    $tt_id
+                $tt_id
             ),
             $return
         );
     }
 
     /**
-     * Get the term ID given the term taxonomy ID
+     * Get the term ID given the term taxonomy ID.
      * @param int $tt_id Term taxonomy ID.
      * @return int       The term ID if found.
      */
     protected function getTermIdWithTermTaxonomyId($term_taxonomy_id)
     {
         $term_id = $this->wpdb->get_var($this->wpdb->prepare(
-            "SELECT term_id FROM {$this->wpdb->term_taxonomy} WHERE term_taxonomy_id = %d",
+            "SELECT term_id 
+                FROM {$this->wpdb->term_taxonomy} 
+                WHERE term_taxonomy_id = %d",
             $term_taxonomy_id
         ));
         return $this->sanitizeOption($term_id);

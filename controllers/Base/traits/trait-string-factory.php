@@ -259,7 +259,7 @@ trait StringFactory
      * Get event message view more button
      * 
      * @param bool $is_serialized_string Specifies whether the view more button is 
-     *                                   for a serialized string or not
+     *                                   for a serialized string or not.
      * 
      * @return string
      */

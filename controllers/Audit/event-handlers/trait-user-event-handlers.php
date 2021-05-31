@@ -784,7 +784,7 @@ trait UserEvents
          * Bail out if the current user email is the same with the requested one,
          * or if email confirmation var ($_GET['newuseremail']) is set
          */
-        if (empty( $user_email_requested )) 
+        if (empty( $user_email_requested ))
             return;
 
         if (0 === strcasecmp( $user_email_requested, $user_email_current ))
@@ -819,7 +819,7 @@ trait UserEvents
 
         $this->setupUserEventArgs(compact( 'object_id', 'user_email_current', 'user_email_requested' ));
         $this->LogActiveEvent('user', __METHOD__);
-    }  
+    }
 
     /**
      * User email update confirmed handler

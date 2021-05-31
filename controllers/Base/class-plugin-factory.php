@@ -10,7 +10,7 @@ defined('ALM_PLUGIN_FILE') || exit('!!!');
  * Responsible for providing access gateway to every other controllers,
  * except for the plugin [Installer Controller] that runs in an isolated mode.
  * 
- * @since 	1.0.0
+ * @since 1.0.0
  */
 
 use \ALM\Controllers\Base\Traits as ALM_Base_Traits;
@@ -22,6 +22,7 @@ abstract class PluginFactory
      */
      use 
         ALM_Base_Traits\ConstantFactory,
+        ALM_Base_Traits\SetConstantsFactory,
         ALM_Base_Traits\SettingsFactory,
         ALM_Base_Traits\ControllersList,
         ALM_Base_Traits\StringFactory,
@@ -29,6 +30,7 @@ abstract class PluginFactory
         ALM_Base_Traits\DataParserFactory,
         ALM_Base_Traits\DateFactory,
         ALM_Base_Traits\FileUtility,
+        ALM_Base_Traits\ConditionalTags,
         ALM_Base_Traits\PageFactory,
         ALM_Base_Traits\BlogFactory,
         ALM_Base_Traits\TableFactory,
@@ -187,17 +189,6 @@ abstract class PluginFactory
             $wp_hasher = new \PasswordHash( $length, $is_portable );
         }
         return $wp_hasher;
-    }
-    
-    /**
-     * Check whether a pluggable function exists
-     * 
-     * @param string $pluggable  Specify the pluggable function to check for.
-     * @return bool              True if the pluggable function exists. Otherwise false.
-     */
-    public function isPluggable( $pluggable )
-    {
-        return function_exists( "alm_{$pluggable}" );
     }
 
     /**

@@ -5,7 +5,7 @@ namespace ALM\Controllers\Audit\Events\Groups;
 defined('ALM_PLUGIN_FILE') || exit('!!!');
 
 /**
-             * @package User Events
+ * @package User Events
  * @since   1.0.0
  */
 
@@ -150,7 +150,7 @@ trait UserEvents
      * 
      * @param array  $user_args     The user arguments provided by the event callback function
      * 
-     * @param string $context_state Specifies whether the event pre-fired or post-fired.
+     * @param string $context_state Specifies whether the event is pre-fired or post-fired.
      *                              Something like add_user_meta (pre) and added_user_meta (post).
      *                              If it's pre-fired, it will setup the context related data such as: 
      *                              previous value, intended value, etc.
@@ -184,6 +184,13 @@ trait UserEvents
          * Setup necessary user event argument vars
          */
         extract($user_args);
+
+        /**
+         * Use the 'user_id' if set
+         */
+        if (!empty($user_id) && ((int) $user_id) > 0) {
+            $object_id = $user_id; 
+        }
 
         // Use the $_current_user_id variable if set
         if (isset($_current_user_id) && $_current_user_id > 0) {
@@ -234,7 +241,7 @@ trait UserEvents
         if ( isset($user->role) ) {
             $user_role = $user->role;
         } else {
-            $user_role = $this->User->getUserRoles( $object_id, true );
+            $user_role = $this->User->getUserRoles($object_id, true);
         }
 
         if ( $current_user_id > 0 ) {

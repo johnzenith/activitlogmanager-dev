@@ -194,12 +194,27 @@ trait EventList
          * 
          * Both parameters are passed by reference
          * 
-         * @param array   $event_groups  Specifies the event groups list with existing events
-         * @param Auditor $auditor       The Auditor object
+         * @param array   $event_groups  Specifies the event groups list with existing events.
+         * @param Auditor $auditor       The Auditor object.
          */
         do_action_ref_array( 'alm/event/group/register', [ &$this->event_list, &$this ]);
 
         $this->normalizeEventGroupList();
+
+        /**
+         * Add the event message explanation context
+         */
+        add_filter('alm/event/message/db', function( $message_args ) {
+            $new_msg_args = [
+                '_explain_message' => ['_explain_message'],
+            ];
+            
+            $_message_args = $this->addNewElementsToArray(
+                $message_args, $new_msg_args, '_space_start'
+            );
+
+            return $_message_args;
+        }, 10, 3);
 
         /**
          * Filters the main event message.
@@ -211,33 +226,38 @@ trait EventList
          * 
          * @since 1.0.0
          */
-        add_filter( 'alm/event/message/save/main', [ $this, 'customizeEventMainMsg' ], 10, 3 );
+        add_filter('alm/event/message/save/main', [ $this, 'customizeEventMainMsg' ], 10, 3);
 
         /**
          * Format the event message field info
          * @see EventList::getEventMsgInfo()
          */
-        add_filter('alm/event/msg/field/info', function($info, $event, $field, $context)
-        {
-            // Bail out if the info has been formatted
-            if ('' !== $info) return $info;
+        add_filter(
+            'alm/event/msg/field/info',
+            function ( $info, $event, $field, $context )
+            {
+                // Bail out if the info has been formatted
+                if ('' !== $info) return $info;
 
-            $data  = $this->getEventMsgArg($event, $field, '', true);
-            $label = $this->makeFieldReadable($field);
+                $data  = $this->getEventMsgArg($event, $field, '', true);
+                $label = $this->makeFieldReadable($field);
 
-            // Bail if the field info has been ignored
-            if ($this->isEventMsgFieldInfoIgnorable($data))
-                return $data; // Returning the '_ignore_' flag
+                // Bail if the field info has been ignored
+                if ($this->isEventMsgFieldInfoIgnorable($data))
+                    return $data; // Returning the '_ignore_' flag
 
-            // Retrieve the object ID label if available
-            if ('object_id' === $field) {
-                $label = $this->getVar($this->event_object_id_labels, $event, 'object_id');
-            }
+                // Retrieve the object ID label if available
+                if ('object_id' === $field) {
+                    $label = $this->getVar($this->event_object_id_labels, $event, 'object_id');
+                }
 
-            if (is_null($data)) $data = 'Null';
+                if (is_null($data)) $data = 'Null';
 
-            return sprintf('%s: %s', $label, $data);
-        }, 98, 4);
+                return sprintf('%s: %s', $label, $data);
+            },
+            98,
+            4
+        );
     }
 
     /**
@@ -424,117 +444,6 @@ trait EventList
     }
 
     /**
-     * Customized the event main message
-     * 
-     * @see alm/event/message/save/main filter
-     */
-    public function customizeEventMainMsg($msg, $event_group, $event_data)
-    {
-        $object_id = $this->getEventMsgArg($event_group, 'object_id', 0);
-
-        /**
-         * Format the event message with the specified placeholders: (%s)
-         */
-        if ( false !== strpos($msg, '(%s)') ) {
-            switch($event_group) {
-                case 'user':
-                    $username = $this->getVar(
-                        $this->User->getUserData($object_id, true),
-                        'user_login'
-                    );
-
-                    // Will raw escape the url
-                    $user_profile_url = $this->User->getUserProfileEditUrl($object_id);
-
-                    $user_profile = sprintf(
-                        '<a href="%s">%s</a>',
-                        empty($user_profile_url) ? '#' : $user_profile_url,
-                        $username
-                    );
-
-                    $msg = sprintf($msg, $user_profile);
-                    break;
-            }
-        }
-
-        /**
-         * Make a fallback for the user login event.
-         * 
-         * @see {is_user_logged_in()} maybe false until after the page has reloaded 
-         * from the login screen.
-         */
-        $user_roles = [];
-        if ('user' === $event_group) {
-            $user_id    = $this->User->current_user_ID || $object_id;
-            $user_roles = $this->User->getUserRoles($user_id, true);
-        }
-
-        $is_user_role_empty = empty($user_roles);
-        if ( $is_user_role_empty && !is_user_logged_in() ) 
-            return $msg;
-
-        $role_desc  = '';
-        $user_roles = $is_user_role_empty ? $this->User->getCurrentUserRoles() : $user_roles;
-
-        // If the user roles is empty, let's refresh the user data
-        if (empty($user_roles)) {
-            $this->User->refreshCurrentUserData();
-            $user_roles = $this->User->getCurrentUserRoles();
-        }
-
-        if (in_array('super_admin', $user_roles, true)) {
-            $role_desc = 'A Super Admin';
-        }
-        elseif (in_array('administrator', $user_roles, true)) {
-            $role_desc = 'An Administrator';
-        }
-        else {
-            // If user role starts with any vowel letters, then this will be 'An'
-            $role_prefix = 'A';
-
-            // Get the user role
-            foreach( $user_roles as $user_role ) {
-                if (in_array($user_role, ['super_admin', 'administrator']))
-                    continue;
-
-                // Custom user role may include the underscore or dash character
-                $delimiter = (false === strpos($user_role, '-' )) ? '_' : '-';
-                
-                // If the user role start with any vowels, then prefix it with 'An'
-                if ($this->strStartsWith($user_role, $this->getVowelLetters(), true))
-                    $role_prefix = 'An';
-
-                $role_desc = $role_prefix .' '. ucfirst(ucwords($user_role, $delimiter));
-            }
-        }
-
-        // This should never happen, but we have to bail out if it does
-        if (empty($role_desc)) {
-            return sprintf('A user without a role %s', $msg);
-        }
-
-        // If the message starts with 'A ' or 'An,
-        // then let's replace it with an empty string
-        if ($this->strStartsWith($msg, ['a ', 'an '], true))
-            $msg = trim(substr($msg, 2));
-
-        // If the message starts with 'User ',
-        // then let's replace it with an empty string
-        if ($this->strStartsWith($msg, ['user '], true))
-            $msg = trim(substr($msg, 4));
-        
-        // Transform the first message character to lowercase
-        $first_char = strtolower(substr($msg, 0, 1));
-
-        // Remove the first character from the message
-        $remove_first_char = substr($msg, 1);
-
-        $_msg = $first_char . $remove_first_char;
-
-        return "{$role_desc} {$_msg}";
-    }
-
-    /**
      * Add a new event group or add a new event to an exiting event group.
      * 
      * This is used outside the Auditor controller class to allow registration 
@@ -627,6 +536,11 @@ trait EventList
             'is_aggregatable' => false,
 
             /**
+             * Specifies whether the event is triggered by the system
+             */
+            'is_system_event' => false,
+
+            /**
              * Take actions
              * 
              * Specifies actions that can be performed when the [Take Action] 
@@ -694,410 +608,6 @@ trait EventList
     }
 
     /**
-     * Check whether event message argument exists
-     * 
-     * @see EventList::getEventMsgArg()
-     * 
-     * @param  string $event Specifies the event to check for.
-     * 
-     * @param  string $arg   Specifies the event message field to check for. If set to null, 
-     *                       or empty string, then only the event ($event) will be checked for.
-     * 
-     * @return bool          True if the event exists. Otherwise false.
-     */
-    protected function eventMsgArgExists( $event, $arg = null )
-    {
-        if ( ! isset( $this->customize_event_msg_args[ $event ] ) )
-            return false;
-
-        if ( is_null( $arg ) || '' === $arg )
-            return true;
-
-        if ( ! isset( $this->customize_event_msg_args[ $event ][ $arg ] ) )
-            return false;
-
-        return true;
-    }
-
-    /**
-     * Get list of all event message arguments that are can be used in 
-     * generating the event message
-     */
-    protected function getTransformableSpecialMsgArgs()
-    {
-        return [
-            '_event_id', '_main', '_meta_key', '_meta_value', '_space_start', '_space_end', '_error_msg', '_user_avatar',
-        ];
-    }
-
-    /**
-     * Get the active event main message
-     * 
-     * @see Event::getEventMsgArg()
-     * @see ALM\Controllers\Audit\Auditor::_getActiveEventData()
-     */
-    protected function getActiveEventMsg($event_group = '')
-    {
-        $main_msg      = $this->_getActiveEventData('message', '_main');
-        $_count_object = $this->getEventMsgArg($event_group, '_count_object', 1);
-
-        if (!is_scalar($_count_object))
-            $_count_object = 1;
-
-        $translation_type = $_count_object > 1 ? 'plural' : 'singular';
-
-        $msg = $this->getVar(
-            $this->_getActiveEventData('_translate', '_main'),
-            $translation_type,
-            $main_msg
-        );
-
-        if ($this->is_network_admin) {
-            $translation_type .= '_network';
-            $msg = $this->getVar(
-                $this->_getActiveEventData('_translate', '_main'),
-                $translation_type,
-                $msg
-            );
-        }
-
-        /**
-         * Maybe we should format the event message with the given paceholders values
-         */
-        $placeholder_values = $this->getEventMsgArg($event_group, '_placeholder_values', '');
-
-        if (!is_array($placeholder_values))
-            $placeholder_values = [];
-
-        if (false !== strpos($msg, ' (%s)') && !empty($placeholder_values)) {
-            $msg = sprintf($msg, ...$placeholder_values);
-        } else {
-            $msg = str_replace(' (%s)', '', $msg);
-        }
-
-        return $msg;
-    }
-
-    /**
-     * Check whether the event message can be ignored
-     * 
-     * @param  string $info The event message field data
-     * 
-     * @return bool   Returns true if the message field should be ignored.
-     *                Otherwise false.
-     */
-    public function isEventMsgFieldInfoIgnorable($info)
-    {
-        if (!is_string($info)) return false;
-
-        return ('_ignore_' === $info || $this->strEndsWith($info, '_ignore_'));
-    }
-
-    /**
-     * Generate event message before it is saved to the database
-     * 
-     * @see EventList::getEventMsgInfo()
-     * 
-     * @param string $event_group   Specifies the event group which the message belongs to.
-     * 
-     * @param array  $message_args  Specifies list of event message arguments to used in 
-     *                              generating the message. 
-     *                              This should contain the event info field and context,
-     *                              if needed.
-     * 
-     * @param array  $event_data    Specifies the event data which the message belongs to.
-     * 
-     * @return string               The generated event message.
-     */
-    protected function generateEventMessageForDb( $event_group, array $message_args = [], array $event_data = [] )
-    {
-        if (empty( $message_args )) 
-            return '';
-
-        /**
-         * Filter the event message arguments before it is saved to database
-         * 
-         * @since 1.0.0
-         *
-         * @param array  $message_args  Specifies list of event message arguments to used in 
-         *                              generating the message. 
-         *                              This should contain the event info field and context,
-         *                              if needed.
-         *
-         * @param string $event_group   Specifies the event group which the message belongs to.
-         * 
-         * @param array  $event_data    Specifies the event data which the message belongs to.
-         * 
-         * @return array                The filtered message list
-         */
-        $_message_args = apply_filters( 'alm/event/message/db', $message_args, $event_group, $event_data );
-
-        $list             = '';
-        $site_details     = ['blog_id', 'site_id', 'site_url', 'blog_url', 'blog_name', 'site_name'];
-        $special_msg_args = $this->getTransformableSpecialMsgArgs();
-
-        foreach ( $_message_args as $msg_name => $message_arg )
-        {
-            /**
-             * On multisite, we may not need to log the following message arguments:
-             * {@see blog_id, blog_name, blog_url}
-             * 
-             * This is because the blog_id, blog_name and blog_url have
-             * specific columns in the event log
-             */
-            if ($this->is_multisite) {
-                if (in_array($msg_name, $site_details, true))
-                {
-                    /**
-                     * Filters whether to log the site details along with the message data.
-                     * 
-                     * @since 1.0.0
-                     * 
-                     * @param bool   $site_details  Specifies whether or not to log the site details 
-                     *                              along with the message data.
-                     *                              Note: The 'blog_id', 'blog_name', and 'blog_url' 
-                     *                              columns does exists in the event log table.
-                     *                              Default: false
-                     * 
-                     * @param array  $message_args  Specifies list of event message arguments to used in 
-                     *                              generating the message. 
-                     *                              This should contain the event info field and context,
-                     *                              if needed.
-                     *
-                     * @param string $event_group   Specifies the event group which the message belongs to.
-                     * 
-                     * @param array  $event_data    Specifies the event data which the message belongs to.
-                     */
-                    $log_site_details_with_msg = apply_filters(
-                        'alm_event/message/db/log/site_details',
-                        false, $message_args, $event_group, $event_data
-                    );
-                    if (!$log_site_details_with_msg)
-                        continue;
-                }
-            }
-
-            // Ignore the message if $message_arg var is set to '_ignore_'
-            if ( $this->isEventMsgFieldInfoIgnorable($message_arg) )
-                continue;
-            
-            $is_metadata    = $this->strStartsWith( $msg_name, 'meta_' );
-            $is_traversable = is_array( $message_arg );
-
-            // Ignore special fields which always starts with an underscore '_' character
-            $is_special_field = $this->strStartsWith($msg_name, '_');
-            if ($is_special_field)
-            {
-                // First thing first, let's retrieve the main message
-                if ('_main' == $msg_name)
-                {
-                    $info = isset($_message_args['_main_processed']) ? 
-                        $_message_args['_main'] : $this->getActiveEventMsg($event_group);
-                        
-                    /**
-                     * Filters the main event message before saving to database
-                     * 
-                     * @since 1.0.0
-                     * 
-                     * @param string $msg         Specifies the main message to display for the event
-                     * @param string $event_group Specifies the event group which the message belongs to.
-                     * @param array  $event_data  Specifies the event data which the message belongs to.
-                     */
-                    $info = apply_filters(
-                        'alm/event/message/save/main',
-                        $info, $event_group, $event_data
-                    );
-                }
-                else {
-                    if (!in_array($msg_name, $special_msg_args, true)) 
-                        continue;
-
-                    if ( $this->strStartsWith($msg_name, ['_space_', '_inspect_']) )
-                    {
-                        $info = $msg_name;
-                    }
-                    elseif ( '_error_msg' == $msg_name ) {
-                        $info = $this->getEventMsgArg( $event_group, '_error_msg' );
-
-                        if (empty($info)) continue;
-                    }
-                    else {
-                        if (!$is_traversable)
-                        {
-                            if ($is_metadata) {
-                                $info = $message_arg;
-                            } else {
-                                continue;
-                            }
-                        } 
-                        else {
-                            $info = $this->getEventMsgInfo( $event_group, ...$message_arg );
-                        }
-                    }
-                }
-            }
-            else {
-                if (!$is_traversable)
-                {
-                    if ($is_metadata) {
-                        $info = $message_arg;
-                    }
-                    else {
-                        // Check whether the message exists
-                        $assumed_field = ( '' == $message_arg ) ? $msg_name : $message_arg;
-                        $lookup_msg    = $this->getEventMsgInfo( $event_group, $assumed_field );
-
-                        if ( empty( $lookup_msg ) ) 
-                            continue;
-
-                        $info = $lookup_msg;
-                    }
-                }
-                else {
-                    $info = $this->getEventMsgInfo( $event_group, ...$message_arg );
-                }
-            }
-
-            // Properly parse object and array values
-            $info = $this->parseValueForDb($info);
-
-            /**
-             * If the info is equal '_ignore_', then we should ignore it.
-             */
-            if (!is_serialized($info, true) 
-            && $this->isEventMsgFieldInfoIgnorable($info))
-                continue;
-
-            /**
-             * Pluralize the event message name if needed.
-             * 
-             * Note: special fields starting with an underscore character are ignored
-             */
-            $_msg_name = $msg_name;
-            if ( !$is_special_field 
-            && isset($event_data['_translate'][$msg_name]) 
-            && 0 === $this->getEventMsgArg($event_group, '_count_object', 0))
-            {  
-                $pluralize_str = $this->getVar($event_data['_translate'][$msg_name], 'plural_char', ', ');
-                
-                if ( false !== strpos($info, $pluralize_str) ) {
-                    $plural    = $this->getVar($event_data['_translate'][$msg_name], 'plural', $msg_name);
-                    $_msg_name = $plural;
-                } else {
-                    $singular = $this->getVar($event_data['_translate'][$msg_name], 'singular', '');
-                    if ( !empty($singular) )
-                        $_msg_name = $singular;
-                }
-            }
-            
-            $list .= $_msg_name . '=' . $info . $this->getEventMsgSeparatorChar();
-        }
-
-        return $this->rtrim( $list, $this->getEventMsgSeparatorChar() );
-    }
-
-    /**
-     * Generate the displayable event message after it has been retrieved from database.
-     * This will first convert the message string to an an event message array, which is then
-     * passed to the event message display filter
-     * 
-     * @param  string       $msg        Specifies the event message
-     * @param  object|null  $event_obj  Specifies the wpdb event object retrieved from database.
-     * @return string                   The formatted event message ready for display
-     */
-    protected function generateEventMessageForDisplay( $msg = '', $event_obj = null )
-    {
-        if ( empty( $msg ) ) return $msg;
-        
-        $_msg     = wp_kses( $msg, $this->getEventMsgHtmlList() );
-        $msg_list = explode( $this->getEventMsgSeparatorChar(), $_msg );
-
-        $_msg_list = [];
-        foreach ( $msg_list as $list )
-        {
-            if ( false === strpos( $list, '=' ) ) continue;
-
-            $split = explode( '=', $list );
-            if ( count( $split ) > 1 ) {
-                $_msg_list[ $_msg_list[0] ] = $_msg_list[1];
-            }
-        }
-
-        $msg_str = '<div class="alm-event-msg-wrapper">';
-        foreach ( $_msg_list as $field => $the_msg )
-        {
-            // Skip the message if null
-            if ( is_null( $the_msg ) ) continue;
-
-            switch ( $field )
-            {
-                case '_main':
-                    $main_msg_filter = apply_filters(
-                        'alm/event/message/display/main',
-                        $this->formatMainMsgTarget( $the_msg ),
-                        $event_obj
-                    );
-
-                    $msg_str .= sprintf(
-                        '<div class="alm-event-main-msg">%s</div>',
-                        $main_msg_filter
-                    );
-                break;
-
-                case '_space_start':
-                    $msg_str .= '<div class="alm-event-msg-target-start">';
-                break;
-
-                case '_space_end':
-                    $msg_str .= '</div>';
-                break;
-                
-                default:
-                    $msg_str .= sprintf(
-                        '<span class="alm-event-msg-str">%s</span>',
-                        $the_msg
-                    );
-                    break;
-            }
-        }
-        $msg_str .= '</div><!-- .alm-event-msg-wrapper -->';
-
-        /**
-         * Filters the event message list prior to display
-         * 
-         * @see EventList::generateEventMessageForDb()
-         * 
-         * @param string      $msg_str    Specifies the displayable event message string  
-         * 
-         * @param array       $msg_list   Specifies the event message list
-         * 
-         * @param object|null $event_obj  Specifies the wpdb event object retrieved from database.
-         * 
-         * @return string     The filtered event message ready for display
-         */
-        return apply_filters( 'alm/event/message/display', $msg_str, $_msg_list, $event_obj );
-    }
-
-    /**
-     * Filters the tags allowed in the event message prior to display
-     * @return array The allowable tag list
-     */
-    protected function getEventMsgHtmlList()
-    {
-        return [
-            '<hr>'   => [ 'class' => [] ],
-            'span'   => [ 'class' => [] ],
-            'p'      => [ 'class' => [] ],
-            'div'    => [ 'class' => [] ],
-            'strong' => [ 'class' => [] ],
-            'small'  => [ 'class' => [] ],
-            'em'     => [ 'class' => [] ],
-            'u'      => [ 'class' => [] ],
-            'a'      => [ 'href'  => [], 'class' => [], 'title' => [] ]
-        ];
-    }
-
-    /**
      * Get the event hooks
      * 
      * @param string $hook  Specifies the event hook to check for
@@ -1110,176 +620,6 @@ trait EventList
     {
         if ( empty( $hook ) ) return true;
         return in_array( $hook, ['action', 'filter'], true );
-    }
-
-    /**
-     * Check whether the customized event message argument is ready
-     * @param  string  $event   Specifies the event message arguments to check for
-     * @return bool
-     */
-    protected function isEventMsgArgReady( $event )
-    {
-        return ( 
-            isset( $this->customize_event_msg_args[ $event ] ) 
-            && isset( $this->customize_event_msg_args[ $event ][ 'is_ready' ] ) 
-            && true === $this->customize_event_msg_args[ $event ][ 'is_ready' ]
-        );
-    }
-
-    /**
-     * Setup default event message data
-     * 
-     * @since 1.0.0
-     * 
-     * @param string $event_group Specifies the event group to setup the message data for.
-     * 
-     * @param array  $extra_data  Specifies list of extra data to merge with the event 
-     *                            message data.
-     * 
-     * @return array The setup event message data.
-     */
-    protected function setupEventMsgData($event_group, array $extra_data)
-    {
-        $this->customize_event_msg_args[$event_group] = array_merge(
-            [
-                'is_ready'     => true,
-                'network_name' => $this->getCurrentNetworkName(),
-                'blog_id'      => $this->current_blog_ID,
-                'user_id'      => $this->User->current_user_ID,
-                'blog_name'    => $this->getBlogName(),
-                'network_id'   => $this->getVar($this->network_data, 'id', $this->current_network_ID),
-                'blog_url'     => $this->sanitizeOption( $this->getVar($this->blog_data, 'url'), 'url' ),
-                'object_data'  => [],
-            ],
-            $extra_data
-        );
-
-        return $this->customize_event_msg_args[$event_group];
-    }
-
-    /**
-     * Get the customized event message argument value
-     * 
-     * @since 1.0.0
-     * 
-     * @param  string  $event     Specifies the event the field argument belongs to
-     * @param  string  $arg       Specifies the event message field argument to get
-     * @param  mixed   $default   Specifies default value to use if the event argument is not set
-     * @param  string  $to_scalar Specifies whether to properly parse array/object values
-     * @return mixed              The customized event argument value
-     */
-    protected function getEventMsgArg( $event, $arg, $default = '', $to_scalar = false )
-    {
-        if (!$this->isEventMsgArgReady($event)) 
-            return $default;
-
-        if (!$this->eventMsgArgExists($event, $arg)) 
-            return $default;
-        
-        $data = $this->customize_event_msg_args[ $event ][ $arg ];
-        if ( $to_scalar ) {
-            $data = $this->parseValueForDb($data);
-        }
-
-        return $data;
-    }
-
-    /**
-     * Get the event object ID
-     * @return int
-     */
-    protected function getEventMsgObjectId( $event )
-    {
-        return $this->sanitizeOption($this->getEventMsgArg( $event, 'object_id' ), 'int');
-    }
-
-    /**
-     * Add the log counter info to the log message
-     * @return string
-     */
-    protected function getLogCounterInfo()
-    {
-        return 'Number of failed request: ###LOG_COUNTER###';
-    }
-
-    /**
-     * Get a formatted event field info. This is used to build and customized 
-     * the event message.
-     * 
-     * @see EventList::generateEventMessageForDb()
-     * 
-     * @param  string  $event    Specifies the event which the field belongs to
-     * 
-     * @param  string  $field    Specifies the field info to get.
-     * 
-     * @param  string  $context  Specifies the event field info context. This is used to 
-     *                           determine what type of field value we are dealing with.
-     * 
-     * @return string            The formatted event field info.
-     */
-    protected function getEventMsgInfo( $event, $field, $context = '' )
-    {
-        $info = '';
-
-        /**
-         * Bail out the event info if the event message arguments is not ready yet
-         */
-        if (!$this->eventMsgArgExists($event, $field)) 
-            return $info;
-
-        /**
-         * Filters the event message argument info
-         * 
-         * @param  string  $info    Specifies the formatted event message  info
-         * @param  string  $event   Specifies the event which the field belongs to
-         * @param  string  $field   Specifies the event message argument
-         * @param  string  $context Specifies the event message argument context
-         * 
-         * @return string  The filtered event message argument info
-         */
-        return apply_filters( 'alm/event/msg/field/info', $info, $event, $field, $context );
-    }
-
-    /**
-     * Format the main message target for the event
-     * @return string
-     */
-    public function formatMainMsgTarget( $msg )
-    {
-        if (!is_string($msg)) return $msg;
-
-        return preg_replace(
-            '/\-{3}([\w ]+)\-{3}/', // strip out the 3 dashes from the event message target
-            "<strong class=\"alm-msg-target\">$1</strong>",
-            $msg
-        );
-    }
-
-    /**
-     * Make an event message field more readable
-     * @param  string Specifies the event message field to format
-     * @return string The formatted event message field
-     */
-    public function makeFieldReadable( $field )
-    {
-        return ucfirst( str_replace( [ '_', '-' ], ' ', $field ) );
-    }
-
-    /**
-     * Format an event message field with a given context, if provided.
-     * @see EventList::getEventMsgInfo()
-     * @see EventList::generateEventMessageForDb()
-     */
-    public function formatMsgField( $event, $field, $context = '', $format = true )
-    {
-        $label            = $format ? $this->makeFieldReadable( $field ) : $field;
-        $info             = empty( $context ) ? $label : ucfirst( $context ) . ' ' . strtolower( $label );
-        $meta_field       = preg_replace( '/\_$/', '', 'meta_value_' . $context );
-
-        $formatted_field  = $this->getEventMsgArg( $event, $meta_field );
-        $_formatted_field = $this->parseValueForDb( $formatted_field );
-
-        return "$info: " . $_formatted_field;
     }
 
     /**
@@ -1560,7 +900,7 @@ trait EventList
     }
 
     /**
-     * Get the event slug (hook name) by specifying either the 'event ID'
+     * Get the event slug (hook name) by specifying the 'event ID'
      * 
      * @since 1.0.0
      * 
@@ -1587,7 +927,7 @@ trait EventList
     }
 
     /**
-     * Get the event hook name or ID by specifying either the 'event ID' 
+     * Get the event hook name or ID by specifying the 'event slug' 
      * or 'event hook name (slug)'
      * 
      * @since 1.0.0
@@ -1595,7 +935,7 @@ trait EventList
      * @param string $event_hook  Specifies the event hook to retrieve corresponding ID for.
      * 
      * @param string $event_group  Specifies the event group the for the slug. Can be omitted if 
-     *                             the event hook is specified together with the event group
+     *                             the event hook is specified together with the event group.
      * 
      * @return int                 Returns the corresponding event ID if found.
      *                             Otherwise 0.
@@ -1645,16 +985,6 @@ trait EventList
     public function getEventData($event_id)
     {
         return $this->getVar($this->main_event_list, $event_id, false);
-    }
-
-    /**
-     * Explain the event message if allowed
-     * 
-     * @since 1.0.0
-     */
-    protected function explainEventMsg( $msg = '' )
-    {
-        return $this->canExplainEventMsg() ? $msg : '';
     }
 
     /**
@@ -1803,10 +1133,11 @@ trait EventList
          */
 
         /**
-         * Filters the active event error/aggregatable log data fields to return from the query.
+         * Filters the active event error or aggregatable log data fields 
+         * to return from the query.
          * 
          * The filtered fields list is expected to contain the 'event_id' and 
-         * 'log_counter' fields
+         * 'log_counter' fields.
          * 
          * @since 1.0.0
          * 

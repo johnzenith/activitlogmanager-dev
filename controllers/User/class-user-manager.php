@@ -416,7 +416,10 @@ class UserManager extends \ALM\Controllers\Base\PluginFactory
         if ( 
             !in_array( 'administrator', $roles, true ) 
             && (
-                ($this->is_administrator && $this->current_user_ID == $user_id) 
+                (
+                    $this->is_administrator 
+                    && ((int) $this->current_user_ID) === ((int) $user_id)
+                ) 
                 || $this->canPerformAction( 'delete_users', $user_id )
             )
         )

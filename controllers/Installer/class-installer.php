@@ -350,6 +350,8 @@ class Installer
 		// and the activation is clicked on another site on the network
 		if (did_action('alm_plugin_activated')) return;
 
+        var_dump(ALM_PLUGIN_BASENAME, $plugin_basename);exit;
+
 		if ( ALM_PLUGIN_BASENAME != $plugin_basename ) return;
 		
 		if ( !defined('ALM_NEW_BLOG_INSERTED') && defined('ALM_ACTIVATING') )

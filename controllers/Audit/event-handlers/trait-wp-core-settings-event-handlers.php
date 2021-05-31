@@ -114,6 +114,25 @@ trait WP_CoreSettingsEvents
             $event_msg_args['requested_value'] = '_ignore_';
         }
 
+        /**
+         * Explain the event message
+         * 
+         * When updating the general options for the first time, 
+         * the 'new_admin_email' is added and this will trigger the 
+         * change of administration email address.
+         */
+        if ('new_admin_email' === $option_name
+            && $current_email === $requested_value 
+        ) {
+            $this->explainCurrentEventMsg(
+                $this->wp_core_settings_slug,
+                sprintf(
+                    'This event is triggered because the update button on the %s settings page is clicked for the first time, and thus the administration email address is added.',
+                    $this->getWpCoreSettingsPage('options-general')
+                )
+            );
+        }
+
         $this->overrideActiveEventData('action',  $action_type);
         $this->overrideActiveEventData('title',   $event_title);
         $this->overrideActiveEventData('message', $event_msg_args);

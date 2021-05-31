@@ -51,7 +51,7 @@ trait EventGlobalHelpers
         /**
          * Get the post data before an update.
          * 
-         * Note: This uses the {@see post_updated} action hook to retrieve the post data 
+         * Note: This uses the {@see post_updated} action hook to retrieve the post data.
          * before it is updated.
          */
         add_action('post_updated', function($post_ID, $post_after, $post_before) use (&$self) {
@@ -66,6 +66,15 @@ trait EventGlobalHelpers
         foreach ($meta_types as $meta_type) {
             $this->_doMetadataPreviousValueHelper($meta_type);
         }
+
+        /**
+         * Get the post data before it is deleted.
+         * 
+         * @see @param $post Added in 5.5.0
+         */
+        add_action('delete_post', function ($post_ID, $post) use (&$self) {
+            $self->_pre_event_data['delete_post'] = $post;
+        }, 10, 2 );
 
         /**
          * Get the new term data when it is created
@@ -246,20 +255,25 @@ trait EventGlobalHelpers
     {
         $self = $this;
 
-        add_action("update_{$meta_type}_meta", function( $meta_id, $object_id, $meta_key, $meta_value ) use (&$self, &$meta_type)
-        {
-            // Get the previous value
-            $prev_value = get_metadata_raw( $meta_type, $object_id, $meta_key );
-            if ( is_countable($prev_value ) && count( $prev_value ) === 1 ) {
-                if ($prev_value[0] === $meta_value ) {
-                    return;
-                }
-                $prev_value = $prev_value[0];
-            }
+        add_action(
+            "update_{$meta_type}_meta", 
+            function( $meta_id, $object_id, $meta_key, $meta_value ) use (&$self, &$meta_type) {
+                // Get the previous value
+                $prev_value = get_metadata_raw( $meta_type, $object_id, $meta_key );
 
-            if ($prev_value != $meta_value) {
-                $self->_pre_event_data[$object_id][$meta_key] = $prev_value;
-            }
-        }, 10, 4);
+                if ( is_countable($prev_value ) && count( $prev_value ) === 1 ) {
+                    if ($prev_value[0] === $meta_value ) {
+                        return;
+                    }
+                    $prev_value = $prev_value[0];
+                }
+
+                if ($prev_value != $meta_value) {
+                    $self->_pre_event_data[ $object_id ][ $meta_key ] = $prev_value;
+                }
+            },
+            10,
+            4
+        );
     }
 }

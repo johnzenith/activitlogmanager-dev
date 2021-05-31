@@ -20,7 +20,7 @@ trait TermEvents
      * link_category
      */
     protected $default_taxonomies = [
-        // Taxonomy                // Object type
+        // Taxonomy         // Object type
         'category'          => 'post',
         'post_tag'          => 'post',
         'nav_menu'          => 'nav_menu_item',

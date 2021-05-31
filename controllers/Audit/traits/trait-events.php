@@ -29,8 +29,10 @@ trait AuditableEvents_SS
         ALM_EventGroups\TermEvents,
         ALM_EventGroups\TermTaxonomyEvents,
         ALM_EventGroups\WP_CoreSettingsEvents,
+        ALM_EventGroups\ToolsEvents,
         ALM_Events\EventConditionalParser,
         ALM_Events\EventGlobalHelpers,
+        ALM_Events\EventMessage,
         ALM_Events\EventList;
 }
 

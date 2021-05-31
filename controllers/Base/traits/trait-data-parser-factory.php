@@ -5,7 +5,7 @@ namespace ALM\Controllers\Base\Traits;
 defined('ALM_PLUGIN_FILE') || exit('!!!');
 
 /**
- * Array Factory Template for the Plugin Factory Controller
+ * Data Factory Template for the Plugin Factory Controller
  * @see \ALM\Controllers\Base\PluginFactory
  * @since 1.0.0
  */
