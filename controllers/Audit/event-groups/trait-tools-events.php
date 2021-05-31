@@ -104,7 +104,7 @@ trait ToolsEvents
                         'user_login'                => ['user_login'],
                         'display_name'              => ['display_name'],
                         'roles'                     => ['roles'],
-                        'First_name'                => ['First_name'],
+                        'first_name'                => ['first_name'],
                         'last_name'                 => ['last_name'],
                         'user_email'                => ['user_email'],
                         'profile_url'               => ['profile_url'],
@@ -158,7 +158,7 @@ trait ToolsEvents
                         'user_login'                => ['user_login'],
                         'display_name'              => ['display_name'],
                         'roles'                     => ['roles'],
-                        'First_name'                => ['First_name'],
+                        'first_name'                => ['first_name'],
                         'last_name'                 => ['last_name'],
                         'user_email'                => ['user_email'],
                         'profile_url'               => ['profile_url'],
@@ -208,7 +208,7 @@ trait ToolsEvents
                         'user_login'                => ['user_login'],
                         'display_name'              => ['display_name'],
                         'roles'                     => ['roles'],
-                        'First_name'                => ['First_name'],
+                        'first_name'                => ['first_name'],
                         'last_name'                 => ['last_name'],
                         'user_email'                => ['user_email'],
                         'profile_url'               => ['profile_url'],
@@ -260,7 +260,7 @@ trait ToolsEvents
                         'user_login'                => ['user_login'],
                         'display_name'              => ['display_name'],
                         'roles'                     => ['roles'],
-                        'First_name'                => ['First_name'],
+                        'first_name'                => ['first_name'],
                         'last_name'                 => ['last_name'],
                         'user_email'                => ['user_email'],
                         'profile_url'               => ['profile_url'],
@@ -312,7 +312,7 @@ trait ToolsEvents
                         'user_login'                => ['user_login'],
                         'display_name'              => ['display_name'],
                         'roles'                     => ['roles'],
-                        'First_name'                => ['First_name'],
+                        'first_name'                => ['first_name'],
                         'last_name'                 => ['last_name'],
                         'user_email'                => ['user_email'],
                         'profile_url'               => ['profile_url'],
@@ -324,6 +324,58 @@ trait ToolsEvents
                         '_space_end'                => '',
 
                         // 'post_data'                 => ['post_data'],
+                    ],
+
+                    'event_handler' => [
+                        'num_args' => 3,
+                    ],
+                ],
+
+                /**
+                 * Fires after the personal data of a user is downloaded.
+                 * 
+                 * @see   ABSPATH . 'wp-admin/export-personal-data.php'
+                 * @since 1.0.0
+                 */
+                'alm_personal_data_export_file_downloaded' => [
+                    'title'               => 'Personal data export file downloaded',
+                    'action'              => 'personal_data_export_file_downloaded',
+                    'event_id'            => 5807,
+                    'severity'            => 'notice',
+
+                    'is_system_event'    => false,
+
+                    'screen'              => ['admin'],
+                    'user_state'          => 'logged_in',
+                    'logged_in_user_caps' => ['export_others_personal_data'],
+
+                    /**
+                     * Translation arguments
+                     */
+                    '_translate' => [],
+
+                    'message'             => [
+                        '_main'                     => 'Downloaded the personal data export file of the user (%s) generated from the %s page.',
+
+                        '_space_start'              => '',
+                        'user_request_id'           => ['object_id'],
+                        'send_as_email'             => ['send_as_email'],
+                        'export_file_url'           => ['export_file_url'],
+                        '_space_line'               => '',
+                        'user_id'                   => ['user_id'],
+                        'user_login'                => ['user_login'],
+                        'display_name'              => ['display_name'],
+                        'roles'                     => ['roles'],
+                        'first_name'                => ['first_name'],
+                        'last_name'                 => ['last_name'],
+                        'user_email'                => ['user_email'],
+                        'profile_url'               => ['profile_url'],
+                        'is_user_owner_of_account'  => ['is_user_owner_of_account'],
+                        'user_primary_site'         => ['primary_blog'],
+                        'primary_site_name'         => ['primary_blog_name'],
+                        'primary_site_url'          => ['primary_blog_url'],
+                        'source_domain'             => ['source_domain'],
+                        '_space_end'                => '',
                     ],
 
                     'event_handler' => [
@@ -528,5 +580,39 @@ trait ToolsEvents
             10,
             3
         );
+
+        // Listen for the {download personal data request}
+        add_action(
+            "wp_privacy_personal_data_export_file",
+            function ( $request_id ) {
+                $post = get_post($request_id, 'ARRAY_A');
+                if (empty($post)) return;
+
+                do_action(
+                    'alm_personal_data_export_file_downloaded',
+                    $request_id, $post
+                );
+            },
+            99,
+            7
+        );
+    }
+
+    /**
+     * Get the personal data export page url.
+     * 
+     * @since 1.0.0
+     * 
+     * @param string $search If specified, the search query will be added to the 
+     *                       returned url.
+     * 
+     * @return string The personal data export page url.
+     */
+    public function getPersonalDataExportPageUrl( $search = '' )
+    {
+        $personal_data_export_page_url  = $this->getWpCoreSettingsPage('export-personal-data');
+        $personal_data_export_page_url .= !empty($search) ? "?s={$search}" : '';
+
+        return $personal_data_export_page_url;
     }
 }

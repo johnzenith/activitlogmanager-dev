@@ -245,7 +245,8 @@ trait UserEvents
         }
 
         if ( $current_user_id > 0 ) {
-            $is_user_owner_of_account = $current_user_id == $object_id;
+            // $is_user_owner_of_account = $current_user_id == $object_id;
+            $is_user_owner_of_account = $current_user_id == $this->User->getCurrentUserId() ? 1 : 0;
         } else {
             $is_user_owner_of_account = 0;
         }
@@ -635,7 +636,7 @@ trait UserEvents
                 'meta_key' => null,
                 
                 /**
-                 * Event message arguments
+                 * Event message arguments.
                  * 
                  * Message can auto set a standalone event code by using the '_event_id' argument:
                  *     [

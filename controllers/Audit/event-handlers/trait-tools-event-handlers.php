@@ -155,12 +155,11 @@ trait ToolsEvents
             : 
             'Email confirmation by the user is required for this data export request. So nothing will happen until the request is confirmed.';
 
-        $user_profile_url  = $this->getWpCoreSettingsPage('export-personal-data');
-        $user_profile_url .= "?s={$post_title}";
+        $personal_data_export_page_url = $this->getPersonalDataExportPageUrl($post_title);
 
         $explain_msg .= sprintf(
             '<a href="%s" target="_blank">Click here</a> to view all personal data requests for this user (%s).',
-            empty($user_profile_url) ? '#' : $user_profile_url,
+            empty($personal_data_export_page_url) ? '#' : $personal_data_export_page_url,
             $post_title
         );
 
@@ -283,6 +282,52 @@ trait ToolsEvents
         $setup_event_data = $this->_alm_personal_data_request_helper(
             $post_ID, $post, $update
         );
+
+        $this->setupEventMsgData('tool', $setup_event_data);
+        $this->LogActiveEvent('tool', __METHOD__);
+    }
+
+    /**
+     * Personal data downloaded event handler.
+     * 
+     * @since 1.0.0
+     */
+    public function alm_personal_data_export_file_downloaded_event( $post_ID, $post )
+    {
+        $send_as_email = 'true' === $this->getVar($_POST, 'sendAsEmail', '');
+        
+        $post_title = $this->sanitizeOption(
+            $this->getVar($post, 'post_title', '')
+        );
+
+        $event_msg_args   = $this->getEventMsgArgs(__FUNCTION__, 'tool');
+
+        $setup_event_data = $this->_alm_personal_data_request_helper(
+            $post_ID, $post, false
+        );
+
+        $personal_data_export_page_url = $this->getPersonalDataExportPageUrl($post_title);
+
+        $main_msg = $this->getVar($event_msg_args, '_main');
+
+        $event_msg_args['_main'] = sprintf(
+            $main_msg,
+            '%s', // Keep the first placeholder, it's the url to the user profile.
+            '<a target="_blank" href="'. $personal_data_export_page_url .'">Export Personal Data</a>'
+        );
+
+        $this->overrideActiveEventData('message', $event_msg_args);
+
+        $explain_msg = 'Note: The {Send As Email} option below specifies whether the final results of the export should be emailed to the user';
+
+        $this->explainCurrentEventMsg('tool', $explain_msg);
+
+        $setup_event_data['send_as_email'] = $send_as_email ? 'Yes' : 'No';
+
+        $exports_url      = wp_privacy_exports_url();
+        $export_file_name = get_post_meta( $post_ID, '_export_file_name', true );
+        
+        $setup_event_data['export_file_url'] = $this->sanitizeOption($exports_url . $export_file_name);
 
         $this->setupEventMsgData('tool', $setup_event_data);
         $this->LogActiveEvent('tool', __METHOD__);
